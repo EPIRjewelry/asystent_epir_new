@@ -4,8 +4,9 @@
   "description": "I Firebase",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "build": "echo \"Build completed - static files ready\""
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/EPIRjewelry/asystent_epir.git"
