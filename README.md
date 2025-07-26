@@ -50,21 +50,7 @@ To get started with local development:
 
 _More detailed setup instructions will be provided as the project develops._
 
----
 
-### **Jak dodać ten plik do Twojego repozytorium:**
-
-1.  **Utwórz plik:** W głównym katalogu Twojego projektu (czyli tam, gdzie masz `firebase.json` i folder `functions`) stwórz nowy plik o nazwie `README.md`.
-2.  **Wklej zawartość:** Skopiuj całą treść powyżej i wklej ją do nowo utworzonego pliku `README.md`.
-3.  **Dodaj do Gita:**
-    ```bash
-    git add README.md
-    ```
-4.  **Zacommituj zmiany:**
-    ```bash
-    git commit -m "Add initial README.md with project overview and architecture"
-    ```
-5.  **Wypchnij na GitHub:**
     ```bash
     git push origin main
     ```
