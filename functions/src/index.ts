@@ -1,6 +1,7 @@
 // functions/src/index.ts (Twój główny plik funkcji)
 
 import {setGlobalOptions} from "firebase-functions";
+import {defineString} from "firebase-functions/params";
 
 // Importuj onCallGenkit oraz inne potrzebne rzeczy z Genkit
 import {onCallGenkit} from "firebase-functions/v2/https";
@@ -14,6 +15,13 @@ import {analyticsAgentFlow} from "./agents/analyticsAgent";
 
 // Ustawienia globalne dla funkcji Firebase
 setGlobalOptions({maxInstances: 10});
+
+// Definicja parametrów Firebase Functions dla bindowania secrets
+const SHOPIFY_STORE_URL = defineString("SHOPIFY_STORE_URL");
+const SHOPIFY_ACCESS_TOKEN = defineString("SHOPIFY_ACCESS_TOKEN");
+const SHOPIFY_API_VERSION = defineString("SHOPIFY_API_VERSION", { default: "2025-07" });
+const GEMINI_API_KEY = defineString("GEMINI_API_KEY");
+const VERTEX_AI_LOCATION = defineString("VERTEX_AI_LOCATION", { default: "us-central1" });
 
 // --- Konfiguracja Genkit (MUSISZ DODAĆ TO DO index.ts) ---
 genkit({
@@ -32,9 +40,13 @@ genkit({
 // Teraz eksportujemy Twój flow Genkit jako funkcję Cloud Function
 // Nazwa eksportu będzie nazwą funkcji wywoływalnej.
 export const callAnalyticsAgent = onCallGenkit(
-  // Możesz dodać opcje dla funkcji, np. secrets, jeśli potrzebujesz API key'a
-  // secrets: [apiKey], // Jeśli używasz np. GoogleAI i API klucza
-  {}, // Brak specjalnych opcji w tym przypadku, ale klamry są wymagane
+  // Bindowanie parametrów/secrets dla Genkit function
+  {
+    secrets: [SHOPIFY_STORE_URL, SHOPIFY_ACCESS_TOKEN, SHOPIFY_API_VERSION, GEMINI_API_KEY, VERTEX_AI_LOCATION],
+    // Możesz dodać dodatkowe opcje funkcji tutaj
+    memory: "512MiB",
+    timeoutSeconds: 60,
+  },
   analyticsAgentFlow // Przekazujemy zdefiniowany flow
 );
 
