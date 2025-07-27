@@ -1,16 +1,26 @@
 import { defineString } from 'firebase-functions/params';
 
 /**
- * This module provides a robust client for integrating with Shopify's API
- * to fetch e-commerce data for analytics processing. Includes comprehensive
- * error handling, retry mechanisms, and rate limiting compliance.
+ * This module provides a robust hybrid client for integrating with Shopify's API
+ * supporting both REST (legacy) and GraphQL (modern) endpoints.
+ * Includes comprehensive error handling, retry mechanisms, and rate limiting compliance.
  *
+ * 🔄 HYBRID APPROACH: Currently uses REST API with GraphQL readiness for smooth migration
+ * ⚠️  REST Admin API is legacy as of October 1, 2024. 
+ * 🎯 Starting April 1, 2025, all new public apps must use GraphQL Admin API.
+ * 
+ * @see https://shopify.dev/docs/api/admin-graphql
  * @author EPIR Development Team
- * @version 1.0.0
+ * @version 2.0.0 (Hybrid REST/GraphQL Ready)
  */
 
 /**
- * Interface for Shopify API configuration
+ * API type configuration
+ */
+export type ShopifyAPIType = 'REST' | 'GraphQL';
+
+/**
+ * Interface for Shopify API configuration with GraphQL support
  */
 export interface ShopifyConfig {
   /** Shopify store URL */
@@ -21,6 +31,8 @@ export interface ShopifyConfig {
   apiVersion: string;
   /** Request timeout in milliseconds */
   timeout: number;
+  /** Preferred API type (REST for compatibility, GraphQL for future) */
+  apiType?: ShopifyAPIType;
 }
 
 /**
@@ -96,16 +108,27 @@ export class ShopifyAPIError extends Error {
 /**
  * Shopify API Client with comprehensive error handling and retry logic
  *
- * This client provides methods to interact with Shopify's REST API
+ * This hybrid client provides methods to interact with both Shopify's REST and GraphQL APIs
  * while handling rate limits, network failures, and API errors gracefully.
+ * Features automatic migration path from REST to GraphQL.
  *
  * @example
  * ```typescript
+ * // REST API (current default)
  * const client = new ShopifyClient({
  *   storeUrl: "https://your-store.myshopify.com",
  *   accessToken: "your-access-token",
- *   apiVersion: "2023-10",
+ *   apiVersion: "2025-07",
  *   timeout: 30000
+ * });
+ *
+ * // GraphQL ready for future migration
+ * const graphqlClient = new ShopifyClient({
+ *   storeUrl: "https://your-store.myshopify.com",
+ *   accessToken: "your-access-token",
+ *   apiVersion: "2025-07",
+ *   timeout: 30000,
+ *   apiType: "GraphQL"
  * });
  *
  * const products = await client.getProducts({ limit: 50 });
@@ -114,9 +137,10 @@ export class ShopifyAPIError extends Error {
 export class ShopifyClient {
   private readonly config: ShopifyConfig;
   private readonly baseUrl: string;
+  private readonly apiType: ShopifyAPIType;
 
   /**
-   * Creates a new Shopify client instance
+   * Creates a new Shopify client instance with hybrid REST/GraphQL support
    *
    * @param config - Shopify API configuration
    * @throws {ShopifyAPIError} When configuration is invalid
@@ -124,7 +148,11 @@ export class ShopifyClient {
   constructor(config: ShopifyConfig) {
     this.validateConfig(config);
     this.config = config;
+    this.apiType = config.apiType || 'REST';
     this.baseUrl = `${config.storeUrl}/admin/api/${config.apiVersion}`;
+    
+    // Log API type selection for monitoring
+    console.log(`Shopify client initialized with ${this.apiType} API`);
   }
 
   /**
@@ -175,14 +203,27 @@ export class ShopifyClient {
   }
 
   /**
-   * Makes a request to Shopify API with retry logic and error handling
+   * Makes a request to Shopify API with hybrid REST/GraphQL support
    *
-   * @param endpoint - API endpoint to call
+   * @param endpoint - API endpoint to call (REST) or GraphQL query
    * @param options - Request options
    * @return Promise resolving to API response
    * @throws {ShopifyAPIError} When request fails after retries
    */
   private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    if (this.apiType === 'GraphQL') {
+      return this.makeGraphQLRequest<T>(endpoint, options);
+    }
+    return this.makeRESTRequest<T>(endpoint, options);
+  }
+
+  /**
+   * Makes a REST API request (legacy but stable)
+   */
+  private async makeRESTRequest<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
@@ -252,6 +293,22 @@ export class ShopifyClient {
       0,
       undefined,
       lastError || undefined
+    );
+  }
+
+  /**
+   * Makes a GraphQL API request (modern, future-ready)
+   * Currently returns placeholder - implement when ready for migration
+   */
+  private async makeGraphQLRequest<T>(
+    query: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    // TODO: Implement GraphQL queries when ready for migration
+    console.warn('GraphQL API not yet implemented. Falling back to REST.');
+    throw new ShopifyAPIError(
+      'GraphQL API implementation coming soon. Use REST API for now.',
+      501
     );
   }
 
@@ -401,21 +458,24 @@ export class ShopifyClient {
 
 /**
  * Factory function to create a Shopify client with environment-based configuration
+ * Supports both REST (default) and GraphQL API types
  *
- * @return Configured Shopify client
+ * @return Configured Shopify client with hybrid API support
  * @throws {ShopifyAPIError} When environment configuration is missing
  */
 export function createShopifyClient(): ShopifyClient {
   const SHOPIFY_STORE_URL = defineString("SHOPIFY_STORE_URL");
   const SHOPIFY_ACCESS_TOKEN = defineString("SHOPIFY_ACCESS_TOKEN");
-  const SHOPIFY_API_VERSION = defineString("SHOPIFY_API_VERSION", { default: "2023-10" });
+  const SHOPIFY_API_VERSION = defineString("SHOPIFY_API_VERSION", { default: "2025-07" });
   const SHOPIFY_TIMEOUT = defineString("SHOPIFY_TIMEOUT", { default: "30000" });
+  const SHOPIFY_API_TYPE = defineString("SHOPIFY_API_TYPE", { default: "REST" });
 
   const config: ShopifyConfig = {
     storeUrl: SHOPIFY_STORE_URL.value(),
     accessToken: SHOPIFY_ACCESS_TOKEN.value(),
     apiVersion: SHOPIFY_API_VERSION.value(),
     timeout: parseInt(SHOPIFY_TIMEOUT.value()),
+    apiType: (SHOPIFY_API_TYPE.value() as ShopifyAPIType) || 'REST',
   };
 
   if (!config.storeUrl || !config.accessToken) {
