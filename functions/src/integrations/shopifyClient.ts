@@ -134,9 +134,27 @@ export class ShopifyClient {
    * @throws {ShopifyAPIError} When configuration is invalid
    */
   private validateConfig(config: ShopifyConfig): void {
-    if (!config.storeUrl || !config.storeUrl.includes(".myshopify.com")) {
+    if (!config.storeUrl) {
       throw new ShopifyAPIError(
         "Invalid store URL. Must include .myshopify.com domain",
+        400
+      );
+    }
+    let hostname: string;
+    try {
+      hostname = new URL(config.storeUrl).hostname;
+    } catch (e) {
+      throw new ShopifyAPIError(
+        "Invalid store URL format",
+        400
+      );
+    }
+    if (
+      !hostname.endsWith(".myshopify.com") ||
+      hostname === "myshopify.com"
+    ) {
+      throw new ShopifyAPIError(
+        "Invalid store URL. Host must be a subdomain of .myshopify.com",
         400
       );
     }
