@@ -1,6 +1,6 @@
+import { defineString } from 'firebase-functions/params';
+
 /**
- * @fileoverview Shopify API Integration Client
- *
  * This module provides a robust client for integrating with Shopify's API
  * to fetch e-commerce data for analytics processing. Includes comprehensive
  * error handling, retry mechanisms, and rate limiting compliance.
@@ -402,22 +402,25 @@ export class ShopifyClient {
 /**
  * Factory function to create a Shopify client with environment-based configuration
  *
- * @return Promise resolving to configured Shopify client
+ * @return Configured Shopify client
  * @throws {ShopifyAPIError} When environment configuration is missing
  */
-export async function createShopifyClient(): Promise<ShopifyClient> {
-  // In a real implementation, these would come from Firebase environment variables
-  // or Cloud Secret Manager
+export function createShopifyClient(): ShopifyClient {
+  const SHOPIFY_STORE_URL = defineString("SHOPIFY_STORE_URL");
+  const SHOPIFY_ACCESS_TOKEN = defineString("SHOPIFY_ACCESS_TOKEN");
+  const SHOPIFY_API_VERSION = defineString("SHOPIFY_API_VERSION", { default: "2023-10" });
+  const SHOPIFY_TIMEOUT = defineString("SHOPIFY_TIMEOUT", { default: "30000" });
+
   const config: ShopifyConfig = {
-    storeUrl: process.env.SHOPIFY_STORE_URL || "",
-    accessToken: process.env.SHOPIFY_ACCESS_TOKEN || "",
-    apiVersion: process.env.SHOPIFY_API_VERSION || "2023-10",
-    timeout: parseInt(process.env.SHOPIFY_TIMEOUT || "30000"),
+    storeUrl: SHOPIFY_STORE_URL.value(),
+    accessToken: SHOPIFY_ACCESS_TOKEN.value(),
+    apiVersion: SHOPIFY_API_VERSION.value(),
+    timeout: parseInt(SHOPIFY_TIMEOUT.value()),
   };
 
   if (!config.storeUrl || !config.accessToken) {
     throw new ShopifyAPIError(
-      "Shopify configuration missing. Please set SHOPIFY_STORE_URL and SHOPIFY_ACCESS_TOKEN environment variables",
+      "Shopify configuration missing in environment variables.",
       500
     );
   }
