@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # TypeScript/JavaScript dependencies (Firebase Functions, agenci)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "EPIRjewelry"  # Twój username GitHub
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # Java dependencies (Gradle)
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "EPIRjewelry"
+
+  # GitHub Actions (workflow CI/CD)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    reviewers:
+      - "EPIRjewelry"
