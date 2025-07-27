@@ -1,21 +1,32 @@
 // functions/src/agents/analyticsAgent.ts
-import { defineFlow, run } from '@genkit-ai/flow';
-import { gemini } from '@genkit-ai/vertexai'; // Założenie, że używamy Vertex AI Gemini
+import {genkit, z} from "genkit";
+import {vertexAI, gemini15Flash} from "@genkit-ai/vertexai";
+
+// Tworzymy instancję Genkit z pluginami
+const ai = genkit({
+  plugins: [
+    vertexAI({location: "us-central1"}),
+  ],
+});
 
 // Definiujemy nasz flow (przepływ) dla agenta analitycznego
-export const analyticsAgentFlow = defineFlow(
+export const analyticsAgentFlow = ai.defineFlow(
   {
-    name: 'analyticsAgentFlow',
-    inputSchema: { type: 'string' }, // Wejście to prosty tekst
-    outputSchema: { type: 'string' }, // Wyjście to prosty tekst
+    name: "analyticsAgentFlow",
+    inputSchema: z.string().describe(
+      "Pytanie lub zapytanie dotyczące analityki e-commerce"
+    ),
+    outputSchema: z.string(),
   },
-  async (input) => {
+  async (input: string) => {
     // Logika agenta analitycznego będzie tutaj
     // Na początek, po prostu odpowiemy na input, aby sprawdzić, czy działa
-    const response = await run(gemini.model('gemini-1.5-flash')).generate({
-      prompt: `Jesteś ekspertem od analizy e-commerce dla EPIR biżuterii. Odpowiedz krótko: ${input}`,
+    const response = await ai.generate({
+      model: gemini15Flash,
+      prompt: "Jesteś ekspertem od analizy e-commerce dla EPIR biżuterii. " +
+        `Odpowiedz krótko: ${input}`,
     });
 
-    return response.text();
+    return response.text;
   }
 );
