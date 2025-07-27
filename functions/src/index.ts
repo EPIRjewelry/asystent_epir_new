@@ -1,21 +1,19 @@
 // functions/src/index.ts (Twój główny plik funkcji)
 
 import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https"; // Może być usunięte, jeśli nie używasz onRequest
-import * as logger from "firebase-functions/logger";
 
 // Importuj onCallGenkit oraz inne potrzebne rzeczy z Genkit
 import {onCallGenkit} from "firebase-functions/v2/https";
 import {genkit} from "genkit";
 
-// Importuj plugin Vertex AI, jeśli używasz genkit({ plugins: [vertexAI()] })
+// Importuj plugin Vertex AI
 import {vertexAI} from "@genkit-ai/vertexai";
 
 // Importuj swój flow agenta analitycznego
-import {analyticsAgentFlow} from "./agents/analyticsAgent"; // Pamiętaj o poprawnej ścieżce!
+import {analyticsAgentFlow} from "./agents/analyticsAgent";
 
 // Ustawienia globalne dla funkcji Firebase
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({maxInstances: 10});
 
 // --- Konfiguracja Genkit (MUSISZ DODAĆ TO DO index.ts) ---
 genkit({
