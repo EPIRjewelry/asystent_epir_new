@@ -38,6 +38,12 @@ interface RetryConfig {
  * Custom error class for analytics agent operations
  */
 class AnalyticsAgentError extends Error {
+  /**
+   * Creates a new AnalyticsAgentError
+   * @param {string} message - Error message
+   * @param {string} code - Error code
+   * @param {Error} originalError - Original error that caused this error
+   */
   constructor(
     message: string,
     public readonly code: string,
@@ -61,9 +67,9 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 /**
  * Utility function to implement exponential backoff delay
  *
- * @param attempt - Current attempt number (starting from 0)
- * @param config - Retry configuration object
- * @return Promise that resolves after the calculated delay
+ * @param {number} attempt - Current attempt number (starting from 0)
+ * @param {RetryConfig} config - Retry configuration object
+ * @return {Promise<void>} Promise that resolves after the calculated delay
  */
 const exponentialBackoffDelay = async (
   attempt: number,
@@ -79,8 +85,8 @@ const exponentialBackoffDelay = async (
 /**
  * Validates and sanitizes user input for analytics queries
  *
- * @param input - Raw user input string
- * @return Sanitized and validated input string
+ * @param {string} input - Raw user input string
+ * @return {string} Sanitized and validated input string
  * @throws {AnalyticsAgentError} When input is invalid or contains harmful content
  */
 const validateInput = (input: string): string => {
