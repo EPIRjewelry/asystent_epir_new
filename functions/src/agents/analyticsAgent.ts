@@ -18,7 +18,7 @@
  */
 
 import {genkit, z} from "genkit";
-import {vertexAI, gemini15Flash} from "@genkit-ai/vertexai";
+import {googleAI, gemini15Flash} from "@genkit-ai/googleai";
 
 /**
  * Configuration interface for retry mechanisms
@@ -118,7 +118,7 @@ const validateInput = (input: string): string => {
 };
 
 /**
- * Creates and configures the Genkit AI instance with Vertex AI plugin
+ * Creates and configures the Genkit AI instance with Google AI plugin
  *
  * This function initializes the AI system with proper error handling
  * and configuration for the analytics agent operations.
@@ -130,8 +130,8 @@ const createAIInstance = () => {
   try {
     return genkit({
       plugins: [
-        vertexAI({
-          location: "us-central1",
+        googleAI({
+          apiKey: process.env.GEMINI_API_KEY,
         }),
       ],
     });
@@ -239,23 +239,25 @@ const generateWithRetry = async (
 export const analyticsAgentFlow = ai.defineFlow(
   {
     name: "analyticsAgentFlow",
-    inputSchema: z.string().describe(
-      "Pytanie lub zapytanie dotyczące analityki e-commerce dla branży jubilerskiej"
-    ),
+    inputSchema: z.object({
+      input: z.string().describe(
+        "Pytanie lub zapytanie dotyczące analityki e-commerce dla branży jubilerskiej"
+      )
+    }),
     outputSchema: z.string().describe(
       "Szczegółowa analiza i rekomendacje biznesowe wygenerowane przez AI"
     ),
   },
-  async (input: string): Promise<string> => {
+  async (data: { input: string }): Promise<string> => {
     try {
       // Log incoming request for monitoring
       console.log("Analytics agent processing query:", {
-        inputLength: input.length,
+        inputLength: data.input.length,
         timestamp: new Date().toISOString(),
       });
 
       // Validate and sanitize input
-      const validatedInput = validateInput(input);
+      const validatedInput = validateInput(data.input);
 
       // Generate response with retry mechanism
       const response = await generateWithRetry(validatedInput);

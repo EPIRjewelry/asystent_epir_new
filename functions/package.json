@@ -20,6 +20,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "@genkit-ai/firebase": "^1.15.5",
+    "@genkit-ai/googleai": "^1.15.5",
     "@genkit-ai/vertexai": "^1.15.5",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.0.1",
@@ -40,8 +41,13 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"],
-    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
@@ -52,7 +58,11 @@
       "!src/**/*.spec.ts"
     ],
     "coverageDirectory": "coverage",
-    "coverageReporters": ["text", "lcov", "html"]
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ]
   },
   "private": true
 }
