@@ -19,6 +19,10 @@
 
 import {genkit, z} from "genkit";
 import {googleAI, gemini15Flash} from "@genkit-ai/googleai";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { google } from 'googleapis';
+import shopifyClient from '../integrations/shopifyClient';
 
 /**
  * Configuration interface for retry mechanisms
@@ -213,6 +217,42 @@ const generateWithRetry = async (
 };
 
 /**
+ * Fetches metrics from Google Analytics Data API.
+ * @returns {Promise<any>} - Analytics data.
+ */
+async function getFirebaseMetrics(): Promise<any> {
+  const analytics = google.analyticsdata('v1beta');
+  try {
+    const response = await analytics.properties.runReport({
+      property: 'properties/YOUR_PROPERTY_ID',
+      requestBody: {
+        dimensions: [{ name: 'city' }],
+        metrics: [{ name: 'activeUsers' }],
+        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching Google Analytics data:', error);
+    throw new AnalyticsAgentError('Failed to fetch Google Analytics data', 'GA_API_ERROR', error);
+  }
+}
+
+/**
+ * Fetches sales data from Shopify.
+ * @returns {Promise<any>} - Shopify sales data.
+ */
+async function getShopifyMetrics(): Promise<any> {
+  try {
+    const products = await shopifyClient.getProducts();
+    return products;
+  } catch (error) {
+    console.error('Error fetching Shopify data:', error);
+    throw new AnalyticsAgentError('Failed to fetch Shopify data', 'SHOPIFY_API_ERROR', error);
+  }
+}
+
+/**
  * Analytics Agent Flow Definition
  *
  * This is the main entry point for the analytics agent. It defines a Genkit flow
@@ -238,55 +278,58 @@ const generateWithRetry = async (
  */
 export const analyticsAgentFlow = ai.defineFlow(
   {
-    name: "analyticsAgentFlow",
+    name: 'analyticsAgentFlow',
     inputSchema: z.object({
-      input: z.string().describe(
-        "Pytanie lub zapytanie dotyczące analityki e-commerce dla branży jubilerskiej"
-      )
+      input: z.string().describe('Query for analytics insights'),
     }),
-    outputSchema: z.string().describe(
-      "Szczegółowa analiza i rekomendacje biznesowe wygenerowane przez AI"
-    ),
+    outputSchema: z.string().describe('Generated analytics insights'),
   },
   async (data: { input: string }): Promise<string> => {
     try {
-      // Log incoming request for monitoring
-      console.log("Analytics agent processing query:", {
-        inputLength: data.input.length,
-        timestamp: new Date().toISOString(),
-      });
+      const firebaseMetrics = await getFirebaseMetrics();
+      const shopifyMetrics = await getShopifyMetrics();
 
-      // Validate and sanitize input
-      const validatedInput = validateInput(data.input);
-
-      // Generate response with retry mechanism
-      const response = await generateWithRetry(validatedInput);
-
-      // Log successful completion
-      console.log("Analytics agent query completed successfully:", {
-        responseLength: response.length,
-        timestamp: new Date().toISOString(),
-      });
-
-      return response;
+      // Combine and analyze data
+      const insights = `Firebase Metrics: ${JSON.stringify(firebaseMetrics)}, Shopify Metrics: ${JSON.stringify(shopifyMetrics)}`;
+      return insights;
     } catch (error) {
-      // Log error for monitoring and debugging
-      console.error("Analytics agent error:", {
-        error: error instanceof Error ? error.message : String(error),
-        code: error instanceof AnalyticsAgentError ? error.code : "UNKNOWN",
-        timestamp: new Date().toISOString(),
-      });
-
-      // Re-throw as AnalyticsAgentError if not already
-      if (error instanceof AnalyticsAgentError) {
-        throw error;
-      }
-
-      throw new AnalyticsAgentError(
-        "Unexpected error in analytics agent",
-        "UNEXPECTED_ERROR",
-        error instanceof Error ? error : new Error(String(error))
-      );
+      console.error('Error in analyticsAgentFlow:', error);
+      throw new AnalyticsAgentError('Failed to process analytics query', 'ANALYTICS_FLOW_ERROR', error);
     }
   }
 );
+
+/**
+ * Processes analytics queries with real-world data from Firestore.
+ * @param {string} userId - The ID of the authenticated user.
+ * @param {string} query - The analytics query.
+ * @returns {Promise<any>} - The analytics result.
+ */
+export async function processAnalyticsQuery(userId: string, query: string): Promise<any> {
+  try {
+    // Verify user authentication
+    const user = await auth.getUser(userId);
+    if (!user) {
+      throw new AnalyticsAgentError("User not authenticated", "AUTH_ERROR");
+    }
+
+    // Fetch user-specific data from Firestore
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      throw new AnalyticsAgentError("User data not found", "DATA_ERROR");
+    }
+
+    const userData = userDoc.data();
+
+    // Process the query with Google AI
+    const aiResponse = await googleAI(gemini15Flash, {
+      prompt: query,
+      context: userData,
+    });
+
+    return aiResponse;
+  } catch (error) {
+    console.error("Error processing analytics query:", error);
+    throw new AnalyticsAgentError("Failed to process query", "PROCESSING_ERROR", error);
+  }
+}

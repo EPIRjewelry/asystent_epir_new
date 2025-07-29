@@ -1,0 +1,21 @@
+{
+  "name": "asystent-epir-frontend",
+  "version": "1.0.0",
+  "description": "Frontend aplikacji do zarządzania firmą z integracją Firebase",
+  "main": "index.js",
+  "scripts": {
+    "start": "firebase serve --only hosting",
+    "build": "npm run clean && npm run compile",
+    "clean": "rimraf dist",
+    "compile": "tsc"
+  },
+  "author": "EPIRjewelry",
+  "license": "MIT",
+  "dependencies": {
+    "firebase": "^12.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "rimraf": "^5.0.0"
+  }
+}
