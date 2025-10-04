@@ -1,0 +1,17 @@
+name = "asystent-klienta"
+handle = "asystent-klienta"
+
+[[extensions]]
+name = "AI Assistant"
+
+uid = "f86b30a7-e5a7-5d4e-b33a-0a240196266ec1976fb8"
+
+type = "theme"
+handle = "ai-assistant"
+
+[extension]
+target = "section"
+
+[development]
+# W dev używaj shopify app dev
+

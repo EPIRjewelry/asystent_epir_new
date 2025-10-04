@@ -1,0 +1,23 @@
+{% schema %}
+{
+  "name": "Asystent klienta (AI)",
+  "target": "section",
+  "settings": [
+    {"type":"text","id":"title","label":"Tytuł","default":"Zapytaj asystenta"}
+  ]
+}
+{% endschema %}
+
+<section id="epir-assistant" class="epir-assistant">
+  <div class="assistant-container">
+    <h3>{{ section.settings.title }}</h3>
+    <div id="assistant-messages"></div>
+    <form id="assistant-form">
+      <input id="assistant-input" type="text" placeholder="Napisz wiadomość..." />
+      <button type="submit">Wyślij</button>
+    </form>
+  </div>
+</section>
+
+<script src="{{ 'assistant.js' | asset_url }}" defer></script>
+<link href="{{ 'assistant.css' | asset_url }}" rel="stylesheet"/>
