@@ -233,14 +233,23 @@ export default {
     const url = new URL(request.url);
 
     // App Proxy HMAC verification for relevant paths
-    if (url.pathname.startsWith('/chat')) {
-      if (!env.SHOPIFY_APP_SECRET) {
-        console.error("SHOPIFY_APP_SECRET is not configured.");
-        return new Response('Internal Server Error: App not configured', { status: 500 });
-      }
-      const isValid = await verifyAppProxyHmac(request.clone(), env.SHOPIFY_APP_SECRET);
-      if (!isValid) {
-        return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+    // Accept both '/chat' and '/assistant/chat' (app proxy may forward with subpath)
+    if (url.pathname.endsWith('/chat')) {
+      // Development bypass: set DEV_BYPASS=1 in wrangler/env and send header 'x-dev-bypass: 1' from client
+      const devBypassEnabled = String(env.DEV_BYPASS || '') === '1';
+      const hasDevBypassHeader = request.headers.get('x-dev-bypass') === '1';
+      if (!(devBypassEnabled && hasDevBypassHeader)) {
+        if (!env.SHOPIFY_APP_SECRET) {
+          console.error("SHOPIFY_APP_SECRET is not configured.");
+          return new Response('Internal Server Error: App not configured', { status: 500 });
+        }
+        const isValid = await verifyAppProxyHmac(request.clone(), env.SHOPIFY_APP_SECRET);
+        if (!isValid) {
+          return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+        }
+      } else {
+        // Log that we are bypassing HMAC for dev testing
+        console.log('DEV_BYPASS active: skipping HMAC verification');
       }
     }
 

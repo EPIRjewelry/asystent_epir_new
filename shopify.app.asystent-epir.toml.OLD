@@ -19,6 +19,6 @@ scopes = "customer_read_customers,customer_read_orders,customer_read_store_credi
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
 
 [app_proxy]
-url = "https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev/chat"
+url = "https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev"
 subpath = "assistant"
 prefix = "apps"

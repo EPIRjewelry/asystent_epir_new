@@ -1,1 +1,3 @@
 node_modules/
+.ephemeral/
+backup_shopify_*/
