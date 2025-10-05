@@ -1,38 +1,43 @@
+# extensions/asystent-klienta/shopify.extension.toml
 name = "asystent-klienta"
 handle = "asystent-klienta"
 
 [[extensions]]
 name = "AI Assistant"
 
-# UUID dla identyfikacji extension (możesz zachować istniejące)
+# Używamy uida wygenerowanego przez Shopify CLI
 uid = "f86b30a7-e5a7-5d4e-b33a-0a240196266ec1976fb8"
-
 type = "theme"
 handle = "ai-assistant"
+
+# NOWE: Wersja Extension (dla lepszego śledzenia)
+version = "1.1.2"
+build = 12 
 
 [extension]
 target = "section"
 
-[extension.meta]
-display_name = "EPIR AI Assistant"
-description = "Chat widget pomagający klientom w wyborze biżuterii, z backendem RAG na Cloudflare Workers."
+# ===================================================================
+# KONFIGURACJA APP PROXY
+# ===================================================================
 
 [extension.app_proxy]
-# App Proxy settings: requests from storefront to /apps/assistant/* będą kierowane do URL Workera
-subpath = "/apps/assistant"
-# Zamień poniższy URL na swój własny subdomenę Cloudflare Worker, np. https://moj-worker.workers.dev
-proxy_url = "https://example.workers.dev"
-allowed_origins = ["https://your-shopify-store.myshopify.com"]
+# Wymagany ścieżka: /apps/assistant/chat (ostatni człon jest zdefiniowany w Workerze)
+path = "/apps/assistant" 
 
-[assets]
-path = "assets"
+# Wymagane: Definicja URL Workera/Tunelu dla różnych środowisk.
+# Odczyt z globalnych zmiennych środowiskowych APP_URL z shopify.app.toml / Shopify CLI.
 
-[[blocks]]
-name = "assistant"
-type = "section"
-path = "blocks/assistant.liquid"
+# W środowisku 'development' (shopify app dev) używa tunelu ngrok
+# W środowisku 'production' (shopify app deploy) używa URL Workera
+proxy_url = "$APP_URL" 
+
+# NOWE: Używamy zmiennej środowiskowej do dynamicznego ustawienia dozwolonych domen.
+# Zapewnia to, że tylko aktualny sklep dev lub produkcyjny sklep ma dostęp.
+allowed_origins = [
+  "$APP_URL",
+  "$ALLOWED_SHOP_DOMAIN" 
+]
 
 [development]
-# W dev używaj: `shopify app dev` — zmieniaj proxy_url na lokalny tunnel gdy testujesz
-
-
+# Opcje deweloperskie
