@@ -4,6 +4,7 @@ handle = "asystent-klienta"
 [[extensions]]
 name = "AI Assistant"
 
+# UUID dla identyfikacji extension (możesz zachować istniejące)
 uid = "f86b30a7-e5a7-5d4e-b33a-0a240196266ec1976fb8"
 
 type = "theme"
@@ -12,6 +13,25 @@ handle = "ai-assistant"
 [extension]
 target = "section"
 
+[extension.meta]
+display_name = "EPIR AI Assistant"
+description = "Chat widget pomagający klientom w wyborze biżuterii, z backendem RAG na Cloudflare Workers."
+
+[extension.app_proxy]
+# App Proxy settings: requests from storefront to /apps/assistant/* będą kierowane do URL Workera
+subpath = "/apps/assistant"
+proxy_url = "https://<YOUR_WORKER_SUBDOMAIN>.workers.dev"
+allowed_origins = ["https://your-shopify-store.myshopify.com"]
+
+[assets]
+path = "assets"
+
+[[blocks]]
+name = "assistant"
+type = "section"
+path = "blocks/assistant.liquid"
+
 [development]
-# W dev używaj shopify app dev
+# W dev używaj: `shopify app dev` — zmieniaj proxy_url na lokalny tunnel gdy testujesz
+
 
