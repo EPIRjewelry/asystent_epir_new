@@ -24,9 +24,21 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
     const joined = values.length > 1 ? values.join(',') : (values[0] ?? '');
     parts.push(`${k}=${joined}`);
   }
-  const message = parts.join(''); // brak & i innych separatorów
+  let message = parts.join(''); // brak & i innych separatorów
 
-  // 3) Weryfikacja stałoczasowa via WebCrypto
+  // 3) Dodaj body (jeśli istnieje) do wiadomości
+  try {
+    const clonedRequest = request.clone();
+    const body = await clonedRequest.text();
+    if (body) {
+      message += body;
+    }
+  } catch (e) {
+    // Jeśli nie można odczytać body, kontynuuj z samymi query params
+    console.warn('Could not read request body for HMAC verification:', e);
+  }
+
+  // 4) Weryfikacja stałoczasowa via WebCrypto
   const enc = new TextEncoder();
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
