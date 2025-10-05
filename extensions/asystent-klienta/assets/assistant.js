@@ -156,7 +156,7 @@
    */
   function updateAssistantMessage(bubbleEl, content) {
     if (!bubbleEl) return;
-    bubbleEl.innerHTML = sanitizeHTML(content);
+    bubbleEl.textContent = content;
     scrollToBottom();
   }
 
