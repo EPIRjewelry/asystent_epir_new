@@ -247,6 +247,50 @@ async function generateAIResponse(history: HistoryEntry[], userMessage: string, 
   return 'Przepraszam, nie udało mi się wygenerować odpowiedzi. Spróbuj ponownie.';
 }
 
+/**
+ * If the configured env.AI supports streaming, try to obtain a ReadableStream<string>
+ * that yields incremental text chunks. Return null if not available.
+ */
+async function generateAIResponseStream(history: HistoryEntry[], userMessage: string, env: Env): Promise<ReadableStream<string> | null> {
+  // Build messages same as non-streaming
+  const recentHistory = history.slice(-10);
+  const messages = [
+    {
+      role: 'system',
+      content: 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+    },
+    ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
+    { role: 'user' as const, content: userMessage },
+  ];
+
+  // Try common streaming entrypoints on env.AI
+  try {
+    const ai: any = env.AI as any;
+    if (!ai) return null;
+
+    // 1) Workers AI hypothetical stream method: ai.stream(model, args)
+    if (typeof ai.stream === 'function') {
+      return await ai.stream(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
+    }
+
+    // 2) Some bindings expose runStream
+    if (typeof ai.runStream === 'function') {
+      return await ai.runStream(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
+    }
+
+    // 3) Some SDKs return an object with a readable property from run()
+    if (typeof ai.run === 'function') {
+      const maybe = await ai.run(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
+      if (maybe && typeof maybe === 'object' && maybe.readable) return maybe.readable as ReadableStream<string>;
+    }
+  } catch (e) {
+    console.warn('AI streaming not available or failed to start', e);
+    return null;
+  }
+
+  return null;
+}
+
 async function handleChat(request: Request, env: Env): Promise<Response> {
   const payload = parseChatRequestBody(await request.json().catch(() => null));
   if (!payload) {
@@ -302,29 +346,51 @@ function streamAssistantResponse(
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
 
-      const reply = await generateAIResponse(history, userMessage, env);
+      // Try to obtain a real streaming source from the AI binding
+      const stream = await generateAIResponseStream(history, userMessage, env);
 
       // Send initial session_id event
       await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
 
-      // Stream delta-only (send each fragment as 'delta' instead of full 'content')
-      const parts = reply.split(/(\s+)/); // include whitespace chunks
-      for (const part of parts) {
-        const chunk = JSON.stringify({ delta: part, session_id: sessionId, done: false });
-        await writer.write(encoder.encode(`data: ${chunk}\n\n`));
-        await new Promise((resolve) => setTimeout(resolve, 30));
+      if (stream) {
+        // Real streaming: pipe tokens/deltas as they arrive
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          // value may be string or Uint8Array
+          const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
+          const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
+          await writer.write(encoder.encode(`data: ${evt}\n\n`));
+        }
+
+        // After streaming finishes, optionally reconstruct final reply if needed
+        // Note: some streaming APIs provide final aggregated value; here we rely on DO append logic below
+      } else {
+        // Fallback: generate full reply and split into deltas for UX
+        const reply = await generateAIResponse(history, userMessage, env);
+        const parts = reply.split(/(\s+)/);
+        for (const part of parts) {
+          const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
+          await writer.write(encoder.encode(`data: ${evt}\n\n`));
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+
+        // Append final conversation record
+        await stub.fetch('https://session/append', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
+        });
+
+        // Send final full content for fallback clients
+        await writer.write(
+          encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
+        );
       }
 
-      await stub.fetch('https://session/append', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
-      });
-
-      // Final event with full content (for fallback clients) and done flag
-      await writer.write(
-        encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
-      );
+      // Signal done for streaming path as well
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } catch (error) {
       console.error('Streaming error', error);
@@ -353,6 +419,11 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // Lightweight health endpoints for quick availability checks (no HMAC required)
+    if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/ping' || url.pathname === '/health')) {
+      return new Response('ok', { status: 200, headers: cors(env) });
+    }
 
     if (url.pathname.endsWith('/chat')) {
       const bypassEnabled = env.DEV_BYPASS === '1';
