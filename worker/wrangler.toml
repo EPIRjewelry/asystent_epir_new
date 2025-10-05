@@ -35,5 +35,5 @@ new_sqlite_classes = ["SessionDO"]
 binding = "AI"
 
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
 
