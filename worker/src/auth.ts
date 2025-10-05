@@ -34,8 +34,9 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
       message += body;
     }
   } catch (e) {
-    // Jeśli nie można odczytać body, kontynuuj z samymi query params
+    // Jeśli nie można odczytać body, przerwij weryfikację
     console.warn('Could not read request body for HMAC verification:', e);
+    return false;
   }
 
   // 4) Weryfikacja stałoczasowa via WebCrypto
