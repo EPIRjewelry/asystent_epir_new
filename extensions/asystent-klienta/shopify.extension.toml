@@ -20,7 +20,8 @@ description = "Chat widget pomagający klientom w wyborze biżuterii, z backende
 [extension.app_proxy]
 # App Proxy settings: requests from storefront to /apps/assistant/* będą kierowane do URL Workera
 subpath = "/apps/assistant"
-proxy_url = "https://<YOUR_WORKER_SUBDOMAIN>.workers.dev"
+# Zamień poniższy URL na swój własny subdomenę Cloudflare Worker, np. https://moj-worker.workers.dev
+proxy_url = "https://example.workers.dev"
 allowed_origins = ["https://your-shopify-store.myshopify.com"]
 
 [assets]
