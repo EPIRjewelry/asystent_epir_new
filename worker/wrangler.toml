@@ -1,6 +1,6 @@
 name = "epir-assistant-worker"
 main = "src/index.ts"
-compatibility_date = "2024-10-05"
+compatibility_date = "2025-09-30"
 compatibility_flags = ["nodejs_compat"]
 
 [durable_objects]
@@ -10,44 +10,21 @@ bindings = [
 
 [[d1_databases]]
 binding = "DB"
-database_name = "epir-conversations"
-database_id = "<YOUR_D1_ID>"
-
-[[vectorize]]
-binding = "VECTOR_INDEX"
-index_name = "epir-product-embeddings"
-
-[[queue]]
-binding = "INDEX_QUEUE"
-queue_name = "epir-index-queue"
-
-[env.production.secrets]
-# Ustaw przez `wrangler secret put`:
-# HMAC_SECRET
-# GROQ_API_KEY
-# VECTORIZE_API_KEY
-
-[triggers]
-routes = [
-  { pattern = "epir-assistant.yourdomain.workers.dev/webhook" }
-]
-name = "epir-art-jewellery-worker"
-main = "src/index.ts"
-compatibility_date = "2025-09-30"
-
-# Bindings
-kv_namespaces = [
-  { binding = "SESSIONS_KV", id = "08f16276a9b14ca7b3c00404e8e8d0d9" }
-]
-
-[[d1_databases]]
-binding = "DB"
 database_name = "epir_art_jewellery"
 database_id = "6a4f7cbb-3c1c-42c7-9d79-4ef74d421f23"
 
-[[durable_objects.bindings]]
-name = "SESSION_DO"
-class_name = "SessionDO"
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "08f16276a9b14ca7b3c00404e8e8d0d9"
+
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "autorag-epir-chatbot-rag"
+
+# Queues require paid plan - commented out for now
+# [[queues.producers]]
+# binding = "INDEX_QUEUE"
+# queue = "epir-index-queue"
 
 [[migrations]]
 tag = "v1"

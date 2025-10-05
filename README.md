@@ -25,19 +25,14 @@ Live deployment
 
 3) Zmienne środowiskowe (Workers Vars / Secrets)
    - **SHOPIFY_APP_SECRET**: Klucz tajny aplikacji Shopify. **Wymagany do autoryzacji App Proxy.**
-   - **HMAC_SECRET** *(alias SHOPIFY_APP_SECRET jeśli używasz tego samego klucza)*
-   - **GROQ_API_KEY**: klucz do usługi Groq (LLM streaming)
-   - **VECTORIZE_API_KEY**: token do Cloudflare Vectorize
+   - **GROQ_API_KEY**: klucz do usługi Groq (opcjonalnie, jeśli integrujesz Groq LLM)
    - ALLOWED_ORIGIN: np. `https://twoj-sklep.myshopify.com`
-   - SHOPIFY_STOREFRONT_TOKEN: (opcjonalnie, jeśli Worker ma wołać Storefront API)
    - Ustawianie sekretów (przykład):
 
 ```powershell
 cd worker
 wrangler secret put SHOPIFY_APP_SECRET
-wrangler secret put HMAC_SECRET
 wrangler secret put GROQ_API_KEY
-wrangler secret put VECTORIZE_API_KEY
 ```
 
 4) TAE → Worker
