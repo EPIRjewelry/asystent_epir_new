@@ -15,18 +15,31 @@ Krótki opis:
 2) Cloudflare
    - Utwórz D1 (np. epir_art_jewellery) i wgraj `worker/schema.sql`
    - Utwórz KV (SESSIONS_KV)
-   - Uzupełnij `wrangler.toml` (IDs dla D1 i KV)
-   - Deploy: `npm run worker:deploy`
+   - Uzupełnij `worker/wrangler.toml` (IDs dla D1, KV, Vectorize, Queue)
+   - Zdefiniuj sekrety (patrz niżej) i uruchom deploy: `npm run worker:deploy`
 
 ---
 
 Live deployment
 - Deployed Worker URL: https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev
 
-3) Zmienne środowiskowe (Workers Vars)
-   - **SHOPIFY_APP_SECRET**: Klucz tajny aplikacji Shopify. **Wymagany do autoryzacji.**
-   - ALLOWED_ORIGIN: https://twoj-sklep.myshopify.com
+3) Zmienne środowiskowe (Workers Vars / Secrets)
+   - **SHOPIFY_APP_SECRET**: Klucz tajny aplikacji Shopify. **Wymagany do autoryzacji App Proxy.**
+   - **HMAC_SECRET** *(alias SHOPIFY_APP_SECRET jeśli używasz tego samego klucza)*
+   - **GROQ_API_KEY**: klucz do usługi Groq (LLM streaming)
+   - **VECTORIZE_API_KEY**: token do Cloudflare Vectorize
+   - ALLOWED_ORIGIN: np. `https://twoj-sklep.myshopify.com`
    - SHOPIFY_STOREFRONT_TOKEN: (opcjonalnie, jeśli Worker ma wołać Storefront API)
+   - Ustawianie sekretów (przykład):
+
+```powershell
+cd worker
+wrangler secret put SHOPIFY_APP_SECRET
+wrangler secret put HMAC_SECRET
+wrangler secret put GROQ_API_KEY
+wrangler secret put VECTORIZE_API_KEY
+```
+
 4) TAE → Worker
    - `assistant.js` woła `/apps/assistant/chat` (App Proxy) → kierowane do Workera `/chat`
 5) Test
@@ -35,6 +48,36 @@ Live deployment
 ## Architektura
 - TAE → Worker `/chat` → Durable Object (SessionDO) append → (RAG/LLM/tools) → append → reply
 - DO `end()` flushuje historię do D1 (tabele conversations/messages)
+
+## Backend (Cloudflare Worker) – szybki start
+
+1. Instalacja zależności i local dev:
+
+```powershell
+cd worker
+npm install
+npm run dev
+```
+
+2. Budowanie / sprawdzenie typów (CI też uruchamia ten krok):
+
+```powershell
+cd worker
+npx tsc --project tsconfig.json
+```
+
+3. Deploy na Cloudflare:
+
+```powershell
+cd worker
+npm run deploy
+```
+
+4. Zamykanie sesji i archiwizacja w D1:
+   - Durable Object przechowuje bieżącą historię w pamięci + storage; po zakończeniu rozmowy wywołaj `POST /chat` z `stream=false`, a po stronie DO możesz opcjonalnie wywołać `/end` (lub dodać automatyczne wywołanie w webhooku).
+
+5. Dev bypass HMAC:
+   - W `wrangler.toml` ustaw `DEV_BYPASS = "1"`, a w żądaniu dodaj nagłówek `x-dev-bypass: 1`, aby testować bez podpisu Shopify (tylko lokalnie!).
 
 ## Bezpieczeństwo
 Endpoint `/chat` jest chroniony za pomocą weryfikacji sygnatury **HMAC**, zgodnie z oficjalnym i bezpiecznym mechanizmem Shopify App Proxy.
