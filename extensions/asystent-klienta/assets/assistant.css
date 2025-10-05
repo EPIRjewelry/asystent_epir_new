@@ -459,3 +459,151 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==================================================
+   Compatibility layer for existing Liquid/JS markup
+   Maps .assistant-*, #assistant-*, and .msg classes
+   to the canonical .epir-* styles without editing JS
+================================================== */
+
+/* Root wrapper: map section to epir-assistant root */
+#epir-assistant-section.epir-assistant { display: block; }
+
+/* Container mapping */
+.assistant-container {
+  /* reuse chat-box styles */
+  background: #fff;
+  border-radius: var(--epir-border-radius);
+  box-shadow: var(--epir-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: var(--epir-transition);
+  max-width: 640px;
+  margin: 2rem auto;
+}
+
+/* Header mapping */
+.assistant-header {
+  background: linear-gradient(135deg, var(--epir-primary-color) 0%, #333 100%);
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--epir-accent-color);
+}
+
+.assistant-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+
+/* Toggle button mapping */
+#assistant-toggle-button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+/* Content / messages mapping */
+.assistant-content {
+  padding: 0;
+  background: transparent;
+}
+
+.assistant-messages {
+  display: block;
+  padding: 16px;
+  background: linear-gradient(to bottom, #fafafa 0%, #fff 100%);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* Map legacy .msg classes to message bubble styles */
+.msg {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.msg-user { justify-content: flex-end; }
+.msg-assistant { justify-content: flex-start; }
+
+.msg .epir-message__bubble,
+.msg .bubble,
+.msg { /* fallback when bubble wrapper missing */
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  word-wrap: break-word;
+}
+
+.msg-user { color: #fff; }
+.msg-user {
+  background: linear-gradient(135deg, var(--epir-accent-color) 0%, #c49a2e 100%);
+  color: #fff;
+  align-self: flex-end;
+}
+
+.msg-assistant {
+  background: #f5f5f5;
+  color: var(--epir-primary-color);
+  border: 1px solid rgba(0,0,0,0.06);
+  align-self: flex-start;
+}
+
+/* Typing state */
+.msg-typing { opacity: 0.95; }
+
+/* Form mapping */
+.assistant-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+#assistant-input, .assistant-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 24px;
+  font-size: 14px;
+}
+
+#assistant-send-button, .assistant-send-btn {
+  background: linear-gradient(135deg, var(--epir-accent-color) 0%, #c49a2e 100%);
+  color: #fff;
+  border: none;
+  width: 84px;
+  padding: 8px 12px;
+  border-radius: 24px;
+  cursor: pointer;
+}
+
+.assistant-status { padding: 8px 12px; color: var(--epir-primary-color); }
+
+/* Small responsive tweak to avoid footer overlap on long pages */
+@media (min-width: 800px) {
+  .assistant-container { position: fixed; right: 24px; bottom: 24px; width: 380px; max-width: calc(100vw - 48px); height: auto; z-index: 9999; }
+  .assistant-messages { max-height: 56vh; }
+}
+
+/* Open / closed states and transitions */
+.epir-assistant--closed .assistant-container,
+.assistant-content.is-closed {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.98);
+  pointer-events: none;
+}
+
+.assistant-toggle-open .assistant-container,
+.assistant-content:not(.is-closed) {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+

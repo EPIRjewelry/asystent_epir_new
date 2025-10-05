@@ -2,6 +2,27 @@
 // Lekki, poprawiony klient czatu z obsługą streaming SSE/JSON + fallback.
 // Kompiluj do JS (np. tsc) przed użyciem w Theme App Extension.
 
+// Minimal initializer: bind toggle button to open/close the assistant
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const section = document.getElementById('epir-assistant-section');
+    if (!section) return;
+    const toggle = document.getElementById('assistant-toggle-button');
+    const content = document.getElementById('assistant-content');
+    const startClosed = section.dataset.startClosed === 'true' || section.getAttribute('data-start-closed') === 'true';
+    if (startClosed && content) content.classList.add('is-closed');
+    if (!toggle) return;
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isClosed = content?.classList.toggle('is-closed');
+      // update ARIA
+      toggle.setAttribute('aria-expanded', isClosed ? 'false' : 'true');
+    });
+  } catch (e) {
+    console.warn('Assistant init error', e);
+  }
+});
+
 /* Typy */
 type MessageElement = { id: string; el: HTMLElement };
 type StreamPayload = { content?: string; session_id?: string; error?: string; done?: boolean };

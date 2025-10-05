@@ -66,7 +66,7 @@
   Używamy atrybutów data-* do konfiguracji skryptu, co eliminuje hardkodowanie.
 {% endcomment %}
 <section id="epir-assistant-section"
-  class="epir-assistant-section"
+  class="epir-assistant epir-assistant-section {% if section.settings.start_closed %}epir-assistant--closed{% else %}epir-assistant--bottom-right{% endif %}"
   aria-live="polite"
   data-app-version="{{ app_version }}"
   data-shop-domain="{{ shop.myshopify_domain }}"
