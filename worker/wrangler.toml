@@ -1,4 +1,4 @@
-name = "epir-assistant-worker"
+name = "epir-art-jewellery-worker"
 main = "src/index.ts"
 compatibility_date = "2025-09-30"
 compatibility_flags = ["nodejs_compat"]
