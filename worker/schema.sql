@@ -14,3 +14,9 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at INTEGER NOT NULL,
   FOREIGN KEY(conversation_id) REFERENCES conversations(id)
 );
+
+-- Index for session lookups and example insert
+CREATE INDEX IF NOT EXISTS idx_conversations_session_id ON conversations(session_id);
+
+-- Example insert for testing:
+-- INSERT INTO conversations (session_id, started_at, ended_at) VALUES ('test-session', 1690000000000, 1690000001000);

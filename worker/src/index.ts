@@ -1,259 +1,377 @@
 /// <reference types="@cloudflare/workers-types" />
 import { verifyAppProxyHmac } from './auth';
 
+type ChatRole = 'user' | 'assistant';
+
+interface HistoryEntry {
+  role: ChatRole;
+  content: string;
+  ts: number;
+}
+
+interface AppendPayload {
+  role: ChatRole;
+  content: string;
+  session_id?: string;
+}
+
+interface ChatRequestBody {
+  message: string;
+  session_id?: string;
+  stream?: boolean;
+}
+
+interface EndPayload {
+  session_id?: string;
+}
+
+interface AiRunResult {
+  response?: string;
+}
+
+interface WorkersAI {
+  run: (model: string, args: Record<string, unknown>) => Promise<AiRunResult>;
+}
+
 export interface Env {
   DB: D1Database;
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
   ALLOWED_ORIGIN?: string;
-  AI?: any;
+  AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
   SHOP_DOMAIN?: string;
   SHOPIFY_APP_SECRET?: string;
+  DEV_BYPASS?: string; // '1' to bypass HMAC in dev
 }
 
-function cors(env: Env){
-  const o = env.ALLOWED_ORIGIN || '*';
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const MODEL_NAME = '@cf/meta/llama-3.1-8b-instruct';
+const MAX_HISTORY = 200;
+
+function now(): number {
+  return Date.now();
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isChatRole(value: unknown): value is ChatRole {
+  return value === 'user' || value === 'assistant';
+}
+
+function parseAppendPayload(input: unknown): AppendPayload | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const maybe = input as Record<string, unknown>;
+  if (!isChatRole(maybe.role) || !isNonEmptyString(maybe.content)) return null;
+  const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
+  return { role: maybe.role, content: String(maybe.content), session_id: sessionId };
+}
+
+function parseChatRequestBody(input: unknown): ChatRequestBody | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const maybe = input as Record<string, unknown>;
+  if (!isNonEmptyString(maybe.message)) return null;
+  const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
+  const stream = typeof maybe.stream === 'boolean' ? maybe.stream : true;
   return {
-    'Access-Control-Allow-Origin': o,
+    message: String(maybe.message),
+    session_id: sessionId,
+    stream,
+  };
+}
+
+function parseEndPayload(input: unknown): EndPayload | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const maybe = input as Record<string, unknown>;
+  const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
+  return { session_id: sessionId };
+}
+
+function ensureHistoryArray(input: unknown): HistoryEntry[] {
+  if (!Array.isArray(input)) return [];
+  const out: HistoryEntry[] = [];
+  for (const candidate of input) {
+    if (typeof candidate !== 'object' || candidate === null) continue;
+    const raw = candidate as Record<string, unknown>;
+    if (!isChatRole(raw.role) || !isNonEmptyString(raw.content)) continue;
+    const ts = typeof raw.ts === 'number' ? raw.ts : now();
+    out.push({ role: raw.role, content: String(raw.content), ts });
+  }
+  return out.slice(-MAX_HISTORY);
+}
+
+function cors(env: Env): Record<string, string> {
+  const origin = env.ALLOWED_ORIGIN || '*';
+  return {
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Shop-Signature'
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Shop-Signature',
   };
 }
 
 export class SessionDO {
-  state: DurableObjectState;
-  env: Env;
-  history: Array<{role:string; content:string; ts:number}> = [];
-  private lastRequestTime: number = 0;
-  private requestCount: number = 0;
-  
-  constructor(state: DurableObjectState, env: Env){
-    this.state = state; this.env = env;
-    this.state.blockConcurrencyWhile(async ()=>{
-      const raw = await this.state.storage.get<string>('history');
-      if(raw){ try{ this.history = JSON.parse(raw); } catch{ this.history = []; } }
+  private readonly state: DurableObjectState;
+  private readonly env: Env;
+  private history: HistoryEntry[] = [];
+  private lastRequestTimestamp = 0;
+  private requestsInWindow = 0;
+
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
+    this.env = env;
+
+    this.state.blockConcurrencyWhile(async () => {
+      const rawHistory = await this.state.storage.get<unknown>('history');
+      this.history = ensureHistoryArray(rawHistory);
     });
   }
-  async fetch(request: Request) {
-    const url = new URL(request.url);
-    
-    // Rate limit: max 20 requests per minute per session
-    const now = Date.now();
-    if (now - this.lastRequestTime < 60000) {
-      this.requestCount++;
-      if (this.requestCount > 20) {
-        return new Response('Rate limit exceeded', { status: 429 });
-      }
-    } else {
-      this.requestCount = 1;
-      this.lastRequestTime = now;
+
+  async fetch(request: Request): Promise<Response> {
+    if (!this.rateLimitOk()) {
+      return new Response('Rate limit exceeded', { status: 429 });
     }
-    
-    if (url.pathname.endsWith('/history')) {
+
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    const method = request.method.toUpperCase();
+
+    if (method === 'GET' && pathname.endsWith('/history')) {
       return new Response(JSON.stringify(this.history), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       });
     }
-    if (url.pathname.endsWith('/append') && request.method === 'POST') {
-      const { role, content } = await request.json();
-      if (!role || !content) return new Response('Bad Request', { status: 400 });
-      await this.append(role, content);
+
+    if (method === 'POST' && pathname.endsWith('/append')) {
+      const payload = parseAppendPayload(await request.json().catch(() => null));
+      if (!payload) {
+        return new Response('Bad Request', { status: 400 });
+      }
+      if (payload.session_id) {
+        await this.state.storage.put('session_id', payload.session_id);
+      }
+      await this.append(payload);
       return new Response('ok');
     }
-    if (url.pathname.endsWith('/end') && request.method === 'POST') {
-      const { session_id } = await request.json().catch(() => ({}));
-      await this.end(session_id || 'unknown');
+
+    if (method === 'POST' && pathname.endsWith('/end')) {
+      const payload = parseEndPayload(await request.json().catch(() => null));
+      const sessionId = payload?.session_id ?? 'unknown';
+      await this.end(sessionId);
       return new Response('ended');
     }
+
     return new Response('Not Found', { status: 404 });
   }
-  async append(role:string, content:string){
-    this.history.push({role, content, ts: Date.now()});
-    if(this.history.length > 50){ await this.flushPartial(); }
+
+  private rateLimitOk(): boolean {
+    const current = now();
+    if (current - this.lastRequestTimestamp > RATE_LIMIT_WINDOW_MS) {
+      this.requestsInWindow = 1;
+      this.lastRequestTimestamp = current;
+      return true;
+    }
+    this.requestsInWindow += 1;
+    return this.requestsInWindow <= RATE_LIMIT_MAX_REQUESTS;
+  }
+
+  private async append(payload: AppendPayload): Promise<void> {
+    this.history.push({ role: payload.role, content: payload.content, ts: now() });
+    this.history = this.history.slice(-MAX_HISTORY);
     await this.state.storage.put('history', JSON.stringify(this.history));
   }
-  async flushPartial(){
-    // opcjonalnie: przenieś najstarsze wpisy do D1
-  }
-  async end(sessionId:string){
-    const tx = this.env.DB.prepare('INSERT INTO conversations (session_id, started_at, ended_at) VALUES (?, ?, ?)')
-      .bind(sessionId, this.history[0]?.ts ?? Date.now(), Date.now());
-    await tx.run();
-    const convId = (await this.env.DB.prepare('SELECT last_insert_rowid() as id').first())?.id;
-    if(convId){
-      const stmt = this.env.DB.prepare('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?1, ?2, ?3, ?4)');
-      for(const m of this.history){ await stmt.bind(convId, m.role, m.content, m.ts).run(); }
+
+  private async end(sessionId: string): Promise<void> {
+    if (this.history.length === 0) {
+      await this.state.storage.delete('history');
+      await this.state.storage.delete('session_id');
+      return;
     }
+
+    if (this.env.DB) {
+      const started = this.history[0]?.ts ?? now();
+      const ended = this.history[this.history.length - 1]?.ts ?? started;
+      await this.env.DB.prepare(
+        'INSERT INTO conversations (session_id, started_at, ended_at) VALUES (?1, ?2, ?3)'
+      ).bind(sessionId, started, ended).run();
+      const row = await this.env.DB.prepare('SELECT last_insert_rowid() AS id').first<{ id: number }>();
+      const conversationId = row?.id;
+      if (conversationId !== undefined) {
+        const stmt = this.env.DB.prepare(
+          'INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?1, ?2, ?3, ?4)'
+        );
+        for (const entry of this.history) {
+          await stmt.bind(conversationId, entry.role, entry.content, entry.ts).run();
+        }
+      }
+    }
+
     this.history = [];
     await this.state.storage.delete('history');
+    await this.state.storage.delete('session_id');
   }
 }
 
-async function generateAIResponse(
-  history: Array<{role:string; content:string; ts:number}>, 
-  userMessage: string,
-  env: Env
-): Promise<string> {
-  if (!env.AI) {
-    console.warn('AI binding not configured, falling back to echo');
+async function generateAIResponse(history: HistoryEntry[], userMessage: string, env: Env): Promise<string> {
+  const ai = env.AI;
+  if (!ai || typeof ai.run !== 'function') {
     return `Echo: ${userMessage}`;
   }
 
-  try {
-    // Prepare messages for LLM (last 10 messages for context)
-    const recentHistory = history.slice(-10);
-    const messages = [
-      {
-        role: 'system',
-        content: 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Pomagasz klientom w wyborze biżuterii, odpowiadasz na pytania o produkty, materiały, rozmiary i dostępność. Bądź uprzejmy, profesjonalny i konkretny.'
-      },
-      ...recentHistory.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
-      { role: 'user' as const, content: userMessage }
-    ];
+  const recentHistory = history.slice(-10);
+  const messages = [
+    {
+      role: 'system',
+      content: 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+    },
+    ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
+    { role: 'user' as const, content: userMessage },
+  ];
 
-    // Call Workers AI through AI Gateway
-    const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages,
-      max_tokens: 512,
-      temperature: 0.7,
-      top_p: 0.9
-    });
+  const response = await ai.run(MODEL_NAME, {
+    messages,
+    max_tokens: 512,
+    temperature: 0.7,
+    top_p: 0.9,
+  }).catch((error: unknown) => {
+    console.error('AI error', error);
+    return null;
+  });
 
-    return response?.response || 'Przepraszam, nie mogłem wygenerować odpowiedzi. Spróbuj ponownie.';
-  } catch (error: any) {
-    console.error('AI generation error:', error);
-    return `Przepraszam, wystąpił błąd podczas generowania odpowiedzi: ${error?.message || 'Unknown error'}`;
+  if (response && typeof response.response === 'string' && response.response.trim().length > 0) {
+    return response.response.trim();
   }
+
+  return 'Przepraszam, nie udało mi się wygenerować odpowiedzi. Spróbuj ponownie.';
 }
 
-async function handleChat(req: Request, env: Env): Promise<Response> {
-  let body: any;
-  try {
-    body = await req.json();
-  } catch (e) {
-    console.error('JSON parse error:', e);
-    return new Response('Bad Request: Invalid JSON', {status:400, headers: cors(env)});
+async function handleChat(request: Request, env: Env): Promise<Response> {
+  const payload = parseChatRequestBody(await request.json().catch(() => null));
+  if (!payload) {
+    return new Response('Bad Request: message required', { status: 400, headers: cors(env) });
   }
-  
-  const { message, session_id, stream } = body || {};
-  if(!message){ 
-    console.error('Missing message in body:', body);
-    return new Response('Bad Request: message required', {status:400, headers: cors(env)});
+
+  const sessionId = payload.session_id ?? crypto.randomUUID();
+  const doId = env.SESSION_DO.idFromName(sessionId);
+  const stub = env.SESSION_DO.get(doId);
+
+  const appendResponse = await stub.fetch('https://session/append', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'user', content: payload.message, session_id: sessionId }),
+  });
+  if (!appendResponse.ok) {
+    return new Response('Internal Error: session append failed', { status: 500, headers: cors(env) });
   }
-  
-  const sid = session_id || crypto.randomUUID();
-  const id = env.SESSION_DO.idFromName(sid);
-  const stub = env.SESSION_DO.get(id);
-  
-  // Append user msg
-  await stub.fetch('https://do/append', { method:'POST', body: JSON.stringify({ role:'user', content: message })});
 
-  // If streaming requested
-  if (stream) {
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
+  if (payload.stream) {
+    return streamAssistantResponse(sessionId, payload.message, stub, env);
+  }
 
-    // Start async processing
-    (async () => {
-      try {
-        // Get conversation history
-        const historyResp = await stub.fetch('https://do/history');
-        const history = await historyResp.json() as Array<{role:string; content:string; ts:number}>;
-        
-        // Generate AI response
-        const reply = await generateAIResponse(history, message, env);
-        
-        // Stream response word by word (better UX than char-by-char)
-        const words = reply.split(' ');
-        let accumulated = '';
-        for (let i = 0; i < words.length; i++) {
-          accumulated += (i > 0 ? ' ' : '') + words[i];
-          await writer.write(encoder.encode(`data: ${JSON.stringify({
-            content: accumulated,
-            session_id: sid,
-            done: false
-          })}\n\n`));
-          // Small delay to simulate streaming
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        
-        // Save assistant response to history
-        await stub.fetch('https://do/append', { 
-          method:'POST', 
-          body: JSON.stringify({ role:'assistant', content: reply })
-        });
-        
-        // Send done signal
-        await writer.write(encoder.encode(`data: ${JSON.stringify({
-          content: reply,
-          session_id: sid,
-          done: true
-        })}\n\n`));
-        await writer.write(encoder.encode(`data: [DONE]\n\n`));
-      } catch (error: any) {
-        await writer.write(encoder.encode(`data: ${JSON.stringify({
-          error: error?.message || 'Unknown error',
-          session_id: sid
-        })}\n\n`));
-      } finally {
-        await writer.close();
+  const historyResp = await stub.fetch('https://session/history');
+  const historyData = await historyResp.json().catch(() => []);
+  const history = ensureHistoryArray(historyData);
+  const reply = await generateAIResponse(history, payload.message, env);
+
+  await stub.fetch('https://session/append', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
+  });
+
+  return new Response(JSON.stringify({ reply, session_id: sessionId }), {
+    headers: { ...cors(env), 'Content-Type': 'application/json' },
+  });
+}
+
+function streamAssistantResponse(
+  sessionId: string,
+  userMessage: string,
+  stub: DurableObjectStub,
+  env: Env,
+): Response {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+
+  (async () => {
+    try {
+      const historyResp = await stub.fetch('https://session/history');
+      const historyRaw = await historyResp.json().catch(() => []);
+      const history = ensureHistoryArray(historyRaw);
+
+      const reply = await generateAIResponse(history, userMessage, env);
+
+      await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
+
+      const parts = reply.split(/(\s+)/); // include whitespace chunks
+      let accumulated = '';
+      for (const part of parts) {
+        accumulated += part;
+        const chunk = JSON.stringify({ content: accumulated, session_id: sessionId, done: false });
+        await writer.write(encoder.encode(`data: ${chunk}\n\n`));
+        await new Promise((resolve) => setTimeout(resolve, 30));
       }
-    })();
 
-    return new Response(readable, {
-      headers: {
-        ...cors(env),
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      }
-    });
-  }
+      await stub.fetch('https://session/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
+      });
 
-  // Non-streaming fallback (backward compatibility)
-  // Get conversation history
-  const historyResp = await stub.fetch('https://do/history');
-  const history = await historyResp.json() as Array<{role:string; content:string; ts:number}>;
-  
-  // Generate AI response
-  const reply = await generateAIResponse(history, message, env);
+      await writer.write(
+        encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
+      );
+      await writer.write(encoder.encode('data: [DONE]\n\n'));
+    } catch (error) {
+      console.error('Streaming error', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await writer.write(encoder.encode(`data: ${JSON.stringify({ error: message, session_id: sessionId })}\n\n`));
+    } finally {
+      await writer.close();
+    }
+  })();
 
-  await stub.fetch('https://do/append', { method:'POST', body: JSON.stringify({ role:'assistant', content: reply })});
-
-  return new Response(JSON.stringify({ reply, session_id: sid }), { headers: { ...cors(env), 'Content-Type':'application/json' } });
+  return new Response(readable, {
+    headers: {
+      ...cors(env),
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if(request.method === 'OPTIONS') return new Response(null, { headers: cors(env) });
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: cors(env) });
+    }
 
     const url = new URL(request.url);
 
-    // App Proxy HMAC verification for relevant paths
-    // Accept both '/chat' and '/assistant/chat' (app proxy may forward with subpath)
     if (url.pathname.endsWith('/chat')) {
-      // Development bypass: set DEV_BYPASS=1 in wrangler/env and send header 'x-dev-bypass: 1' from client
-      const devBypassEnabled = String(env.DEV_BYPASS || '') === '1';
-      const hasDevBypassHeader = request.headers.get('x-dev-bypass') === '1';
-      if (!(devBypassEnabled && hasDevBypassHeader)) {
+      const bypassEnabled = env.DEV_BYPASS === '1';
+      const bypassHeader = request.headers.get('x-dev-bypass') === '1';
+      if (!(bypassEnabled && bypassHeader)) {
         if (!env.SHOPIFY_APP_SECRET) {
-          console.error("SHOPIFY_APP_SECRET is not configured.");
-          return new Response('Internal Server Error: App not configured', { status: 500 });
+          return new Response('Server misconfigured', { status: 500, headers: cors(env) });
         }
-        const isValid = await verifyAppProxyHmac(request.clone(), env.SHOPIFY_APP_SECRET);
-        if (!isValid) {
+        const cloned = new Request(request);
+        const valid = await verifyAppProxyHmac(cloned, env.SHOPIFY_APP_SECRET);
+        if (!valid) {
           return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
         }
-      } else {
-        // Log that we are bypassing HMAC for dev testing
-        console.log('DEV_BYPASS active: skipping HMAC verification');
       }
     }
 
-    if(url.pathname === '/chat' && request.method === 'POST') return handleChat(request, env);
-    return new Response('Not Found', { status:404, headers: cors(env) });
-  }
-}
+    if (url.pathname === '/chat' && request.method === 'POST') {
+      return handleChat(request, env);
+    }
+
+    return new Response('Not Found', { status: 404, headers: cors(env) });
+  },
+};

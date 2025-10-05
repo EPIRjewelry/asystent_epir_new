@@ -39,5 +39,6 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
   const sig = hexToBytes(received);
   if (sig.length === 0) return false;
 
-  return crypto.subtle.verify('HMAC', cryptoKey, sig, enc.encode(message));
+  const signature = sig.buffer.slice(sig.byteOffset, sig.byteOffset + sig.byteLength) as ArrayBuffer;
+  return crypto.subtle.verify('HMAC', cryptoKey, signature, enc.encode(message));
 }
