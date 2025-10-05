@@ -127,6 +127,40 @@
   }
 
   /**
+   * Tworzy pustą wiadomość asystenta (używana przy streamingu tokenów)
+   * @param {string} [initialContent]
+   * @returns {{ messageEl: HTMLElement, bubbleEl: HTMLElement } | null}
+   */
+  function createAssistantMessage(initialContent = '') {
+    if (!messagesContainer) return null;
+
+    const messageEl = document.createElement('div');
+    messageEl.className = 'epir-message epir-message--assistant';
+    messageEl.setAttribute('role', 'listitem');
+
+    const bubbleEl = document.createElement('div');
+    bubbleEl.className = 'epir-message__bubble';
+    bubbleEl.innerHTML = sanitizeHTML(initialContent);
+
+    messageEl.appendChild(bubbleEl);
+    messagesContainer.appendChild(messageEl);
+    scrollToBottom();
+
+    return { messageEl, bubbleEl };
+  }
+
+  /**
+   * Aktualizuje treść bąbelka asystenta (używana podczas streamingu)
+   * @param {HTMLElement | null | undefined} bubbleEl
+   * @param {string} content
+   */
+  function updateAssistantMessage(bubbleEl, content) {
+    if (!bubbleEl) return;
+    bubbleEl.innerHTML = sanitizeHTML(content);
+    scrollToBottom();
+  }
+
+  /**
    * Pokazuje typing indicator (3 animowane kropki)
    * @returns {HTMLElement} element typing indicator (do późniejszego usunięcia)
    */
@@ -173,7 +207,7 @@
    * @param {number} [retryCount=0]
    * @returns {Promise<ChatResponse>}
    */
-  async function sendMessageToWorker(message, retryCount = 0) {
+  async function sendMessageToWorker(message, onChunk, retryCount = 0) {
     try {
       // Generuj session_id jeśli nie istnieje
       if (!sessionId) {
@@ -200,12 +234,152 @@
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      const responseBody = response.body;
+      let aggregatedText = '';
+      let streamed = false;
+
+      /**
+       * Przetwarza payload (string lub JSON) i aktualizuje stan odpowiedzi
+       * @param {unknown} payload
+       */
+      const handlePayload = (payload) => {
+        if (payload == null) {
+          return;
+        }
+
+        /** @type {string | undefined} */
+        let chunkText;
+
+        if (typeof payload === 'string') {
+          chunkText = payload;
+        } else if (typeof payload === 'object') {
+          const dataObj = /** @type {Record<string, unknown>} */ (payload);
+
+          const maybeSessionId =
+            typeof dataObj.session_id === 'string'
+              ? dataObj.session_id
+              : typeof dataObj.sessionId === 'string'
+              ? dataObj.sessionId
+              : undefined;
+          if (maybeSessionId && maybeSessionId !== sessionId) {
+            sessionId = maybeSessionId;
+            localStorage.setItem(CONFIG.SESSION_KEY, sessionId);
+          }
+
+          if (Array.isArray(dataObj.tokens)) {
+            chunkText = dataObj.tokens.join('');
+          } else if (typeof dataObj.token === 'string') {
+            chunkText = dataObj.token;
+          } else if (typeof dataObj.partial === 'string') {
+            chunkText = dataObj.partial;
+          } else if (typeof dataObj.reply === 'string') {
+            chunkText = dataObj.reply;
+          }
+        }
+
+        if (typeof chunkText === 'string' && chunkText.length > 0) {
+          streamed = true;
+          aggregatedText += chunkText;
+          if (typeof onChunk === 'function') {
+            onChunk(chunkText);
+          }
+        }
+      };
+
+      /**
+       * Przetwarza bufor tekstowy, dzieląc po newline/SSE i zwracając pozostałość
+       * @param {string} buffer
+       * @returns {string}
+       */
+      const processBuffer = (buffer) => {
+        let working = buffer;
+        while (true) {
+          const newlineIndex = working.indexOf('\n');
+          if (newlineIndex === -1) break;
+
+          const line = working.slice(0, newlineIndex).trim();
+          working = working.slice(newlineIndex + 1);
+
+          if (!line) {
+            continue;
+          }
+
+          let payloadText = line;
+          if (payloadText.startsWith('data:')) {
+            payloadText = payloadText.slice(5).trim();
+          }
+
+          if (!payloadText) {
+            continue;
+          }
+
+          try {
+            const jsonPayload = JSON.parse(payloadText);
+            handlePayload(jsonPayload);
+          } catch (jsonError) {
+            handlePayload(payloadText);
+          }
+        }
+
+        return working;
+      };
+
+      const shouldStream =
+        responseBody && typeof responseBody.getReader === 'function' &&
+        (!contentType ||
+          contentType.includes('text/event-stream') ||
+          contentType.includes('application/jsonl') ||
+          contentType.includes('application/x-ndjson') ||
+          contentType.includes('application/octet-stream'));
+
+      if (shouldStream) {
+        const reader = responseBody.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          buffer = processBuffer(buffer);
+        }
+
+        buffer += decoder.decode();
+        buffer = processBuffer(buffer);
+
+        const finalRemainder = buffer.trim();
+        if (finalRemainder) {
+          try {
+            const finalJson = JSON.parse(finalRemainder);
+            handlePayload(finalJson);
+          } catch (finalError) {
+            handlePayload(finalRemainder);
+          }
+        }
+
+        return { reply: aggregatedText, streamed };
+      }
+
       const data = await response.json();
 
-      // Zaktualizuj session_id jeśli backend zwrócił nowy
-      if (data.session_id && data.session_id !== sessionId) {
-        sessionId = data.session_id;
-        localStorage.setItem(CONFIG.SESSION_KEY, sessionId);
+      if (typeof data === 'object' && data) {
+        const dataObj = /** @type {Record<string, unknown>} */ (data);
+        const maybeSessionId =
+          typeof dataObj.session_id === 'string'
+            ? dataObj.session_id
+            : typeof dataObj.sessionId === 'string'
+            ? dataObj.sessionId
+            : undefined;
+        if (maybeSessionId && maybeSessionId !== sessionId) {
+          sessionId = maybeSessionId;
+          localStorage.setItem(CONFIG.SESSION_KEY, sessionId);
+        }
+
+        if (typeof dataObj.reply === 'string' && typeof onChunk === 'function') {
+          onChunk(dataObj.reply);
+        }
       }
 
       return data;
@@ -216,7 +390,7 @@
       if (retryCount < CONFIG.MAX_RETRIES) {
         console.warn(`[EPIR Assistant] Retrying (${retryCount + 1}/${CONFIG.MAX_RETRIES})...`);
         await sleep(CONFIG.RETRY_DELAY);
-        return sendMessageToWorker(message, retryCount + 1);
+        return sendMessageToWorker(message, onChunk, retryCount + 1);
       }
 
       // Jeśli wszystkie próby zawiodły
@@ -253,26 +427,49 @@
     // Pokaż typing indicator
     const typingIndicator = showTypingIndicator();
 
-    try {
-      const data = await sendMessageToWorker(message);
+    // Utwórz pustą wiadomość asystenta (do streamingu)
+    const assistantEntry = createAssistantMessage('');
+    const assistantBubble = assistantEntry ? assistantEntry.bubbleEl : null;
+    let aggregatedResponse = '';
 
-      // Usuń typing indicator
+    try {
+      const result = await sendMessageToWorker(
+        message,
+        (chunk) => {
+          aggregatedResponse += chunk;
+          updateAssistantMessage(assistantBubble, aggregatedResponse);
+        }
+      );
+
       removeTypingIndicator(typingIndicator);
 
-      // Dodaj odpowiedź asystenta
-      if (data.reply) {
-        addMessage('assistant', data.reply);
-      } else if (data.error) {
-        addMessage('assistant', `Błąd: ${data.error}`);
-      } else {
-        addMessage('assistant', 'Przepraszam, nie otrzymałem odpowiedzi.');
+      if (!aggregatedResponse) {
+        let finalMessage = '';
+        if (result && typeof result === 'object' && typeof result.reply === 'string') {
+          finalMessage = result.reply;
+        } else if (result && typeof result === 'object' && typeof result.error === 'string') {
+          finalMessage = `Błąd: ${result.error}`;
+        } else {
+          finalMessage = 'Przepraszam, nie otrzymałem odpowiedzi.';
+        }
+
+        if (assistantBubble) {
+          updateAssistantMessage(assistantBubble, finalMessage);
+        } else {
+          addMessage('assistant', finalMessage);
+        }
       }
     } catch (error) {
       removeTypingIndicator(typingIndicator);
-      addMessage(
-        'assistant',
-        'Przepraszam, wystąpił problem z połączeniem. Spróbuj ponownie za chwilę.'
-      );
+      const errorMessage =
+        'Przepraszam, wystąpił problem z połączeniem. Spróbuj ponownie za chwilę.';
+
+      if (assistantBubble) {
+        updateAssistantMessage(assistantBubble, errorMessage);
+      } else {
+        addMessage('assistant', errorMessage);
+      }
+
       console.error('[EPIR Assistant] Error:', error);
     } finally {
       // Odblokuj input
