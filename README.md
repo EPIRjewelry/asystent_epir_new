@@ -42,8 +42,30 @@ Endpoint `/chat` jest chroniony za pomocą weryfikacji sygnatury **HMAC**, zgodn
 - **Działanie**: Tylko żądania poprawnie podpisane przez Shopify zostaną przetworzone. Wszystkie inne próby dostępu zostaną odrzucone z błędem `401 Unauthorized`.
 
 ## Następne kroki
-- Dodać RAG (Vectorize) i LLM (Workers AI) + narzędzia (Shopify Storefront API)
-- Włączyć streaming (SSE) do TAE
+- ✅ Dodano RAG (Vectorize) i LLM (Workers AI + Groq)
+- ✅ Włączono streaming (SSE) do TAE
+- Zobacz [STREAMING_AND_RAG.md](./STREAMING_AND_RAG.md) dla szczegółów implementacji
+
+## Nowe funkcje
+
+### Streaming LLM Responses
+Widget czatu obsługuje teraz streaming odpowiedzi LLM w czasie rzeczywistym:
+- Format SSE (Server-Sent Events)
+- Format JSONL/NDJSON
+- Automatyczne zarządzanie sesją
+- Elegancka obsługa błędów
+
+### RAG (Retrieval-Augmented Generation)
+Backend wykorzystuje Vectorize do wyszukiwania semantycznego:
+- Wyszukiwanie w politykach sklepu i FAQ
+- Embeddingi generowane przez Workers AI
+- Automatyczne wzbogacanie kontekstu odpowiedzi
+
+### Multi-Provider LLM Support
+- Groq API (llama-3.1-70b-versatile) - główny
+- Cloudflare Workers AI (llama-3.1-8b-instruct) - fallback
+
+Więcej informacji: [STREAMING_AND_RAG.md](./STREAMING_AND_RAG.md)
 
 ## Continuous Integration (GitHub Actions)
 
