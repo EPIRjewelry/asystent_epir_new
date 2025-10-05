@@ -304,13 +304,13 @@ function streamAssistantResponse(
 
       const reply = await generateAIResponse(history, userMessage, env);
 
+      // Send initial session_id event
       await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
 
+      // Stream delta-only (send each fragment as 'delta' instead of full 'content')
       const parts = reply.split(/(\s+)/); // include whitespace chunks
-      let accumulated = '';
       for (const part of parts) {
-        accumulated += part;
-        const chunk = JSON.stringify({ content: accumulated, session_id: sessionId, done: false });
+        const chunk = JSON.stringify({ delta: part, session_id: sessionId, done: false });
         await writer.write(encoder.encode(`data: ${chunk}\n\n`));
         await new Promise((resolve) => setTimeout(resolve, 30));
       }
@@ -321,6 +321,7 @@ function streamAssistantResponse(
         body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
       });
 
+      // Final event with full content (for fallback clients) and done flag
       await writer.write(
         encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
       );

@@ -7,8 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  test-backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,17 +20,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: worker/package-lock.json
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Type check
-        run: npx tsc --noEmit || true
+      - name: Run tests
+        run: npm run test
 
-      - name: Lint (optional)
-        run: |
-          if [ -f package.json ]; then
-            if jq -e '.scripts.lint' package.json >/dev/null 2>&1; then
-              npm run lint || true
-            fi
-          fi
+      - name: Type check
+        run: npx tsc --noEmit
+
+  # Optional: deploy Worker (requires Cloudflare API token secret)
+  # deploy-worker:
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   needs: test-backend
+  #   defaults:
+  #     run:
+  #       working-directory: worker
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #         cache-dependency-path: worker/package-lock.json
+  #     - run: npm ci
+  #     - run: npx wrangler deploy
+  #       env:
+  #         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

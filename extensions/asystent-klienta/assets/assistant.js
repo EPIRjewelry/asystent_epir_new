@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Typy */
 type MessageElement = { id: string; el: HTMLElement };
-type StreamPayload = { content?: string; session_id?: string; error?: string; done?: boolean };
+type StreamPayload = { content?: string; delta?: string; session_id?: string; error?: string; done?: boolean };
 
 /* Pomocnicze UI */
 export function createAssistantMessage(messagesEl: HTMLElement): MessageElement {
@@ -65,7 +65,7 @@ export function createUserMessage(messagesEl: HTMLElement, text: string): void {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* Robustny parser SSE/JSONL */
+/* Robustny parser SSE/JSONL z obsługą delta (nowy) i content (fallback) */
 export async function processSSEStream(
   body: ReadableStream<Uint8Array>,
   msgId: string,
@@ -75,6 +75,7 @@ export async function processSSEStream(
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
+  let accumulated = '';
 
   try {
     while (true) {
@@ -110,8 +111,13 @@ export async function processSSEStream(
           try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch (e) { /* silent */ }
         }
 
-        if (parsed.content !== undefined) {
-          onUpdate(parsed.content);
+        // Nowa obsługa: delta (incremental) lub content (full replacement)
+        if (parsed.delta !== undefined) {
+          accumulated += parsed.delta;
+          onUpdate(accumulated);
+        } else if (parsed.content !== undefined) {
+          accumulated = parsed.content;
+          onUpdate(accumulated);
         }
 
         if (parsed.done) return;
@@ -127,7 +133,13 @@ export async function processSSEStream(
         try {
           const parsed = JSON.parse(dataStr) as StreamPayload;
           if (parsed.session_id) try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch {}
-          if (parsed.content !== undefined) onUpdate(parsed.content);
+          if (parsed.delta !== undefined) {
+            accumulated += parsed.delta;
+            onUpdate(accumulated);
+          } else if (parsed.content !== undefined) {
+            accumulated = parsed.content;
+            onUpdate(accumulated);
+          }
         } catch (e) {
           console.warn('Nieparsowalny ostatni event SSE', e);
         }
