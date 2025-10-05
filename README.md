@@ -1,5 +1,8 @@
 # EPIR-ART-JEWELLERY (Cloudflare-first Shopify Assistant)
 
+[![CI](https://github.com/EPIRjewelry/asystent_epir_new/actions/workflows/ci.yml/badge.svg)](https://github.com/EPIRjewelry/asystent_epir_new/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 Krótki opis:
 - Theme App Extension (widget) w `extensions/asystent-klienta`
 - Backend Cloudflare Worker + Durable Object + D1 w `worker/`
@@ -51,4 +54,8 @@ Jeżeli chcesz, mogę rozbudować CI o testy (Vitest), lint (ESLint) oraz deploy
 ## Nowe zdalne repo
 
 Projekt został skopiowany do nowego repozytorium: https://github.com/EPIRjewelry/asystent_epir_new
+
+## Licencja
+
+Ten projekt jest dostępny na licencji MIT — zobacz plik `LICENSE`.
 
