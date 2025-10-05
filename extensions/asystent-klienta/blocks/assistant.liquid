@@ -1,149 +1,128 @@
+{% comment %}
+  Plik sekcji dla Asystenta Klienta AI EPIR-ART-JEWELLERY.
+  Osadza widget czatu i inicjalizuje go danymi z Liquid.
+  Zawiera poprawki dotyczące bezpieczeństwa (endpoint configuration) i UX.
+{% endcomment %}
+
+{% liquid
+  assign default_title = 'Zapytaj Doradcę EPIR-ART'
+  assign default_greeting = 'Witaj w EPIR-ART. Jestem Twoim osobistym doradcą AI, gotowym pomóc w wyborze idealnej biżuterii.'
+  assign default_placeholder = 'Wpisz wiadomość, np. „Pokaż mi pierścionki zaręczynowe z szafirem”'
+  assign default_start_closed = false
+  assign app_version = 'v1.1.2-rag-stream'
+%}
+
 {% schema %}
 {
-  "name": "Asystent klienta (AI)",
+  "name": "Asystent Klienta AI",
   "target": "section",
   "settings": [
     {
+      "type": "header",
+      "content": "Ustawienia Ogólne Widgetu"
+    },
+    {
       "type": "text",
       "id": "title",
-      "label": "Tytuł widgetu",
-      "default": "Zapytaj asystenta EPIR"
+      "label": "Tytuł Widgetu",
+      "default": "Zapytaj Doradcę EPIR-ART"
     },
     {
       "type": "text",
       "id": "greeting_message",
-      "label": "Powitanie",
-      "default": "Witaj! Jak mogę pomóc w wyborze wymarzonej biżuterii?"
+      "label": "Wiadomość Powitalna",
+      "default": "Witaj w EPIR-ART. Jestem Twoim osobistym doradcą AI, gotowym pomóc w wyborze idealnej biżuterii."
     },
     {
-      "type": "color",
-      "id": "primary_color",
-      "label": "Kolor główny",
-      "default": "#1a1a1a"
+      "type": "text",
+      "id": "input_placeholder",
+      "label": "Tekst w polu wprowadzania",
+      "default": "Wpisz wiadomość, np. „Pokaż mi pierścionki zaręczynowe z szafirem”"
+    },
+    {
+      "type": "checkbox",
+      "id": "start_closed",
+      "label": "Uruchom widżet zamknięty (domyślnie otwarty)",
+      "default": false
     },
     {
       "type": "color",
       "id": "accent_color",
-      "label": "Kolor akcentu",
-      "default": "#d4af37"
-    },
-    {
-      "type": "select",
-      "id": "position",
-      "label": "Pozycja widgetu",
-      "options": [
-        {"value": "bottom-right", "label": "Prawy dolny róg"},
-        {"value": "bottom-left", "label": "Lewy dolny róg"},
-        {"value": "inline", "label": "W sekcji (inline)"}
-      ],
-      "default": "bottom-right"
-    },
-    {
-      "type": "checkbox",
-      "id": "auto_open",
-      "label": "Automatycznie otwórz przy wejściu",
-      "default": false
+      "label": "Kolor Akcentujący (Przycisk)",
+      "default": "#8B7D6A"
     }
-  ]
+  ],
+  "default": {
+    "settings": {
+      "title": "Zapytaj Doradcę EPIR-ART",
+      "greeting_message": "Witaj w EPIR-ART. Jestem Twoim osobistym doradcą AI, gotowym pomóc w wyborze idealnej biżuterii.",
+      "start_closed": false
+    }
+  }
 }
 {% endschema %}
 
-{%- comment -%}
-  EPIR AI Assistant Widget - Luksusowy chat do wsparcia klientów jubilerskich
-  Data attributes:
-  - data-worker-url: URL endpointu App Proxy (domyślnie /apps/assistant/chat)
-  - data-session-id: ID sesji (generowany w JS localStorage)
-  - data-greeting: wiadomość powitalna z settings
-  - data-position: pozycja widgetu (inline/floating)
-{%- endcomment -%}
-
-<div 
-  id="epir-assistant-widget" 
-  class="epir-assistant epir-assistant--{{ section.settings.position }}"
-  data-worker-url="/apps/assistant/chat"
-  data-greeting="{{ section.settings.greeting_message | escape }}"
-  data-position="{{ section.settings.position }}"
-  data-auto-open="{{ section.settings.auto_open }}"
-  style="
-    --epir-primary-color: {{ section.settings.primary_color }};
-    --epir-accent-color: {{ section.settings.accent_color }};
-  "
+{% comment %}
+  Używamy atrybutów data-* do konfiguracji skryptu, co eliminuje hardkodowanie.
+{% endcomment %}
+<section id="epir-assistant-section"
+  class="epir-assistant-section"
+  aria-live="polite"
+  data-app-version="{{ app_version }}"
+  data-shop-domain="{{ shop.myshopify_domain }}"
+  data-worker-endpoint="/apps/assistant/chat"
+  data-start-closed="{{ section.settings.start_closed | default: default_start_closed }}"
 >
-  {%- if section.settings.position == 'inline' -%}
-    {%- comment -%} Widget inline (osadzony w sekcji strony) {%- endcomment -%}
-    <section class="epir-assistant__inline-container">
-      <h3 class="epir-assistant__title">{{ section.settings.title }}</h3>
-      <div class="epir-assistant__chat-box" id="epir-chat-box">
-        <div class="epir-assistant__messages" id="epir-messages" role="log" aria-live="polite" aria-atomic="false"></div>
-        <form class="epir-assistant__form" id="epir-form" aria-label="Formularz czatu">
-          <input 
-            id="epir-input" 
-            class="epir-assistant__input" 
-            type="text" 
-            placeholder="Napisz wiadomość..." 
+  <style>
+    /* Dodanie dynamicznego koloru akcentującego z ustawień liquid */
+    #epir-assistant-section .assistant-form button {
+        background-color: {{ section.settings.accent_color | default: '#8B7D6A' }};
+    }
+    #epir-assistant-section .assistant-status {
+        color: {{ section.settings.accent_color | default: '#8B7D6A' }};
+    }
+    #epir-assistant-section #assistant-input:focus {
+        border-color: {{ section.settings.accent_color | default: '#8B7D6A' }};
+    }
+  </style>
+
+  <div class="assistant-container">
+    <div class="assistant-header" role="heading" aria-level="3">
+      <h3>{{ section.settings.title | default: default_title }}</h3>
+      <button id="assistant-toggle-button" aria-expanded="{% if section.settings.start_closed %}false{% else %}true{% endif %}" aria-controls="assistant-content">
+        <span aria-hidden="true">{% if section.settings.start_closed %}Otwórz{% else %}Zamknij{% endif %}</span>
+        <span class="sr-only">Przełącz widoczność asystenta</span>
+      </button>
+    </div>
+
+    <div id="assistant-content" class="assistant-content {% if section.settings.start_closed %}is-closed{% endif %}">
+        <div id="assistant-messages" class="assistant-messages" role="log" aria-atomic="false" aria-live="polite">
+          {% comment %} Wiadomość powitalna ładowana jest tylko raz {% endcomment %}
+          <div class="msg msg-assistant welcome-message" role="status">
+            {{ section.settings.greeting_message | default: default_greeting }}
+          </div>
+        </div>
+
+        <form id="assistant-form" class="assistant-form">
+          <label for="assistant-input" class="sr-only">Wpisz wiadomość do doradcy</label>
+          <input
+            id="assistant-input"
+            type="text"
+            placeholder="{{ section.settings.input_placeholder | default: default_placeholder }}"
             autocomplete="off"
-            aria-label="Wiadomość do asystenta"
             required
+            minlength="5" 
+            maxlength="256" 
+            aria-required="true"
           />
-          <button type="submit" class="epir-assistant__send-btn" aria-label="Wyślij wiadomość">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-            </svg>
+          <button type="submit" id="assistant-send-button" aria-label="Wyślij wiadomość">
+            Wyślij
           </button>
         </form>
-      </div>
-    </section>
-  {%- else -%}
-    {%- comment -%} Widget floating (przycisk w rogu ekranu) {%- endcomment -%}
-    <button 
-      id="epir-chat-toggle" 
-      class="epir-assistant__toggle-btn" 
-      aria-label="Otwórz czat z asystentem"
-      aria-expanded="false"
-    >
-      <svg class="epir-assistant__icon epir-assistant__icon--chat" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-      <svg class="epir-assistant__icon epir-assistant__icon--close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12"/>
-      </svg>
-    </button>
-    
-    <div class="epir-assistant__chat-box epir-assistant__chat-box--hidden" id="epir-chat-box" role="dialog" aria-labelledby="epir-chat-title">
-      <div class="epir-assistant__header">
-        <h3 id="epir-chat-title" class="epir-assistant__title">{{ section.settings.title }}</h3>
-        <button 
-          id="epir-chat-close" 
-          class="epir-assistant__close-btn" 
-          aria-label="Zamknij czat"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-      
-      <div class="epir-assistant__messages" id="epir-messages" role="log" aria-live="polite" aria-atomic="false"></div>
-      
-      <form class="epir-assistant__form" id="epir-form" aria-label="Formularz czatu">
-        <input 
-          id="epir-input" 
-          class="epir-assistant__input" 
-          type="text" 
-          placeholder="Napisz wiadomość..." 
-          autocomplete="off"
-          aria-label="Wiadomość do asystenta"
-          required
-        />
-        <button type="submit" class="epir-assistant__send-btn" aria-label="Wyślij wiadomość">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-          </svg>
-        </button>
-      </form>
+        <div id="assistant-status" class="assistant-status" role="status" aria-live="polite"></div>
     </div>
-  {%- endif -%}
-</div>
+  </div>
+</section>
 
-<script src="{{ 'assistant.js' | asset_url }}" defer></script>
-<link href="{{ 'assistant.css' | asset_url }}" rel="stylesheet"/>
+<script src="{{ 'assistant.js' | asset_url }}" defer="defer" type="module"></script>
+<link href="{{ 'assistant.css' | asset_url }}" rel="stylesheet" type="text/css"/>
