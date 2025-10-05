@@ -41,3 +41,14 @@ Endpoint `/chat` jest chroniony za pomocą weryfikacji sygnatury **HMAC**, zgodn
 ## Następne kroki
 - Dodać RAG (Vectorize) i LLM (Workers AI) + narzędzia (Shopify Storefront API)
 - Włączyć streaming (SSE) do TAE
+
+## Continuous Integration (GitHub Actions)
+
+Repozytorium zawiera prosty workflow CI w `.github/workflows/ci.yml`, który uruchamia instalację zależności i podstawowy TypeScript check przy push/PR do `main`.
+
+Jeżeli chcesz, mogę rozbudować CI o testy (Vitest), lint (ESLint) oraz deploy Workera przy tagu `v*`.
+
+## Nowe zdalne repo
+
+Projekt został skopiowany do nowego repozytorium: https://github.com/EPIRjewelry/asystent_epir_new
+
