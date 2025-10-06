@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "question": "Jakie są opcje dostawy?",
+    "answer": "Oferujemy darmową dostawę kurierską dla zamówień powyżej 500 PLN na terenie Polski. Standardowa dostawa zajmuje 3-5 dni roboczych. Dostępna jest również ekspresowa dostawa 24h za dodatkową opłatą 30 PLN."
+  },
+  {
+    "id": "2",
+    "question": "Czy mogę zwrócić produkt?",
+    "answer": "Tak, masz 30 dni na zwrot zakupionej biżuterii bez podania przyczyny. Zwracana biżuteria musi być w oryginalnym opakowaniu, nieużywana i z metkami. Zwrot jest bezpłatny - udostępniamy etykietę zwrotną."
+  },
+  {
+    "id": "3",
+    "question": "Z jakich materiałów wykonana jest biżuteria EPIR?",
+    "answer": "Nasza biżuteria wykonana jest z najwyższej jakości materiałów: srebra próby 925, złota 14K i 18K, naturalnych kamieni szlachetnych (diamenty, szafiry, szmaragdy, rubiny) oraz pereł naturalnych. Każdy produkt posiada certyfikat autentyczności."
+  },
+  {
+    "id": "4",
+    "question": "Czy oferujecie grawer?",
+    "answer": "Tak, oferujemy bezpłatną usługę grawerowania dla większości produktów. Możesz dodać do 20 znaków tekstu (litery, cyfry, daty). Grawer jest wykonywany ręcznie przez naszych jubilerów i wydłuża czas realizacji o 2-3 dni robocze."
+  },
+  {
+    "id": "5",
+    "question": "Jak dobrać rozmiar pierścionka?",
+    "answer": "Oferujemy bezpłatny pierścieniomierz wysyłany do klienta. Można też samodzielnie zmierzyć obwód palca nitką i odczytać rozmiar z tabeli rozmiarów na naszej stronie. Dostępne rozmiary: 10-22 (polska norma). W razie wątpliwości, nasi doradcy pomogą dobrać właściwy rozmiar."
+  },
+  {
+    "id": "6",
+    "question": "Czy biżuteria EPIR ma gwarancję?",
+    "answer": "Tak, wszystkie nasze produkty objęte są 24-miesięczną gwarancją producenta. Gwarancja obejmuje wady materiału i wykonania. Dodatkowo oferujemy darmowy przegląd i czyszczenie raz w roku przez cały okres użytkowania."
+  },
+  {
+    "id": "7",
+    "question": "Czy można zamówić indywidualny projekt biżuterii?",
+    "answer": "Oczywiście! Nasi jubilerzy z przyjemnością wykonają biżuterię według Twojego projektu lub pomysłu. Proces projektowania rozpoczyna się od bezpłatnej konsultacji, podczas której omawiamy Twoje oczekiwania, budżet i terminy. Koszt indywidualnego projektu zależy od skomplikowania i użytych materiałów."
+  },
+  {
+    "id": "8",
+    "question": "Jak dbać o biżuterię ze srebra?",
+    "answer": "Srebro należy przechowywać w suchym miejscu, najlepiej w dedykowanym pudełku lub woreczku. Unikaj kontaktu z wodą, perfumami i kosmetykami. Do czyszczenia używaj miękkiej ściereczki lub specjalnego środka do srebra. Regularnie noś biżuterię - kontakt ze skórą spowalnia utlenianie."
+  },
+  {
+    "id": "9",
+    "question": "Jakie metody płatności akceptujecie?",
+    "answer": "Akceptujemy płatności: kartą kredytową/debetową (Visa, Mastercard), BLIK, przelewy bankowe, PayPal oraz raty 0% (dla zamówień powyżej 1000 PLN). Wszystkie transakcje są w pełni zabezpieczone i szyfrowane."
+  },
+  {
+    "id": "10",
+    "question": "Czy wysyłacie za granicę?",
+    "answer": "Tak, wysyłamy do wszystkich krajów Unii Europejskiej oraz wybranych krajów poza UE. Koszt dostawy międzynarodowej od 50 PLN (UE) do 150 PLN (poza UE), czas dostawy 7-14 dni. Przesyłki są ubezpieczone i śledzane. Klient odpowiada za ewentualne cła i podatki importowe."
+  },
+  {
+    "id": "11",
+    "question": "Czy mogę odebrać zamówienie osobiście?",
+    "answer": "Tak, oferujemy możliwość odbioru osobistego w naszym salonie jubilerskim w Warszawie (ul. Nowy Świat 45). Przy odbiorze osobistym możesz również obejrzeć inne produkty z kolekcji i skonsultować się z naszymi doradcami. Odbiór osobisty jest bezpłatny."
+  },
+  {
+    "id": "12",
+    "question": "Czy certyfikaty kamieni szlachetnych są dołączone do produktu?",
+    "answer": "Tak, każdy produkt z kamieniami szlachetnymi (diamenty od 0.30 ct, kolorowe kamienie od 0.50 ct) posiada certyfikat gemmologiczny wydany przez renomowane laboratoria (IGI, GIA). Certyfikat zawiera szczegółową charakterystykę kamienia: wagę, szlif, czystość, kolor."
+  }
+]

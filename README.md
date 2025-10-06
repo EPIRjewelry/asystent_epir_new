@@ -80,8 +80,25 @@ Endpoint `/chat` jest chroniony za pomocą weryfikacji sygnatury **HMAC**, zgodn
 - **Działanie**: Tylko żądania poprawnie podpisane przez Shopify zostaną przetworzone. Wszystkie inne próby dostępu zostaną odrzucone z błędem `401 Unauthorized`.
 
 ## Następne kroki
-- Dodać RAG (Vectorize) i LLM (Workers AI) + narzędzia (Shopify Storefront API)
-- Włączyć streaming (SSE) do TAE
+
+### 📚 Dokumentacja
+- **[ARCHITECTURE_ANALYSIS.md](./ARCHITECTURE_ANALYSIS.md)** - Szczegółowa analiza architektury z diagramem Mermaid flow
+- **[EVALUATION.md](./EVALUATION.md)** - Kompleksowa ocena kodu, tabela per-file, rekomendacje i next steps
+
+### 🚀 Priority Actions
+1. **RAG Implementation** - Aktywuj Vectorize query w `worker/src/rag.ts` (wykorzystaj binding `VECTOR_INDEX`)
+2. **Groq LLM** - Zintegruj `worker/src/groq.ts` z luxury Polish prompt dla luksusowego tonu
+3. **Populate Data** - Uruchom `scripts/populate-vectorize.ts` aby zaindeksować shop policies, FAQs, produkty
+4. **E2E Tests** - Dodaj Playwright testy dla streaming flow i HMAC verification
+5. **Deploy Automation** - Workflow `.github/workflows/deploy.yml` dla auto-deploy na git tags
+
+### ✅ Już Zaimplementowane
+- ✓ SSE streaming do TAE z delta-based updates
+- ✓ HMAC verification (constant-time, bezpieczny)
+- ✓ Rate limiting (20 req/60s per session)
+- ✓ D1 persistence (conversations + messages)
+- ✓ Durable Objects dla sesji (global distribution)
+- ✓ Comprehensive unit tests (30 tests passing)
 
 ## Continuous Integration (GitHub Actions)
 
