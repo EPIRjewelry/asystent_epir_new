@@ -284,6 +284,54 @@ Po aktywacji RAG + Groq:
 3. **E2E Tests**: Dodaj Playwright testy dla critical flows
 4. **UX**: Dodaj retry button, typing indicator, markdown rendering
 
+## Krok 5: (Opcjonalnie) Aktywuj MCP dla Produktów i Koszyka
+
+MCP (Model Context Protocol) pozwala na bezpośrednią integrację z Shopify Storefront API.
+
+### Ustaw SHOP_DOMAIN
+
+```bash
+cd worker
+
+# Dodaj do wrangler.toml
+[vars]
+SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"
+
+# Lub jako secret (dla wrażliwych domen)
+wrangler secret put SHOP_DOMAIN
+```
+
+### Testuj MCP Endpoint
+
+```bash
+# Test wyszukiwania produktów
+curl -X POST https://epir-art-silver-jewellery.myshopify.com/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "search_shop_catalog",
+      "arguments": {
+        "query": "pierścionek zaręczynowy",
+        "context": "fair trade luxury"
+      }
+    },
+    "id": 1
+  }'
+```
+
+### Jak to działa
+
+Worker automatycznie:
+1. **Wykrywa typ zapytania** (produkt vs FAQ vs koszyk)
+2. **Wywołuje MCP** jeśli dostępne, lub **Vectorize** jako fallback
+3. **Formatuje kontekst** specyficzny dla typu (produkty z cenami, FAQ z cytatami)
+4. **Przesyła do Groq** z luksusowym polskim promptem
+
+Zobacz szczegóły w `MCP_INTEGRATION_GUIDE.md`.
+
 ---
+
 
 **Gotowe! Twój luxury AI assistant powinien teraz działać z pełnym RAG pipeline i luksusowym tonem. 💎✨**

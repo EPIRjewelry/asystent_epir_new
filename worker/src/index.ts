@@ -1,7 +1,14 @@
 /// <reference types="@cloudflare/workers-types" />
 import { verifyAppProxyHmac } from './auth';
-import { searchShopPoliciesAndFaqs, formatRagContextForPrompt, type VectorizeIndex } from './rag';
+import { 
+  searchShopPoliciesAndFaqs, 
+  searchShopPoliciesAndFaqsWithMCP,
+  searchProductCatalogWithMCP,
+  formatRagContextForPrompt, 
+  type VectorizeIndex 
+} from './rag';
 import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
+import { isProductQuery, isCartQuery, mcpGetCart, mcpUpdateCart } from './mcp';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -325,17 +332,42 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   
   let reply: string;
   
-  // Perform RAG search
+  // Perform RAG search with MCP integration
   let ragContext: string | undefined;
-  if (env.VECTOR_INDEX && env.AI) {
-    const ragResult = await searchShopPoliciesAndFaqs(
-      payload.message, 
-      env.VECTOR_INDEX, 
-      env.AI,
-      3
-    );
-    if (ragResult.results.length > 0) {
-      ragContext = formatRagContextForPrompt(ragResult);
+  
+  // Check if it's a product query - use MCP catalog search
+  if (isProductQuery(payload.message) && env.SHOP_DOMAIN) {
+    const productContext = await searchProductCatalogWithMCP(payload.message, env.SHOP_DOMAIN);
+    if (productContext) {
+      ragContext = productContext;
+    }
+  }
+  
+  // If not a product query or no product results, try FAQs/policies
+  if (!ragContext) {
+    if (env.SHOP_DOMAIN) {
+      // Use MCP with Vectorize fallback
+      const ragResult = await searchShopPoliciesAndFaqsWithMCP(
+        payload.message,
+        env.SHOP_DOMAIN,
+        env.VECTOR_INDEX,
+        env.AI,
+        3
+      );
+      if (ragResult.results.length > 0) {
+        ragContext = formatRagContextForPrompt(ragResult);
+      }
+    } else if (env.VECTOR_INDEX && env.AI) {
+      // Vectorize-only fallback
+      const ragResult = await searchShopPoliciesAndFaqs(
+        payload.message, 
+        env.VECTOR_INDEX, 
+        env.AI,
+        3
+      );
+      if (ragResult.results.length > 0) {
+        ragContext = formatRagContextForPrompt(ragResult);
+      }
     }
   }
   
@@ -375,17 +407,42 @@ function streamAssistantResponse(
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
 
-      // 2. Perform RAG search
+      // 2. Perform RAG search with MCP integration
       let ragContext: string | undefined;
-      if (env.VECTOR_INDEX && env.AI) {
-        const ragResult = await searchShopPoliciesAndFaqs(
-          userMessage, 
-          env.VECTOR_INDEX, 
-          env.AI,
-          3
-        );
-        if (ragResult.results.length > 0) {
-          ragContext = formatRagContextForPrompt(ragResult);
+      
+      // Check if it's a product query - use MCP catalog search
+      if (isProductQuery(userMessage) && env.SHOP_DOMAIN) {
+        const productContext = await searchProductCatalogWithMCP(userMessage, env.SHOP_DOMAIN);
+        if (productContext) {
+          ragContext = productContext;
+        }
+      }
+      
+      // If not a product query or no product results, try FAQs/policies
+      if (!ragContext) {
+        if (env.SHOP_DOMAIN) {
+          // Use MCP with Vectorize fallback
+          const ragResult = await searchShopPoliciesAndFaqsWithMCP(
+            userMessage,
+            env.SHOP_DOMAIN,
+            env.VECTOR_INDEX,
+            env.AI,
+            3
+          );
+          if (ragResult.results.length > 0) {
+            ragContext = formatRagContextForPrompt(ragResult);
+          }
+        } else if (env.VECTOR_INDEX && env.AI) {
+          // Vectorize-only fallback
+          const ragResult = await searchShopPoliciesAndFaqs(
+            userMessage, 
+            env.VECTOR_INDEX, 
+            env.AI,
+            3
+          );
+          if (ragResult.results.length > 0) {
+            ragContext = formatRagContextForPrompt(ragResult);
+          }
         }
       }
 
