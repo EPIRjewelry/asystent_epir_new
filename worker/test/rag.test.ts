@@ -6,28 +6,89 @@ import {
   type VectorizeIndex,
 } from '../src/rag';
 
+interface WorkersAI {
+  run: (model: string, args: Record<string, unknown>) => Promise<any>;
+}
+
 describe('RAG Module', () => {
   describe('searchShopPoliciesAndFaqs', () => {
-    it('should return empty context when not implemented', async () => {
+    it('should return results when embeddings and vectorize work', async () => {
+      const mockAI: WorkersAI = {
+        run: vi.fn().mockResolvedValue({
+          data: [[0.1, 0.2, 0.3]], // Mock embedding
+        }),
+      };
+
+      const mockVectorIndex: VectorizeIndex = {
+        query: vi.fn().mockResolvedValue({
+          matches: [
+            {
+              id: 'doc1',
+              score: 0.95,
+              metadata: { text: 'Sample policy text' },
+            },
+          ],
+          count: 1,
+        }),
+      };
+
+      const result = await searchShopPoliciesAndFaqs('test query', mockVectorIndex, mockAI);
+
+      expect(result.query).toBe('test query');
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].text).toBe('Sample policy text');
+      expect(result.results[0].score).toBe(0.95);
+      expect(mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', {
+        text: ['test query'],
+      });
+      expect(mockVectorIndex.query).toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      const mockAI: WorkersAI = {
+        run: vi.fn().mockRejectedValue(new Error('AI error')),
+      };
+      
       const mockVectorIndex: VectorizeIndex = {
         query: vi.fn().mockResolvedValue({ matches: [], count: 0 }),
       };
 
-      const result = await searchShopPoliciesAndFaqs('test query', mockVectorIndex);
+      const result = await searchShopPoliciesAndFaqs('test query', mockVectorIndex, mockAI);
 
       expect(result.query).toBe('test query');
       expect(result.results).toEqual([]);
     });
 
-    it('should handle errors gracefully', async () => {
-      const mockVectorIndex: VectorizeIndex = {
-        query: vi.fn().mockRejectedValue(new Error('Vectorize error')),
+    it('should format multiple results correctly', async () => {
+      const mockAI: WorkersAI = {
+        run: vi.fn().mockResolvedValue({
+          data: [[0.1, 0.2, 0.3]],
+        }),
       };
 
-      const result = await searchShopPoliciesAndFaqs('test query', mockVectorIndex);
+      const mockVectorIndex: VectorizeIndex = {
+        query: vi.fn().mockResolvedValue({
+          matches: [
+            {
+              id: 'doc1',
+              score: 0.92,
+              metadata: { text: 'Policy 1', type: 'shipping' },
+            },
+            {
+              id: 'doc2',
+              score: 0.85,
+              metadata: { text: 'Policy 2', type: 'returns' },
+            },
+          ],
+          count: 2,
+        }),
+      };
 
-      expect(result.query).toBe('test query');
-      expect(result.results).toEqual([]);
+      const result = await searchShopPoliciesAndFaqs('test query', mockVectorIndex, mockAI, 2);
+
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0].text).toBe('Policy 1');
+      expect(result.results[1].text).toBe('Policy 2');
     });
   });
 

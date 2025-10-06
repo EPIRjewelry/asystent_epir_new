@@ -29,37 +29,36 @@ export interface VectorizeIndex {
   ) => Promise<VectorizeQueryResult>;
 }
 
+interface WorkersAI {
+  run: (model: string, args: Record<string, unknown>) => Promise<any>;
+}
+
 /**
  * Search shop policies, FAQs, and product information using Vectorize
  * @param query - User query text
  * @param vectorIndex - Cloudflare Vectorize binding
+ * @param ai - Workers AI binding for generating embeddings
  * @param topK - Number of top results to return (default: 3)
  * @returns RAG context with relevant documents
  */
 export async function searchShopPoliciesAndFaqs(
   query: string,
   vectorIndex: VectorizeIndex,
+  ai: WorkersAI,
   topK: number = 3
 ): Promise<RagContext> {
   try {
-    // For now, return empty context until embeddings are implemented
-    // TODO: Implement actual embedding generation when VECTOR_INDEX is populated
-    console.warn('Vectorize search not yet implemented - returning empty context');
+    // 1. Generate embedding using Workers AI
+    const embeddingResult = await ai.run('@cf/baai/bge-base-en-v1.5', {
+      text: [query],
+    });
     
-    return {
-      query,
-      results: [],
-    };
-
-    // Future implementation:
-    // 1. Generate embedding for query text (using Workers AI or external API)
-    // 2. Query Vectorize with embedding
-    // 3. Format and return results
+    const embedding = embeddingResult.data[0]; // Float32Array or number[]
     
-    /*
-    const embedding = await generateEmbedding(query);
+    // 2. Query Vectorize
     const queryResult = await vectorIndex.query(embedding, { topK });
     
+    // 3. Format results
     return {
       query,
       results: queryResult.matches.map(match => ({
@@ -69,7 +68,6 @@ export async function searchShopPoliciesAndFaqs(
         metadata: match.metadata,
       })),
     };
-    */
   } catch (error) {
     console.error('RAG search error:', error);
     return {

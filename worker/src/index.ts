@@ -1,5 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { verifyAppProxyHmac } from './auth';
+import { searchShopPoliciesAndFaqs, formatRagContextForPrompt, type VectorizeIndex } from './rag';
+import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -37,11 +39,13 @@ export interface Env {
   DB: D1Database;
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
+  VECTOR_INDEX?: VectorizeIndex;
   ALLOWED_ORIGIN?: string;
   AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
   SHOP_DOMAIN?: string;
   SHOPIFY_APP_SECRET?: string;
+  GROQ_API_KEY?: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
 }
 
@@ -314,10 +318,34 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   }
 
+  // Non-streaming path with RAG + Groq support
   const historyResp = await stub.fetch('https://session/history');
   const historyData = await historyResp.json().catch(() => []);
   const history = ensureHistoryArray(historyData);
-  const reply = await generateAIResponse(history, payload.message, env);
+  
+  let reply: string;
+  
+  // Perform RAG search
+  let ragContext: string | undefined;
+  if (env.VECTOR_INDEX && env.AI) {
+    const ragResult = await searchShopPoliciesAndFaqs(
+      payload.message, 
+      env.VECTOR_INDEX, 
+      env.AI,
+      3
+    );
+    if (ragResult.results.length > 0) {
+      ragContext = formatRagContextForPrompt(ragResult);
+    }
+  }
+  
+  // Use Groq if available, otherwise fallback to Workers AI
+  if (env.GROQ_API_KEY) {
+    const messages = buildGroqMessages(history, payload.message, ragContext);
+    reply = await getGroqResponse(messages, env.GROQ_API_KEY);
+  } else {
+    reply = await generateAIResponse(history, payload.message, env);
+  }
 
   await stub.fetch('https://session/append', {
     method: 'POST',
@@ -342,55 +370,89 @@ function streamAssistantResponse(
 
   (async () => {
     try {
+      // 1. Fetch history
       const historyResp = await stub.fetch('https://session/history');
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
 
-      // Try to obtain a real streaming source from the AI binding
-      const stream = await generateAIResponseStream(history, userMessage, env);
+      // 2. Perform RAG search
+      let ragContext: string | undefined;
+      if (env.VECTOR_INDEX && env.AI) {
+        const ragResult = await searchShopPoliciesAndFaqs(
+          userMessage, 
+          env.VECTOR_INDEX, 
+          env.AI,
+          3
+        );
+        if (ragResult.results.length > 0) {
+          ragContext = formatRagContextForPrompt(ragResult);
+        }
+      }
 
+      let fullReply = '';
+      
       // Send initial session_id event
       await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
 
-      if (stream) {
-        // Real streaming: pipe tokens/deltas as they arrive
+      // 3. Stream from Groq (if API key available) or fallback to Workers AI
+      if (env.GROQ_API_KEY) {
+        // Build messages with luxury prompt and RAG context
+        const messages = buildGroqMessages(history, userMessage, ragContext);
+        
+        // Use Groq streaming
+        const stream = await streamGroqResponse(messages, env.GROQ_API_KEY);
         const reader = stream.getReader();
         const decoder = new TextDecoder();
+        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          // value may be string or Uint8Array
-          const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
-          const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
+          
+          const chunk = typeof value === 'string' ? value : decoder.decode(value as any);
+          fullReply += chunk;
+          
+          const evt = JSON.stringify({ delta: chunk, session_id: sessionId, done: false });
           await writer.write(encoder.encode(`data: ${evt}\n\n`));
         }
-
-        // After streaming finishes, optionally reconstruct final reply if needed
-        // Note: some streaming APIs provide final aggregated value; here we rely on DO append logic below
       } else {
-        // Fallback: generate full reply and split into deltas for UX
-        const reply = await generateAIResponse(history, userMessage, env);
-        const parts = reply.split(/(\s+)/);
-        for (const part of parts) {
-          const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
-          await writer.write(encoder.encode(`data: ${evt}\n\n`));
-          await new Promise((resolve) => setTimeout(resolve, 30));
+        // Fallback: Try Workers AI streaming, else generate full reply
+        const stream = await generateAIResponseStream(history, userMessage, env);
+        
+        if (stream) {
+          // Real streaming from Workers AI
+          const reader = stream.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
+            fullReply += chunkStr;
+            const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
+            await writer.write(encoder.encode(`data: ${evt}\n\n`));
+          }
+        } else {
+          // Full reply fallback with split for UX
+          fullReply = await generateAIResponse(history, userMessage, env);
+          const parts = fullReply.split(/(\s+)/);
+          for (const part of parts) {
+            const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
+            await writer.write(encoder.encode(`data: ${evt}\n\n`));
+            await new Promise((resolve) => setTimeout(resolve, 30));
+          }
         }
-
-        // Append final conversation record
-        await stub.fetch('https://session/append', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
-        });
-
-        // Send final full content for fallback clients
-        await writer.write(
-          encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
-        );
       }
 
-      // Signal done for streaming path as well
+      // 4. Append final reply to session
+      await stub.fetch('https://session/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'assistant', content: fullReply, session_id: sessionId }),
+      });
+
+      // 5. Send done event
+      await writer.write(
+        encoder.encode(`data: ${JSON.stringify({ content: fullReply, session_id: sessionId, done: true })}\n\n`)
+      );
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } catch (error) {
       console.error('Streaming error', error);
