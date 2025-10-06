@@ -5,9 +5,42 @@ test.describe('EPIR AI Assistant E2E', () => {
 
   test.beforeEach(async ({ page }) => {
     // Navigate to a page expected to include the TAE block
-    await page.goto(shopUrl);
-    // Ensure assistant script loaded
-    await expect(page.locator('#epir-assistant-section')).toBeVisible();
+    await page.goto(shopUrl, { waitUntil: 'networkidle' });
+
+    // Dismiss cookie consent / overlays (try multiple strategies)
+    const cookieSelectors = [
+      'button:has-text("Zaakceptuj")',
+      'button:has-text("Akceptuj")',
+      'button:has-text("Akceptuj wszystkie")',
+      'button:has-text("Accept")',
+      'button:has-text("Agree")',
+      'button.cookie-accept',
+      '.cookie-consent button',
+      '.cookie-banner button',
+    ];
+
+    for (const sel of cookieSelectors) {
+      const btn = page.locator(sel).first();
+      if (await btn.isVisible().catch(() => false)) {
+        try {
+          await btn.click({ timeout: 2000 });
+          break;
+        } catch (e) {
+          // continue trying other selectors
+        }
+      }
+    }
+
+    // Fallback: remove any modal/alertdialog elements that may block the UI
+    await page.evaluate(() => {
+      try {
+        document.querySelectorAll('[role="alertdialog"], .cookie-consent, .cookie-banner, #onetrust-consent-banner').forEach(el => el.remove());
+      } catch (e) {}
+    });
+
+    // Ensure assistant script loaded and visible (increase timeout for live)
+    const assistantLocator = page.locator('#epir-assistant-section, .epir-assistant');
+    await expect(assistantLocator).toBeVisible({ timeout: 20000 });
   });
 
   test('Basic chat flow - creates user and assistant messages and finalizes', async ({ page }) => {
@@ -28,24 +61,27 @@ test.describe('EPIR AI Assistant E2E', () => {
   });
 
   test('Streaming SSE tokens arrive and are appended incrementally', async ({ page }) => {
-    // Intercept EventSource or fetch where SSE is established to simulate token streaming
-    await page.addInitScript(() => {
-      // Override EventSource to feed tokens
-      const OriginalEventSource = (window as any).EventSource;
-      (window as any).EventSource = function (url: string) {
-        const es = new OriginalEventSource(url);
-        setTimeout(() => {
-          es.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ delta: 'EPIR ' }) }));
-        }, 100);
-        setTimeout(() => {
-          es.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ delta: 'jubilerka' }) }));
-        }, 300);
-        setTimeout(() => {
-          es.dispatchEvent(new MessageEvent('message', { data: '[DONE]' }));
-        }, 600);
-        return es;
-      } as any;
-    });
+    const integration = process.env.INTEGRATION === '1';
+    // If not running integration tests, mock EventSource to simulate token streaming
+    if (!integration) {
+      await page.addInitScript(() => {
+        // Override EventSource to feed tokens
+        const OriginalEventSource = (window as any).EventSource;
+        (window as any).EventSource = function (url: string) {
+          const es = new OriginalEventSource(url);
+          setTimeout(() => {
+            es.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ delta: 'EPIR ' }) }));
+          }, 100);
+          setTimeout(() => {
+            es.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ delta: 'jubilerka' }) }));
+          }, 300);
+          setTimeout(() => {
+            es.dispatchEvent(new MessageEvent('message', { data: '[DONE]' }));
+          }, 600);
+          return es;
+        } as any;
+      });
+    }
 
     const input = page.locator('#assistant-input');
     const send = page.locator('#assistant-send-button');
@@ -58,25 +94,33 @@ test.describe('EPIR AI Assistant E2E', () => {
   });
 
   test('HMAC 401 handling - shows error message', async ({ page }) => {
-    // Mock fetch for /apps/epir-assistant/chat to return 401
-    await page.route('**/apps/epir-assistant/chat', (route) => {
-      route.fulfill({ status: 401, body: 'Unauthorized' });
-    });
+    const integration = process.env.INTEGRATION === '1';
+    // Only mock HMAC endpoint in non-integration mode
+    if (!integration) {
+      // Mock fetch for /apps/epir-assistant/chat to return 401
+      await page.route('**/apps/epir-assistant/chat', (route) => {
+        route.fulfill({ status: 401, body: 'Unauthorized' });
+      });
+    }
 
     await page.fill('#assistant-input', 'Test HMAC');
     await page.click('#assistant-send-button');
 
-    await expect(page.locator('.assistant-status')).toContainText(/Unauthorized|błąd|Przepraszam/i, { timeout: 5000 });
+    // In integration mode, the worker will handle and return a real status; we assert for presence of an error message
+    await expect(page.locator('.assistant-status')).toContainText(/Unauthorized|błąd|Przepraszam/i, { timeout: 10000 });
   });
 
   test('Session persistence and end → conversation saved to DB (simulated)', async ({ page }) => {
-    // Simulate DO history and D1 save by stubbing the DO endpoints
-    await page.route('https://session/append', (r) => r.fulfill({ status: 200, body: 'ok' }));
-    await page.route('https://session/history', (r) => r.fulfill({ status: 200, body: '[]' }));
+    const integration = process.env.INTEGRATION === '1';
+    // In mock mode, stub the DO endpoints. In integration mode, rely on live worker and just assert UI behaviour.
+    if (!integration) {
+      await page.route('https://session/append', (r) => r.fulfill({ status: 200, body: 'ok' }));
+      await page.route('https://session/history', (r) => r.fulfill({ status: 200, body: '[]' }));
+    }
 
     await page.fill('#assistant-input', 'Historia test');
     await page.click('#assistant-send-button');
 
-    await expect(page.locator('.msg.msg-user')).toHaveCount(1, { timeout: 3000 });
+    await expect(page.locator('.msg.msg-user')).toHaveCount(1, { timeout: 5000 });
   });
 });
