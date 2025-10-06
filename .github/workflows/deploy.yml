@@ -62,7 +62,12 @@ jobs:
         run: npm ci
 
       - name: Deploy to Cloudflare Workers
-        run: npx wrangler deploy
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            npx wrangler deploy --env staging
+          else
+            npx wrangler deploy
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
@@ -70,7 +75,12 @@ jobs:
         run: |
           echo "✅ Worker deployed successfully!"
           echo "📦 Tag: ${{ github.ref_name }}"
-          echo "🔗 URL: https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev"
+          echo "🌍 Environment: ${{ github.event.inputs.environment || 'production' }}"
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            echo "🔗 URL: https://epir-art-jewellery-worker-staging.krzysztofdzugaj.workers.dev"
+          else
+            echo "🔗 URL: https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev"
+          fi
 
   deploy-shopify:
     runs-on: ubuntu-latest

@@ -37,3 +37,15 @@ binding = "AI"
 [vars]
 ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
 
+# Staging environment
+[env.staging]
+name = "epir-art-jewellery-worker-staging"
+workers_dev = true
+
+[env.staging.vars]
+ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
+
+# Production environment (default configuration above)
+# Deploy to production with: wrangler deploy
+# Deploy to staging with: wrangler deploy --env staging
+

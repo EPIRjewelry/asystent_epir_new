@@ -3,6 +3,18 @@
 [![CI](https://github.com/EPIRjewelry/asystent_epir_new/actions/workflows/ci.yml/badge.svg)](https://github.com/EPIRjewelry/asystent_epir_new/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
+Inteligentny asystent zakupowy oparty na Cloudflare Workers (z D1/KV/Durable Objects) + Theme App Extension (TAE). Zapewnia streamowany chat z AI (Groq, Workers AI, opcjonalnie RAG z Vectorize) oraz zintegrowane narzędzia (pozyskiwanie produktów z Shopify, polecenia shop policy).
+
+## 🎉 Recent Updates (2025-10-06)
+
+**✅ FIXED: App Proxy Integration & Duplicate Workers Issue**
+- Corrected TAE endpoint: `/apps/epir-assistant/chat` → `/apps/assistant/chat`
+- Added staging environment configuration
+- Enhanced GitHub Actions workflow
+- Created comprehensive deployment documentation
+
+📚 **New Documentation**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | [FIX_SUMMARY.md](./FIX_SUMMARY.md)
+
 Krótki opis:
 - Theme App Extension (widget) w `extensions/asystent-klienta`
 - Backend Cloudflare Worker + Durable Object + D1 w `worker/`
