@@ -221,16 +221,81 @@ import type { VectorizeIndex } from './rag';
 
 ## Krok 5: Populate Vectorize Index
 
+**Nowe! Ulepszone z API 2024-10 i retry logic** 🚀
+
+### A. Przygotuj tokeny Shopify
+
+#### Storefront API Token (wymagany)
+1. Shopify Admin → Apps → Develop apps
+2. Create app lub wybierz istniejącą
+3. API credentials → Storefront API access tokens → Create token
+4. Skopiuj token
+
+#### Admin API Token (opcjonalny - dla metafields)
+1. Shopify Admin → Apps → Develop apps
+2. Configuration → Admin API scopes
+3. Zaznacz: `read_products`, `read_metafields`
+4. Install app
+5. API credentials → Admin API access token → Reveal
+6. Skopiuj token
+
+### B. Uruchom skrypt populacji
+
 ```bash
 # W głównym katalogu projektu
 export CLOUDFLARE_ACCOUNT_ID="your_account_id"
 export CLOUDFLARE_API_TOKEN="your_api_token"
 export SHOP_DOMAIN="epir-art-silver-jewellery.myshopify.com"
 export SHOPIFY_STOREFRONT_TOKEN="your_storefront_token"
+export SHOPIFY_ADMIN_TOKEN="your_admin_token"  # Opcjonalny
 
 # Uruchom skrypt
 node scripts/populate-vectorize.ts
 ```
+
+### C. Oczekiwany output
+
+```
+🚀 Starting Vectorize population...
+📍 Using Shopify API version: 2024-10
+⚙️  Rate limit: 100ms between requests
+🔄 Max retries: 3 with exponential backoff
+
+📄 Fetching shop policies...
+  📡 Fetching from: https://epir-art-silver-jewellery.myshopify.com/api/2024-10/graphql.json
+  ✓ Fetched 4 policies
+
+🛍️  Fetching products...
+  → Using Admin API (with metafields support)
+  📡 Fetching from Admin API: https://epir-art-silver-jewellery.myshopify.com/admin/api/2024-10/graphql.json
+  ✓ Fetched 50 products with metafields
+
+❓ Loading FAQs...
+  ✓ Loaded 10 FAQs
+
+📊 Total documents: 64
+
+🧮 Generating embeddings...
+  ✓ Generated 64 embeddings
+
+📤 Inserting vectors into Vectorize...
+  Inserting batch 1/1...
+✅ Done! Vectorize index populated successfully.
+
+📈 Summary:
+   - Total vectors indexed: 64
+   - API version used: 2024-10
+   - Rate limiting: 100ms per request
+```
+
+### D. Nowe funkcje w skrypcie
+
+✅ **API 2024-10** - Najnowsza stabilna wersja  
+✅ **Retry z exponential backoff** - 3 retries dla błędów 429/5xx  
+✅ **Rate limiting** - 100ms między requestami  
+✅ **Admin API** - Pobieranie metafields (jeśli token dostępny)  
+✅ **Fallback chain** - Admin API → Storefront API  
+✅ **Detailowe błędy** - Precyzyjne komunikaty dla 401/429/GraphQL errors  
 
 **Uwaga**: Skrypt używa dummy embeddings. Przed uruchomieniem, zaimplementuj prawdziwe embeddings w funkcji `generateEmbedding()` (Opcja A lub B z Kroku 2).
 

@@ -50,6 +50,7 @@ export interface Env {
   ALLOWED_ORIGIN?: string;
   AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
+  SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
   SHOPIFY_APP_SECRET?: string;
   GROQ_API_KEY?: string;
@@ -337,7 +338,12 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   
   // Check if it's a product query - use MCP catalog search
   if (isProductQuery(payload.message) && env.SHOP_DOMAIN) {
-    const productContext = await searchProductCatalogWithMCP(payload.message, env.SHOP_DOMAIN);
+    const productContext = await searchProductCatalogWithMCP(
+      payload.message, 
+      env.SHOP_DOMAIN,
+      env.SHOPIFY_ADMIN_TOKEN,
+      env.SHOPIFY_STOREFRONT_TOKEN
+    );
     if (productContext) {
       ragContext = productContext;
     }
@@ -412,7 +418,12 @@ function streamAssistantResponse(
       
       // Check if it's a product query - use MCP catalog search
       if (isProductQuery(userMessage) && env.SHOP_DOMAIN) {
-        const productContext = await searchProductCatalogWithMCP(userMessage, env.SHOP_DOMAIN);
+        const productContext = await searchProductCatalogWithMCP(
+          userMessage, 
+          env.SHOP_DOMAIN,
+          env.SHOPIFY_ADMIN_TOKEN,
+          env.SHOPIFY_STOREFRONT_TOKEN
+        );
         if (productContext) {
           ragContext = productContext;
         }
