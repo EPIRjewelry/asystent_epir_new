@@ -3,6 +3,7 @@
 // Also supports MCP (Model Context Protocol) as primary source with Vectorize fallback
 
 import { mcpCatalogSearch, mcpSearchPoliciesAndFaqs, type MCPProduct } from './mcp';
+import { fetchProductsForRAG } from './graphql';
 
 export interface VectorizeMatch {
   id: string;
@@ -184,19 +185,24 @@ export async function searchShopPoliciesAndFaqsWithMCP(
 }
 
 /**
- * Search product catalog with MCP
+ * Search product catalog with MCP and GraphQL fallback
  * @param query - User query text
- * @param shopDomain - Shopify shop domain (for MCP)
- * @returns Formatted MCP product context or empty string
+ * @param shopDomain - Shopify shop domain (for MCP and GraphQL)
+ * @param adminToken - Shopify Admin API token (for GraphQL with metafields)
+ * @param storefrontToken - Shopify Storefront API token (for GraphQL fallback)
+ * @returns Formatted product context or empty string
  */
 export async function searchProductCatalogWithMCP(
   query: string,
-  shopDomain: string | undefined
+  shopDomain: string | undefined,
+  adminToken?: string,
+  storefrontToken?: string
 ): Promise<string> {
   if (!shopDomain) {
     return '';
   }
 
+  // Try MCP first
   try {
     const products = await mcpCatalogSearch(shopDomain, query, 'fair trade luxury');
     
@@ -204,7 +210,32 @@ export async function searchProductCatalogWithMCP(
       return formatMcpProductsForPrompt(products, query);
     }
   } catch (error) {
-    console.warn('MCP catalog search failed:', error);
+    console.warn('MCP catalog search failed, trying GraphQL:', error);
+  }
+
+  // Fallback to GraphQL
+  try {
+    const products = await fetchProductsForRAG(shopDomain, adminToken, storefrontToken, query);
+    
+    if (products && products.length > 0) {
+      const formatted = products.map((p, idx) => {
+        const variant = p.variants?.edges?.[0]?.node;
+        const price = variant?.price?.amount 
+          ? `${variant.price.amount} ${variant.price.currencyCode || ''}`
+          : variant?.price || 'Cena niedostępna';
+        
+        const metafields = p.metafields?.edges?.map((e: any) => e.node) || [];
+        const metaInfo = metafields.length > 0 
+          ? ` | Metafields: ${metafields.map((m: any) => `${m.key}=${m.value}`).join(', ')}`
+          : '';
+        
+        return `[Produkt ${idx + 1}] ${p.title} | Cena: ${price} | Opis: ${p.description || 'Brak'}${metaInfo}`;
+      }).join('\n\n');
+      
+      return `Produkty znalezione dla zapytania "${query}":\n${formatted}\n\nPolec odpowiednie produkty używając powyższych informacji.`;
+    }
+  } catch (error) {
+    console.warn('GraphQL product search failed:', error);
   }
 
   return '';
