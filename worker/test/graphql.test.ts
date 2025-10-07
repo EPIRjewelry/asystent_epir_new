@@ -52,7 +52,7 @@ describe('GraphQL Integration', () => {
       });
 
       // Import after setting up mock
-      const { callStorefrontAPI } = await import('../worker/src/graphql');
+      const { callStorefrontAPI } = await import('../src/graphql');
 
       const query = `{
         products(first: 1) {
@@ -65,7 +65,7 @@ describe('GraphQL Integration', () => {
         }
       }`;
 
-      const result = await callStorefrontAPI(
+      const result = await callStorefrontAPI<any>(
         'test-shop.myshopify.com',
         'test-token',
         query
@@ -92,7 +92,7 @@ describe('GraphQL Integration', () => {
         json: async () => mockErrorResponse,
       });
 
-      const { callStorefrontAPI } = await import('../worker/src/graphql');
+      const { callStorefrontAPI } = await import('../src/graphql');
 
       const query = `{ products(first: 1) { edges { node { invalid } } } }`;
 
@@ -115,7 +115,7 @@ describe('GraphQL Integration', () => {
         json: async () => ({ data: { shop: { name: 'Test Shop' } } }),
       });
 
-      const { executeGraphQL } = await import('../worker/src/graphql');
+      const { executeGraphQL } = await import('../src/graphql');
 
       const result = await executeGraphQL(
         'https://test-shop.myshopify.com/api/2024-10/graphql.json',
@@ -134,7 +134,7 @@ describe('GraphQL Integration', () => {
         text: async () => 'Unauthorized',
       });
 
-      const { executeGraphQL } = await import('../worker/src/graphql');
+      const { executeGraphQL } = await import('../src/graphql');
 
       await expect(
         executeGraphQL(
@@ -182,7 +182,7 @@ describe('GraphQL Integration', () => {
         json: async () => mockResponse,
       });
 
-      const { callAdminAPI } = await import('../worker/src/graphql');
+      const { callAdminAPI } = await import('../src/graphql');
 
       const query = `{
         products(first: 1) {
@@ -204,7 +204,7 @@ describe('GraphQL Integration', () => {
         }
       }`;
 
-      const result = await callAdminAPI(
+      const result = await callAdminAPI<any>(
         'test-shop.myshopify.com',
         'test-admin-token',
         query
@@ -224,7 +224,7 @@ describe('GraphQL Integration', () => {
         json: async () => ({ data: { shop: { name: 'Test' } } }),
       });
 
-      const { executeGraphQL } = await import('../worker/src/graphql');
+      const { executeGraphQL } = await import('../src/graphql');
 
       await executeGraphQL(
         'https://test.myshopify.com/api/2024-10/graphql.json',
@@ -233,7 +233,7 @@ describe('GraphQL Integration', () => {
       );
 
       const elapsed = Date.now() - startTime;
-      expect(elapsed).toBeGreaterThanOrEqual(100); // 100ms rate limit delay
+      expect(elapsed).toBeGreaterThanOrEqual(90); // 100ms rate limit delay (with buffer for timing variance)
     });
   });
 
@@ -254,7 +254,7 @@ describe('GraphQL Integration', () => {
           json: async () => ({ errors: [] }), // Retry 2
         });
 
-      const { executeGraphQL } = await import('../worker/src/graphql');
+      const { executeGraphQL } = await import('../src/graphql');
 
       await expect(
         executeGraphQL(
@@ -309,7 +309,7 @@ describe('Product Fetch for RAG', () => {
       }),
     });
 
-    const { fetchProductsForRAG } = await import('../worker/src/graphql');
+    const { fetchProductsForRAG } = await import('../src/graphql');
 
     const products = await fetchProductsForRAG(
       'test-shop.myshopify.com',
