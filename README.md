@@ -5,15 +5,24 @@
 
 Inteligentny asystent zakupowy oparty na Cloudflare Workers (z D1/KV/Durable Objects) + Theme App Extension (TAE). Zapewnia streamowany chat z AI (Groq, Workers AI, opcjonalnie RAG z Vectorize) oraz zintegrowane narzędzia (pozyskiwanie produktów z Shopify, polecenia shop policy).
 
-## 🎉 Recent Updates (2025-10-06)
+## 🎉 Recent Updates (2025-10-07)
 
-**✅ FIXED: App Proxy Integration & Duplicate Workers Issue**
+**✅ FIXED: CI/CD Pipeline - TypeScript & Dependencies**
+- Added missing TypeScript dependency to worker/package.json
+- Fixed import paths in test files (../worker/src → ../src)
+- Enhanced tsconfig.json with proper module resolution
+- All 69 tests passing, type checking successful
+- CI pipeline now fully operational
+
+📚 **New Documentation**: [CI_CD_SETUP.md](./CI_CD_SETUP.md) | [CI_FIX_SUMMARY.md](./CI_FIX_SUMMARY.md)
+
+**Previous Update (2025-10-06)**
+- ✅ Fixed App Proxy Integration & Duplicate Workers Issue
 - Corrected TAE endpoint: `/apps/epir-assistant/chat` → `/apps/assistant/chat`
 - Added staging environment configuration
 - Enhanced GitHub Actions workflow
-- Created comprehensive deployment documentation
 
-📚 **New Documentation**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | [FIX_SUMMARY.md](./FIX_SUMMARY.md)
+📚 **Documentation**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | [FIX_SUMMARY.md](./FIX_SUMMARY.md)
 
 Krótki opis:
 - Theme App Extension (widget) w `extensions/asystent-klienta`
