@@ -1,3 +1,8 @@
 node_modules/
 .ephemeral/
 backup_shopify_*/
+dist/
+*.log
+.DS_Store
+.wrangler/
+.dev.vars
