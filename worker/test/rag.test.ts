@@ -409,4 +409,267 @@ describe('RAG Module', () => {
       expect(result).toBe('');
     });
   });
+
+  describe('embedText', () => {
+    it('should generate embeddings using Workers AI', async () => {
+      const { embedText } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2, 0.3, 0.4]],
+          }),
+        },
+      };
+
+      const result = await embedText(mockEnv as any, 'test text');
+
+      expect(result).toBeInstanceOf(Float32Array);
+      expect(result.length).toBeGreaterThan(0);
+      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', {
+        text: ['test text'],
+      });
+    });
+
+    it('should convert number array to Float32Array', async () => {
+      const { embedText } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2, 0.3]],
+          }),
+        },
+      };
+
+      const result = await embedText(mockEnv as any, 'test');
+
+      expect(result).toBeInstanceOf(Float32Array);
+      expect(result.length).toBe(3);
+      // Float32Array precision is not exact, so we check approximate values
+      expect(Array.from(result)[0]).toBeCloseTo(0.1, 1);
+      expect(Array.from(result)[1]).toBeCloseTo(0.2, 1);
+      expect(Array.from(result)[2]).toBeCloseTo(0.3, 1);
+    });
+
+    it('should throw error when no embedding provider configured', async () => {
+      const { embedText } = await import('../src/rag');
+      
+      const mockEnv = {};
+
+      await expect(embedText(mockEnv as any, 'test')).rejects.toThrow(
+        'No embedding provider configured'
+      );
+    });
+
+    it('should handle errors gracefully', async () => {
+      const { embedText } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockRejectedValue(new Error('AI error')),
+        },
+      };
+
+      await expect(embedText(mockEnv as any, 'test')).rejects.toThrow('AI error');
+    });
+  });
+
+  describe('search', () => {
+    it('should perform semantic search and return ranked results', async () => {
+      const { search } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [Float32Array.from([0.1, 0.2, 0.3])],
+          }),
+        },
+        VECTOR_INDEX: {
+          query: vi.fn().mockResolvedValue({
+            matches: [
+              {
+                id: 'doc1',
+                score: 0.95,
+                metadata: { source: 'products', text: 'Sample product' },
+              },
+              {
+                id: 'doc2',
+                score: 0.88,
+                metadata: { source: 'faq', text: 'Sample FAQ' },
+              },
+            ],
+            count: 2,
+          }),
+        },
+      };
+
+      const results = await search(mockEnv as any, 'test query', 5);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].id).toBe('doc1');
+      expect(results[0].source).toBe('products');
+      expect(results[0].text).toBe('Sample product');
+      expect(results[0].score).toBe(0.95);
+      expect(results[1].id).toBe('doc2');
+      expect(results[1].score).toBe(0.88);
+      expect(mockEnv.VECTOR_INDEX.query).toHaveBeenCalled();
+    });
+
+    it('should throw error when VECTOR_INDEX not available', async () => {
+      const { search } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2]],
+          }),
+        },
+      };
+
+      await expect(search(mockEnv as any, 'test query')).rejects.toThrow(
+        'VECTOR_INDEX binding not available'
+      );
+    });
+
+    it('should respect topK parameter', async () => {
+      const { search } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2]],
+          }),
+        },
+        VECTOR_INDEX: {
+          query: vi.fn().mockResolvedValue({
+            matches: [],
+            count: 0,
+          }),
+        },
+      };
+
+      await search(mockEnv as any, 'test', 10);
+
+      expect(mockEnv.VECTOR_INDEX.query).toHaveBeenCalledWith(
+        expect.any(Float32Array),
+        { topK: 10 }
+      );
+    });
+  });
+
+  describe('upsertDocuments', () => {
+    it('should upsert documents with embeddings to vector index', async () => {
+      const { upsertDocuments } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2, 0.3]],
+          }),
+        },
+        VECTOR_INDEX: {
+          upsert: vi.fn().mockResolvedValue({ mutationId: 'test-mutation' }),
+        },
+      };
+
+      const docs = [
+        {
+          id: 'doc1',
+          source: 'products',
+          text: 'Sample product description',
+          metadata: { title: 'Product 1' },
+        },
+        {
+          id: 'doc2',
+          source: 'faq',
+          text: 'Sample FAQ answer',
+          metadata: { category: 'general' },
+        },
+      ];
+
+      await upsertDocuments(mockEnv as any, docs);
+
+      expect(mockEnv.AI.run).toHaveBeenCalledTimes(2);
+      expect(mockEnv.VECTOR_INDEX.upsert).toHaveBeenCalledTimes(1);
+      expect(mockEnv.VECTOR_INDEX.upsert).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'doc1',
+            values: expect.any(Float32Array),
+            metadata: expect.objectContaining({
+              source: 'products',
+              title: 'Product 1',
+            }),
+          }),
+          expect.objectContaining({
+            id: 'doc2',
+            values: expect.any(Float32Array),
+            metadata: expect.objectContaining({
+              source: 'faq',
+              category: 'general',
+            }),
+          }),
+        ])
+      );
+    });
+
+    it('should handle empty document array', async () => {
+      const { upsertDocuments } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: { run: vi.fn() },
+        VECTOR_INDEX: { upsert: vi.fn() },
+      };
+
+      await upsertDocuments(mockEnv as any, []);
+
+      expect(mockEnv.AI.run).not.toHaveBeenCalled();
+      expect(mockEnv.VECTOR_INDEX.upsert).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when VECTOR_INDEX not available', async () => {
+      const { upsertDocuments } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({ data: [[0.1]] }),
+        },
+      };
+
+      const docs = [{ id: 'doc1', source: 'test', text: 'test' }];
+
+      await expect(upsertDocuments(mockEnv as any, docs)).rejects.toThrow(
+        'VECTOR_INDEX binding not available'
+      );
+    });
+
+    it('should batch upserts for large document sets', async () => {
+      const { upsertDocuments } = await import('../src/rag');
+      
+      const mockEnv = {
+        AI: {
+          run: vi.fn().mockResolvedValue({
+            data: [[0.1, 0.2]],
+          }),
+        },
+        VECTOR_INDEX: {
+          upsert: vi.fn().mockResolvedValue({ mutationId: 'test' }),
+        },
+      };
+
+      // Create 150 documents (should be split into 2 batches)
+      const docs = Array.from({ length: 150 }, (_, i) => ({
+        id: `doc${i}`,
+        source: 'test',
+        text: `Document ${i}`,
+      }));
+
+      await upsertDocuments(mockEnv as any, docs);
+
+      // Should have called upsert twice (100 + 50)
+      expect(mockEnv.VECTOR_INDEX.upsert).toHaveBeenCalledTimes(2);
+      expect(mockEnv.AI.run).toHaveBeenCalledTimes(150);
+    });
+  });
 });
