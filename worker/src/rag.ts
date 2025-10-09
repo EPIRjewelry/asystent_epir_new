@@ -5,6 +5,17 @@
 import { mcpCatalogSearch, mcpSearchPoliciesAndFaqs, type MCPProduct } from './mcp';
 import { fetchProductsForRAG } from './graphql';
 
+export interface Document {
+  id: string;
+  source: string;
+  text: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SearchResult extends Document {
+  score: number;
+}
+
 export interface VectorizeMatch {
   id: string;
   score: number;
@@ -31,10 +42,149 @@ export interface VectorizeIndex {
     vector: number[] | Float32Array,
     options?: { topK?: number; filter?: Record<string, unknown> }
   ) => Promise<VectorizeQueryResult>;
+  insert: (vectors: Array<{
+    id: string;
+    values: number[] | Float32Array;
+    metadata?: Record<string, unknown>;
+  }>) => Promise<{ mutationId: string }>;
+  upsert: (vectors: Array<{
+    id: string;
+    values: number[] | Float32Array;
+    metadata?: Record<string, unknown>;
+  }>) => Promise<{ mutationId: string }>;
 }
 
 interface WorkersAI {
   run: (model: string, args: Record<string, unknown>) => Promise<any>;
+}
+
+export interface Env {
+  VECTOR_INDEX?: VectorizeIndex;
+  AI?: WorkersAI;
+  VECTORIZER_ENDPOINT?: string;
+  VECTORIZER_API_KEY?: string;
+}
+
+/**
+ * Generate embeddings for text using Workers AI or external API
+ * @param env - Environment bindings
+ * @param text - Text to embed
+ * @returns Float32Array embedding vector
+ */
+export async function embedText(env: Env, text: string): Promise<Float32Array> {
+  try {
+    // Prefer Workers AI if available
+    if (env.AI) {
+      const result = await env.AI.run('@cf/baai/bge-base-en-v1.5', {
+        text: [text],
+      });
+      const embedding = result.data[0];
+      return embedding instanceof Float32Array ? embedding : Float32Array.from(embedding);
+    }
+    
+    // Fallback to external vectorizer endpoint
+    if (env.VECTORIZER_ENDPOINT && env.VECTORIZER_API_KEY) {
+      const res = await fetch(env.VECTORIZER_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.VECTORIZER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: text }),
+      });
+      
+      if (!res.ok) {
+        throw new Error(`embedText failed: ${res.status} ${res.statusText}`);
+      }
+      
+      const json = await res.json() as { embedding: number[] };
+      return Float32Array.from(json.embedding);
+    }
+    
+    throw new Error('No embedding provider configured (AI or VECTORIZER_ENDPOINT required)');
+  } catch (err) {
+    console.error('embedText error:', err);
+    throw err;
+  }
+}
+
+/**
+ * Upsert documents to the vector index
+ * @param env - Environment bindings
+ * @param docs - Documents to upsert
+ */
+export async function upsertDocuments(env: Env, docs: Document[]): Promise<void> {
+  if (!env.VECTOR_INDEX) {
+    throw new Error('VECTOR_INDEX binding not available');
+  }
+  
+  if (docs.length === 0) {
+    console.log('No documents to upsert');
+    return;
+  }
+  
+  try {
+    const vectors = [];
+    
+    for (const doc of docs) {
+      const embedding = await embedText(env, doc.text);
+      vectors.push({
+        id: doc.id,
+        values: embedding,
+        metadata: {
+          source: doc.source,
+          text: doc.text.slice(0, 500), // Store truncated text in metadata
+          ...doc.metadata,
+        },
+      });
+    }
+    
+    // Upsert in batches of 100 (Vectorize limit)
+    const batchSize = 100;
+    for (let i = 0; i < vectors.length; i += batchSize) {
+      const batch = vectors.slice(i, i + batchSize);
+      await env.VECTOR_INDEX.upsert(batch);
+      console.log(`Upserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vectors.length / batchSize)}`);
+    }
+    
+    console.log(`Successfully upserted ${docs.length} documents`);
+  } catch (err) {
+    console.error('upsertDocuments error:', err);
+    throw err;
+  }
+}
+
+/**
+ * Search the vector index using semantic search
+ * @param env - Environment bindings
+ * @param query - Search query text
+ * @param topK - Number of top results to return (default: 5)
+ * @returns Array of search results with scores
+ */
+export async function search(env: Env, query: string, topK: number = 5): Promise<SearchResult[]> {
+  if (!env.VECTOR_INDEX) {
+    throw new Error('VECTOR_INDEX binding not available');
+  }
+  
+  try {
+    // Generate query embedding
+    const queryVector = await embedText(env, query);
+    
+    // Query vector index
+    const result = await env.VECTOR_INDEX.query(queryVector, { topK });
+    
+    // Format results
+    return result.matches.map(match => ({
+      id: match.id,
+      source: (match.metadata?.source as string) || 'unknown',
+      text: (match.metadata?.text as string) || '',
+      score: match.score,
+      metadata: match.metadata,
+    }));
+  } catch (err) {
+    console.error('search error:', err);
+    throw err;
+  }
 }
 
 /**
