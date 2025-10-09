@@ -171,6 +171,7 @@ export async function sendMessageToWorker(
         'Content-Type': 'application/json',
         Accept: 'text/event-stream, application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({
         message: text,
         session_id: (() => { try { return sessionStorage.getItem(sessionIdKey); } catch { return null; } })(),
@@ -231,3 +232,32 @@ export default {
   processSSEStream,
   sendMessageToWorker,
 };
+
+// DODANE: fix przeładowania strony (preventDefault) i wywołanie /apps/assistant/chat
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const form = document.querySelector('#chat-form');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const input = document.querySelector('#message-input') as HTMLInputElement | null;
+      const messagesEl = document.querySelector('#messages') as HTMLElement | null;
+      const text = input?.value?.trim() || '';
+      if (!text || !messagesEl) return;
+      input.value = '';
+      const controller = new AbortController();
+      const setLoading = (b: boolean) => {
+        if (!messagesEl) return;
+        if (b) messagesEl.classList.add('is-loading'); else messagesEl.classList.remove('is-loading');
+      };
+      try {
+        await sendMessageToWorker(text, '/apps/assistant/chat', 'epir-assistant-session', messagesEl, setLoading, controller);
+      } catch (err) {
+        console.error('Fetch error:', err);
+      }
+    });
+  } catch (e) {
+    console.error('assistant.js DOMContentLoaded submit handler error:', e);
+  }
+});
