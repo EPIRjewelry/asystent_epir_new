@@ -1,12 +1,14 @@
-# PRIVATE APP DOGMA — Asystent-EPIR-Jewellery
+# PRIVATE APP DOGMA — Agent EPIR Art Jewellery
 
 To jest oficjalne, niezmienne oświadczenie dotyczące tej aplikacji i jej przeznaczenia.
 
-- Nazwa aplikacji: Asystent-EPIR-Jewellery
-- Client ID: 74ac36ea2ce7f727f5ef7874a9b1697f
-- Przeznaczenie: APLIKACJA PRYWATNA — działa wyłącznie na sklepie:
+- Nazwa aplikacji: **Agent EPIR Art Jewellery**
+- Client ID: `abbb8988e6c96ba5ca0c3545de0d3491`
+- Przeznaczenie: **APLIKACJA PRYWATNA** — działa wyłącznie na sklepie:
   `epir-art-silver-jewellery.myshopify.com`
-- Organizacja partnerów: EPIR sp. z o.o.
+- Custom Domain: `epirbizuteria.pl`
+- Organizacja partnerów: **EPIR Art Jewellery&Gemstone**
+- Data migracji: 2025-10-10
 
 Jeżeli aplikacja zostanie zainstalowana na innym sklepie lub powiązana z inną organizacją, to uznajemy to za nieautoryzowane użycie.
 
