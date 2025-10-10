@@ -127,6 +127,22 @@ Repozytorium zawiera prosty workflow CI w `.github/workflows/ci.yml`, który uru
 
 Jeżeli chcesz, mogę rozbudować CI o testy (Vitest), lint (ESLint) oraz deploy Workera przy tagu `v*`.
 
+### 🔍 Encoding Check Workflow
+
+Automatyczny workflow sprawdza poprawność kodowania plików (UTF-8 bez BOM) przy każdym push/PR.
+
+**Jeśli build Cloudflare Worker'a failuje z błędem `Unexpected "\xff"` (UTF-16 / bad encoding):**
+
+```bash
+# Sprawdź kodowanie (dry-run)
+npx tsx worker/scripts/remove-bom.ts --dry-run
+
+# Napraw problemy z kodowaniem (tworzy backupy z timestampem)
+npx tsx worker/scripts/remove-bom.ts --apply
+```
+
+Więcej informacji: [worker/scripts/README.md](./worker/scripts/README.md)
+
 ## Nowe zdalne repo
 
 Projekt został skopiowany do nowego repozytorium: https://github.com/EPIRjewelry/asystent_epir_new
