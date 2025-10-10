@@ -1,16 +1,4 @@
 /// <reference types="@cloudflare/workers-types" />
-<<<<<<< HEAD
-import { verifyAppProxyHmac } from './auth';
-import { 
-  searchShopPoliciesAndFaqs, 
-  searchShopPoliciesAndFaqsWithMCP,
-  searchProductCatalogWithMCP,
-  formatRagContextForPrompt, 
-  type VectorizeIndex 
-} from './rag';
-import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
-import { isProductQuery, isCartQuery, mcpGetCart, mcpUpdateCart } from './mcp';
-=======
 import { verifyAppProxyHmac, replayCheck } from './security';
 import {
   searchShopPoliciesAndFaqs,
@@ -22,7 +10,6 @@ import {
 import { isProductQuery } from './mcp';
 import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
 import { handleMcpRequest } from './mcp_server';
->>>>>>> feat/rag-backend-setup
 
 type ChatRole = 'user' | 'assistant';
 
@@ -61,19 +48,12 @@ export interface Env {
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
   VECTOR_INDEX?: VectorizeIndex;
-<<<<<<< HEAD
-=======
   SHOPIFY_APP_SECRET: string;
->>>>>>> feat/rag-backend-setup
   ALLOWED_ORIGIN?: string;
   AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
   SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
-<<<<<<< HEAD
-  SHOPIFY_APP_SECRET?: string;
-=======
->>>>>>> feat/rag-backend-setup
   GROQ_API_KEY?: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
 }
@@ -108,7 +88,7 @@ function parseChatRequestBody(input: unknown): ChatRequestBody | null {
   const maybe = input as Record<string, unknown>;
   if (!isNonEmptyString(maybe.message)) return null;
   const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
-  // Uwaga: domyślnie stream = false, aby nie włączać SSE bez jawnego żądania
+  // Uwaga: domy┼Ťlnie stream = false, aby nie w┼é─ůcza─ç SSE bez jawnego ┼╝─ůdania
   const stream = typeof maybe.stream === 'boolean' ? maybe.stream : false;
   return {
     message: String(maybe.message),
@@ -275,7 +255,7 @@ async function generateAIResponse(history: HistoryEntry[], userMessage: string, 
   const messages = [
     {
       role: 'system',
-      content: 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+      content: 'Jeste┼Ť pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
     },
     ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
     { role: 'user' as const, content: userMessage },
@@ -295,7 +275,7 @@ async function generateAIResponse(history: HistoryEntry[], userMessage: string, 
     return response.response.trim();
   }
 
-  return 'Przepraszam, nie udało mi się wygenerować odpowiedzi. Spróbuj ponownie.';
+  return 'Przepraszam, nie uda┼éo mi si─Ö wygenerowa─ç odpowiedzi. Spr├│buj ponownie.';
 }
 
 /**
@@ -308,7 +288,7 @@ async function generateAIResponseStream(history: HistoryEntry[], userMessage: st
   const messages = [
     {
       role: 'system',
-      content: 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+      content: 'Jeste┼Ť pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
     },
     ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
     { role: 'user' as const, content: userMessage },
@@ -594,7 +574,7 @@ export default {
       return new Response('ok', { status: 200, headers: cors(env) });
     }
 
-    // [NOWE] Globalny strażnik HMAC dla App Proxy: wszystkie POST-y pod /apps/assistant/*
+    // [NOWE] Globalny stra┼╝nik HMAC dla App Proxy: wszystkie POST-y pod /apps/assistant/*
     if (url.pathname.startsWith('/apps/assistant/') && request.method === 'POST') {
       if (!env.SHOPIFY_APP_SECRET) {
         return new Response('Server misconfigured', { status: 500, headers: cors(env) });
@@ -605,7 +585,7 @@ export default {
         return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
       }
 
-      // [NOWE] Replay protection: sprawdź czy signature nie była już użyta
+      // [NOWE] Replay protection: sprawd┼║ czy signature nie by┼éa ju┼╝ u┼╝yta
       const signature = url.searchParams.get('signature') ?? request.headers.get('x-shopify-hmac-sha256') ?? '';
       const timestamp = url.searchParams.get('timestamp') ?? '';
       if (signature && timestamp) {
@@ -624,12 +604,12 @@ export default {
       return handleChat(request, env);
     }
 
-    // (opcjonalnie) lokalny endpoint bez App Proxy, np. do testów
+    // (opcjonalnie) lokalny endpoint bez App Proxy, np. do test├│w
     if (url.pathname === '/chat' && request.method === 'POST') {
       return handleChat(request, env);
     }
 
-    // MCP server (JSON-RPC 2.0) – narzędzia Shopify
+    // MCP server (JSON-RPC 2.0) ÔÇô narz─Ödzia Shopify
     if (request.method === 'POST' && (url.pathname === '/mcp/tools/call' || url.pathname === '/apps/assistant/mcp')) {
       return handleMcpRequest(request, env);
     }
