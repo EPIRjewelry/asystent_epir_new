@@ -1,0 +1,81 @@
+name: Audit (Non-invasive)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    concurrency:
+      group: audit-${{ github.head_ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure PR is non-invasive (only .github/ changes)
+        id: guard
+        run: |
+          git fetch --depth=1 origin ${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          echo "$CHANGED"
+          # If any changed file is outside .github/, fail the job to enforce non-invasive policy
+          if [ -n "$CHANGED" ] && echo "$CHANGED" | grep -vE '^\.github/' ; then
+            echo "ERROR: PR modifies files outside .github/:"
+            echo "$CHANGED"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check (no emit) [skip if no tsconfig]
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          else
+            echo "No tsconfig.json in worker/, skipping tsc"
+          fi
+
+      - name: Unit tests (if configured)
+        run: |
+          if npm run | grep -q " test"; then
+            npm test --silent
+          else
+            echo "No test script found in package.json, skipping tests"
+          fi
+
+      - name: Lint (if configured)
+        run: |
+          if npm run | grep -q " lint"; then
+            npm run lint
+          else
+            echo "No lint script found in package.json, skipping lint"
+          fi
+
+      - name: Security audit (report-only)
+        run: |
+          npm audit --audit-level=high || true
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-artifacts
+          path: |
+            worker/test-results || true
+            worker/coverage || true
+            worker/npm-debug.log || true
