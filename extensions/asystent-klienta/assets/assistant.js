@@ -211,7 +211,7 @@ export async function sendMessageToWorker(
         try { sessionStorage.setItem(sessionIdKey, data.session_id); } catch {}
       }
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('BĹ‚Ä…d czatu:', err);
     const safeMsg = err instanceof Error ? err.message : 'Nieznany bĹ‚Ä…d.';
     const finalText = accumulated.length > 0 ? `${accumulated} (BĹ‚Ä…d: ${safeMsg})` : 'Przepraszam, wystÄ…piĹ‚ bĹ‚Ä…d. SprĂłbuj ponownie.';
