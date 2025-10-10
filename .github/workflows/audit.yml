@@ -1,0 +1,47 @@
+name: Audit (Non-invasive)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript check (no emit)
+        shell: bash
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          else
+            echo "No tsconfig.json, skipping tsc"
+          fi
+
+      - name: Unit tests (Vitest/jest via npm test)
+        run: npm test --silent -- --run
+
+      - name: Lint (if configured locally)
+        shell: bash
+        run: |
+          if [ -f "node_modules/.bin/eslint" ]; then
+            npx eslint . --max-warnings=0
+          else
+            echo "ESLint not installed, skipping"
+          fi
+
+      - name: Security audit (report-only for high+)
+        run: npm audit --audit-level=high || true
