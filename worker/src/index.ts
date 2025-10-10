@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+<<<<<<< HEAD
 import { verifyAppProxyHmac } from './auth';
 import { 
   searchShopPoliciesAndFaqs, 
@@ -9,6 +10,19 @@ import {
 } from './rag';
 import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
 import { isProductQuery, isCartQuery, mcpGetCart, mcpUpdateCart } from './mcp';
+=======
+import { verifyAppProxyHmac, replayCheck } from './security';
+import {
+  searchShopPoliciesAndFaqs,
+  searchShopPoliciesAndFaqsWithMCP,
+  searchProductCatalogWithMCP,
+  formatRagContextForPrompt,
+  type VectorizeIndex
+} from './rag';
+import { isProductQuery } from './mcp';
+import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
+import { handleMcpRequest } from './mcp_server';
+>>>>>>> feat/rag-backend-setup
 
 type ChatRole = 'user' | 'assistant';
 
@@ -47,12 +61,19 @@ export interface Env {
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
   VECTOR_INDEX?: VectorizeIndex;
+<<<<<<< HEAD
+=======
+  SHOPIFY_APP_SECRET: string;
+>>>>>>> feat/rag-backend-setup
   ALLOWED_ORIGIN?: string;
   AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
   SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
+<<<<<<< HEAD
   SHOPIFY_APP_SECRET?: string;
+=======
+>>>>>>> feat/rag-backend-setup
   GROQ_API_KEY?: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
 }
@@ -87,7 +108,8 @@ function parseChatRequestBody(input: unknown): ChatRequestBody | null {
   const maybe = input as Record<string, unknown>;
   if (!isNonEmptyString(maybe.message)) return null;
   const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
-  const stream = typeof maybe.stream === 'boolean' ? maybe.stream : true;
+  // Uwaga: domyślnie stream = false, aby nie włączać SSE bez jawnego żądania
+  const stream = typeof maybe.stream === 'boolean' ? maybe.stream : false;
   return {
     message: String(maybe.message),
     session_id: sessionId,
@@ -173,6 +195,23 @@ export class SessionDO {
       const sessionId = payload?.session_id ?? 'unknown';
       await this.end(sessionId);
       return new Response('ended');
+    }
+
+    if (method === 'POST' && pathname.endsWith('/replay-check')) {
+      const payload = await request.json().catch(() => null);
+      const p = payload as { signature?: string; timestamp?: string } | null;
+      if (!p || !p.signature || !p.timestamp) {
+        return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400 });
+      }
+      const { signature, timestamp } = p;
+      const key = `replay:${signature}`;
+      const used = await this.state.storage.get<boolean>(key);
+      if (used) {
+        return new Response(JSON.stringify({ used: true }), { status: 200 });
+      }
+      // Mark as used
+      await this.state.storage.put(key, true);
+      return new Response(JSON.stringify({ used: false }), { status: 200 });
     }
 
     return new Response('Not Found', { status: 404 });
@@ -550,30 +589,68 @@ export default {
 
     const url = new URL(request.url);
 
-    // Lightweight health endpoints for quick availability checks (no HMAC required)
+    // Healthchecks
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/ping' || url.pathname === '/health')) {
       return new Response('ok', { status: 200, headers: cors(env) });
     }
 
-    if (url.pathname.endsWith('/chat')) {
-      const bypassEnabled = env.DEV_BYPASS === '1';
-      const bypassHeader = request.headers.get('x-dev-bypass') === '1';
-      if (!(bypassEnabled && bypassHeader)) {
-        if (!env.SHOPIFY_APP_SECRET) {
-          return new Response('Server misconfigured', { status: 500, headers: cors(env) });
-        }
-        const cloned = new Request(request);
-        const valid = await verifyAppProxyHmac(cloned, env.SHOPIFY_APP_SECRET);
-        if (!valid) {
-          return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+    // [NOWE] Globalny strażnik HMAC dla App Proxy: wszystkie POST-y pod /apps/assistant/*
+    if (url.pathname.startsWith('/apps/assistant/') && request.method === 'POST') {
+      if (!env.SHOPIFY_APP_SECRET) {
+        return new Response('Server misconfigured', { status: 500, headers: cors(env) });
+      }
+      const result = await verifyAppProxyHmac(request, env.SHOPIFY_APP_SECRET);
+      if (!result.ok) {
+        console.warn('HMAC verification failed:', result.reason);
+        return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+      }
+
+      // [NOWE] Replay protection: sprawdź czy signature nie była już użyta
+      const signature = url.searchParams.get('signature') ?? request.headers.get('x-shopify-hmac-sha256') ?? '';
+      const timestamp = url.searchParams.get('timestamp') ?? '';
+      if (signature && timestamp) {
+        const doId = env.SESSION_DO.idFromName('replay-protection-global');
+        const stub = env.SESSION_DO.get(doId);
+        const replayResult = await replayCheck(stub, signature, timestamp);
+        if (!replayResult.ok) {
+          console.warn('Replay check failed:', replayResult.reason);
+          return new Response('Unauthorized: Signature already used', { status: 401, headers: cors(env) });
         }
       }
     }
 
+    // [ZABEZPIECZONY] Chat przez App Proxy
+    if (url.pathname === '/apps/assistant/chat' && request.method === 'POST') {
+      return handleChat(request, env);
+    }
+
+    // (opcjonalnie) lokalny endpoint bez App Proxy, np. do testów
     if (url.pathname === '/chat' && request.method === 'POST') {
       return handleChat(request, env);
     }
 
+    // MCP server (JSON-RPC 2.0) – narzędzia Shopify
+    if (request.method === 'POST' && (url.pathname === '/mcp/tools/call' || url.pathname === '/apps/assistant/mcp')) {
+      return handleMcpRequest(request, env);
+    }
+
     return new Response('Not Found', { status: 404, headers: cors(env) });
   },
+};
+
+// Export for testing
+export {
+  parseAppendPayload,
+  parseChatRequestBody,
+  parseEndPayload,
+  ensureHistoryArray,
+  cors,
+  generateAIResponse,
+  generateAIResponseStream,
+  handleChat,
+  streamAssistantResponse,
+  verifyAppProxyHmac,
+  handleMcpRequest,
+  getGroqResponse,
+  streamGroqResponse,
 };

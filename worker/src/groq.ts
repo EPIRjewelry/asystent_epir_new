@@ -1,24 +1,16 @@
-// Groq LLM Integration for EPIR-ART-JEWELLERY
-// Provides streaming chat completions with luxury Polish prompts
-
-interface GroqMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface GroqStreamChunk {
-  choices?: Array<{
-    delta?: {
-      content?: string;
-    };
-    finish_reason?: string | null;
-  }>;
-}
-
 /**
- * Luksusowy system prompt dla EPIR-ART-JEWELLERY
- * Based on prompts/groq_system_prompt.txt
+ * worker/src/groq.ts
+ *
+ * Integracja z Groq (OpenAI-compatible endpoint).
+ * - streamGroqResponse: wykonuje request stream=true i zwraca ReadableStream<string> z tekstowymi chunkami
+ * - getGroqResponse: non-streaming request, zwraca pełną odpowiedź tekstową
+ * - buildGroqMessages: buduje tablicę wiadomości (system,user,assistant) z opcjonalnym RAG context
+ *
+ * Uwaga: NIE wrzucaj sekretów do kodu. Przekaż GROQ API key przez Cloudflare Secrets (wrangler secret put GROQ_API_KEY)
  */
+
+export type GroqMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
 export const LUXURY_SYSTEM_PROMPT = `Jesteś eleganckim, wyrafinowanym doradcą marki EPIR-ART-JEWELLERY. Twoim zadaniem jest udzielać precyzyjnych, rzeczowych rekomendacji produktowych i odpowiedzi obsługi klienta, zawsze w tonie luksusowym, kulturalnym i zwięzłym.
 
 ZASADY:
@@ -32,136 +24,129 @@ ZASADY:
 JĘZYK: Zawsze odpowiadaj po polsku.`;
 
 /**
- * Stream chat completion from Groq API
- * @param messages - Chat history
- * @param apiKey - Groq API key
- * @param model - Model name (default: llama-3.3-70b-versatile)
- * @returns ReadableStream of text chunks
+ * Parsuje stream SSE z Groq (tekst EventSource style), wyciąga pola `data: {...}` i enqueuje delta/content.
+ * Zwraca ReadableStream<string> emitujący kolejne fragmenty tekstu w kolejności otrzymanej od Groq.
  */
 export async function streamGroqResponse(
   messages: GroqMessage[],
   apiKey: string,
   model: string = 'llama-3.3-70b-versatile'
 ): Promise<ReadableStream<string>> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  if (!apiKey) throw new Error('Missing GROQ API key');
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model,
       messages,
       stream: true,
       temperature: 0.7,
-      max_tokens: 512,
-      top_p: 0.9,
-    }),
+      max_tokens: 1024,
+      top_p: 0.9
+    })
   });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    throw new Error(`Groq API error (${response.status}): ${errorText}`);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '<no body>');
+    throw new Error(`Groq API error (${res.status}): ${txt}`);
   }
 
-  if (!response.body) {
-    throw new Error('Groq API response has no body');
-  }
+  if (!res.body) throw new Error('Groq response has no body');
 
-  // Transform SSE stream to text chunks
-  return response.body.pipeThrough(new TextDecoderStream()).pipeThrough(
-    new TransformStream<string, string>({
-      transform(chunk, controller) {
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data: ')) continue;
-
-          const jsonStr = trimmed.slice(6);
-          try {
-            const parsed = JSON.parse(jsonStr) as GroqStreamChunk;
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              controller.enqueue(content);
+  // Transform SSE text -> enqueue only meaningful content chunks
+  const textStream = res.body
+    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(
+      new TransformStream<string, string>({
+        transform(chunk, controller) {
+          // chunk może zawierać wiele linii SSE; przetwarzamy linia po linii
+          const lines = chunk.split(/\r?\n/);
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            // standardowy format Groq SSE: "data: { ... }" lub "data: [DONE]"
+            if (trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
+              // ignoruj lub zakończ
+              continue;
             }
-          } catch (e) {
-            console.warn('Groq SSE parse error:', e, jsonStr);
+            const prefix = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+            try {
+              const parsed = JSON.parse(prefix);
+              // wybieramy delta content (OpenAI-like structure)
+              const content = parsed?.choices?.[0]?.delta?.content;
+              const messageContent = parsed?.choices?.[0]?.message?.content; // alternate shape
+              if (typeof content === 'string') controller.enqueue(content);
+              else if (typeof messageContent === 'string') controller.enqueue(messageContent);
+            } catch (e) {
+              // nieparsowalny fragment - push surowy tekst (bezpieczeństwo)
+              // tylko jeśli wygląda na wartościowy
+              if (prefix && prefix.length < 1000) controller.enqueue(prefix);
+            }
           }
         }
-      },
-    })
-  );
+      })
+    );
+
+  return textStream;
 }
 
 /**
- * Non-streaming Groq chat completion (fallback)
- * @param messages - Chat history
- * @param apiKey - Groq API key
- * @param model - Model name
- * @returns Complete response text
+ * Non-streaming Groq call - zwraca pełną odpowiedź tekstową (pierwszej choice.message.content).
  */
 export async function getGroqResponse(
   messages: GroqMessage[],
   apiKey: string,
   model: string = 'llama-3.3-70b-versatile'
 ): Promise<string> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  if (!apiKey) throw new Error('Missing GROQ API key');
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model,
       messages,
       stream: false,
       temperature: 0.7,
-      max_tokens: 512,
-      top_p: 0.9,
-    }),
+      max_tokens: 1024,
+      top_p: 0.9
+    })
   });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    throw new Error(`Groq API error (${response.status}): ${errorText}`);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '<no body>');
+    throw new Error(`Groq API error (${res.status}): ${txt}`);
   }
 
-  const data = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('Groq API returned empty response');
-  }
-
-  return content;
+  const json = await res.json().catch(() => null) as any;
+  const content = json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.text;
+  if (!content) throw new Error('Groq API returned empty response');
+  return String(content);
 }
 
 /**
- * Build Groq messages with RAG context and luxury prompt
- * @param history - Chat history
- * @param userMessage - Current user message
- * @param ragContext - Optional RAG context string
- * @returns Array of Groq messages
+ * Buduje tablicę wiadomości (system + history + user). Opcjonalnie wstrzykuje ragContext przed wiadomością user.
  */
 export function buildGroqMessages(
   history: Array<{ role: 'user' | 'assistant'; content: string }>,
   userMessage: string,
   ragContext?: string
 ): GroqMessage[] {
-  const systemContent = ragContext
-    ? `${LUXURY_SYSTEM_PROMPT}\n\n${ragContext}`
+  const systemContent = ragContext && ragContext.length
+    ? `${LUXURY_SYSTEM_PROMPT}\n\nKontekst:\n${ragContext}`
     : LUXURY_SYSTEM_PROMPT;
 
   const messages: GroqMessage[] = [
     { role: 'system', content: systemContent },
-    ...history.slice(-10).map(entry => ({
-      role: entry.role,
-      content: entry.content,
-    })),
-    { role: 'user', content: userMessage },
+    ...history.slice(-10).map((h) => ({ role: h.role, content: h.content })),
+    { role: 'user', content: userMessage }
   ];
 
   return messages;
