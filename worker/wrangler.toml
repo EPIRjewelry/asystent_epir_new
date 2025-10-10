@@ -1,30 +1,20 @@
 name = "epir-art-jewellery-worker"
 main = "src/index.ts"
 compatibility_date = "2025-09-30"
-compatibility_flags = ["nodejs_compat"]
 
-[durable_objects]
-bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
+# Bindings
+kv_namespaces = [
+  { binding = "SESSIONS_KV", id = "08f16276a9b14ca7b3c00404e8e8d0d9" }
 ]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "epir_art_jewellery"
+database_name = "jewelry-analytics-db"
 database_id = "6a4f7cbb-3c1c-42c7-9d79-4ef74d421f23"
 
-[[kv_namespaces]]
-binding = "SESSIONS_KV"
-id = "08f16276a9b14ca7b3c00404e8e8d0d9"
-
-[[vectorize]]
-binding = "VECTOR_INDEX"
-index_name = "autorag-epir-chatbot-rag"
-
-# Queues require paid plan - commented out for now
-# [[queues.producers]]
-# binding = "INDEX_QUEUE"
-# queue = "epir-index-queue"
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
 
 [[migrations]]
 tag = "v1"
@@ -35,17 +25,5 @@ new_sqlite_classes = ["SessionDO"]
 binding = "AI"
 
 [vars]
-ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
-
-# Staging environment
-[env.staging]
-name = "epir-art-jewellery-worker-staging"
-workers_dev = true
-
-[env.staging.vars]
-ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
-
-# Production environment (default configuration above)
-# Deploy to production with: wrangler deploy
-# Deploy to staging with: wrangler deploy --env staging
+ALLOWED_ORIGIN = "*"
 

@@ -1,5 +1,15 @@
 /// <reference types="@cloudflare/workers-types" />
-import { verifyAppProxyHmac } from './auth';
+import { verifyAppProxyHmac, replayCheck } from './security';
+import {
+  searchShopPoliciesAndFaqs,
+  searchShopPoliciesAndFaqsWithMCP,
+  searchProductCatalogWithMCP,
+  formatRagContextForPrompt,
+  type VectorizeIndex
+} from './rag';
+import { isProductQuery } from './mcp';
+import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
+import { handleMcpRequest } from './mcp_server';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -37,11 +47,14 @@ export interface Env {
   DB: D1Database;
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
+  VECTOR_INDEX?: VectorizeIndex;
+  SHOPIFY_APP_SECRET: string;
   ALLOWED_ORIGIN?: string;
   AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
+  SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
-  SHOPIFY_APP_SECRET?: string;
+  GROQ_API_KEY?: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
 }
 
@@ -75,7 +88,8 @@ function parseChatRequestBody(input: unknown): ChatRequestBody | null {
   const maybe = input as Record<string, unknown>;
   if (!isNonEmptyString(maybe.message)) return null;
   const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
-  const stream = typeof maybe.stream === 'boolean' ? maybe.stream : true;
+  // Uwaga: domyślnie stream = false, aby nie włączać SSE bez jawnego żądania
+  const stream = typeof maybe.stream === 'boolean' ? maybe.stream : false;
   return {
     message: String(maybe.message),
     session_id: sessionId,
@@ -161,6 +175,23 @@ export class SessionDO {
       const sessionId = payload?.session_id ?? 'unknown';
       await this.end(sessionId);
       return new Response('ended');
+    }
+
+    if (method === 'POST' && pathname.endsWith('/replay-check')) {
+      const payload = await request.json().catch(() => null);
+      const p = payload as { signature?: string; timestamp?: string } | null;
+      if (!p || !p.signature || !p.timestamp) {
+        return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400 });
+      }
+      const { signature, timestamp } = p;
+      const key = `replay:${signature}`;
+      const used = await this.state.storage.get<boolean>(key);
+      if (used) {
+        return new Response(JSON.stringify({ used: true }), { status: 200 });
+      }
+      // Mark as used
+      await this.state.storage.put(key, true);
+      return new Response(JSON.stringify({ used: false }), { status: 200 });
     }
 
     return new Response('Not Found', { status: 404 });
@@ -314,10 +345,64 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   }
 
+  // Non-streaming path with RAG + Groq support
   const historyResp = await stub.fetch('https://session/history');
   const historyData = await historyResp.json().catch(() => []);
   const history = ensureHistoryArray(historyData);
-  const reply = await generateAIResponse(history, payload.message, env);
+  
+  let reply: string;
+  
+  // Perform RAG search with MCP integration
+  let ragContext: string | undefined;
+  
+  // Check if it's a product query - use MCP catalog search
+  if (isProductQuery(payload.message) && env.SHOP_DOMAIN) {
+    const productContext = await searchProductCatalogWithMCP(
+      payload.message, 
+      env.SHOP_DOMAIN,
+      env.SHOPIFY_ADMIN_TOKEN,
+      env.SHOPIFY_STOREFRONT_TOKEN
+    );
+    if (productContext) {
+      ragContext = productContext;
+    }
+  }
+  
+  // If not a product query or no product results, try FAQs/policies
+  if (!ragContext) {
+    if (env.SHOP_DOMAIN) {
+      // Use MCP with Vectorize fallback
+      const ragResult = await searchShopPoliciesAndFaqsWithMCP(
+        payload.message,
+        env.SHOP_DOMAIN,
+        env.VECTOR_INDEX,
+        env.AI,
+        3
+      );
+      if (ragResult.results.length > 0) {
+        ragContext = formatRagContextForPrompt(ragResult);
+      }
+    } else if (env.VECTOR_INDEX && env.AI) {
+      // Vectorize-only fallback
+      const ragResult = await searchShopPoliciesAndFaqs(
+        payload.message, 
+        env.VECTOR_INDEX, 
+        env.AI,
+        3
+      );
+      if (ragResult.results.length > 0) {
+        ragContext = formatRagContextForPrompt(ragResult);
+      }
+    }
+  }
+  
+  // Use Groq if available, otherwise fallback to Workers AI
+  if (env.GROQ_API_KEY) {
+    const messages = buildGroqMessages(history, payload.message, ragContext);
+    reply = await getGroqResponse(messages, env.GROQ_API_KEY);
+  } else {
+    reply = await generateAIResponse(history, payload.message, env);
+  }
 
   await stub.fetch('https://session/append', {
     method: 'POST',
@@ -342,55 +427,119 @@ function streamAssistantResponse(
 
   (async () => {
     try {
+      // 1. Fetch history
       const historyResp = await stub.fetch('https://session/history');
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
 
-      // Try to obtain a real streaming source from the AI binding
-      const stream = await generateAIResponseStream(history, userMessage, env);
+      // 2. Perform RAG search with MCP integration
+      let ragContext: string | undefined;
+      
+      // Check if it's a product query - use MCP catalog search
+      if (isProductQuery(userMessage) && env.SHOP_DOMAIN) {
+        const productContext = await searchProductCatalogWithMCP(
+          userMessage, 
+          env.SHOP_DOMAIN,
+          env.SHOPIFY_ADMIN_TOKEN,
+          env.SHOPIFY_STOREFRONT_TOKEN
+        );
+        if (productContext) {
+          ragContext = productContext;
+        }
+      }
+      
+      // If not a product query or no product results, try FAQs/policies
+      if (!ragContext) {
+        if (env.SHOP_DOMAIN) {
+          // Use MCP with Vectorize fallback
+          const ragResult = await searchShopPoliciesAndFaqsWithMCP(
+            userMessage,
+            env.SHOP_DOMAIN,
+            env.VECTOR_INDEX,
+            env.AI,
+            3
+          );
+          if (ragResult.results.length > 0) {
+            ragContext = formatRagContextForPrompt(ragResult);
+          }
+        } else if (env.VECTOR_INDEX && env.AI) {
+          // Vectorize-only fallback
+          const ragResult = await searchShopPoliciesAndFaqs(
+            userMessage, 
+            env.VECTOR_INDEX, 
+            env.AI,
+            3
+          );
+          if (ragResult.results.length > 0) {
+            ragContext = formatRagContextForPrompt(ragResult);
+          }
+        }
+      }
 
+      let fullReply = '';
+      
       // Send initial session_id event
       await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
 
-      if (stream) {
-        // Real streaming: pipe tokens/deltas as they arrive
+      // 3. Stream from Groq (if API key available) or fallback to Workers AI
+      if (env.GROQ_API_KEY) {
+        // Build messages with luxury prompt and RAG context
+        const messages = buildGroqMessages(history, userMessage, ragContext);
+        
+        // Use Groq streaming
+        const stream = await streamGroqResponse(messages, env.GROQ_API_KEY);
         const reader = stream.getReader();
         const decoder = new TextDecoder();
+        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          // value may be string or Uint8Array
-          const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
-          const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
+          
+          const chunk = typeof value === 'string' ? value : decoder.decode(value as any);
+          fullReply += chunk;
+          
+          const evt = JSON.stringify({ delta: chunk, session_id: sessionId, done: false });
           await writer.write(encoder.encode(`data: ${evt}\n\n`));
         }
-
-        // After streaming finishes, optionally reconstruct final reply if needed
-        // Note: some streaming APIs provide final aggregated value; here we rely on DO append logic below
       } else {
-        // Fallback: generate full reply and split into deltas for UX
-        const reply = await generateAIResponse(history, userMessage, env);
-        const parts = reply.split(/(\s+)/);
-        for (const part of parts) {
-          const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
-          await writer.write(encoder.encode(`data: ${evt}\n\n`));
-          await new Promise((resolve) => setTimeout(resolve, 30));
+        // Fallback: Try Workers AI streaming, else generate full reply
+        const stream = await generateAIResponseStream(history, userMessage, env);
+        
+        if (stream) {
+          // Real streaming from Workers AI
+          const reader = stream.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
+            fullReply += chunkStr;
+            const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
+            await writer.write(encoder.encode(`data: ${evt}\n\n`));
+          }
+        } else {
+          // Full reply fallback with split for UX
+          fullReply = await generateAIResponse(history, userMessage, env);
+          const parts = fullReply.split(/(\s+)/);
+          for (const part of parts) {
+            const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
+            await writer.write(encoder.encode(`data: ${evt}\n\n`));
+            await new Promise((resolve) => setTimeout(resolve, 30));
+          }
         }
-
-        // Append final conversation record
-        await stub.fetch('https://session/append', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'assistant', content: reply, session_id: sessionId }),
-        });
-
-        // Send final full content for fallback clients
-        await writer.write(
-          encoder.encode(`data: ${JSON.stringify({ content: reply, session_id: sessionId, done: true })}\n\n`),
-        );
       }
 
-      // Signal done for streaming path as well
+      // 4. Append final reply to session
+      await stub.fetch('https://session/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'assistant', content: fullReply, session_id: sessionId }),
+      });
+
+      // 5. Send done event
+      await writer.write(
+        encoder.encode(`data: ${JSON.stringify({ content: fullReply, session_id: sessionId, done: true })}\n\n`)
+      );
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } catch (error) {
       console.error('Streaming error', error);
@@ -420,30 +569,68 @@ export default {
 
     const url = new URL(request.url);
 
-    // Lightweight health endpoints for quick availability checks (no HMAC required)
+    // Healthchecks
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/ping' || url.pathname === '/health')) {
       return new Response('ok', { status: 200, headers: cors(env) });
     }
 
-    if (url.pathname.endsWith('/chat')) {
-      const bypassEnabled = env.DEV_BYPASS === '1';
-      const bypassHeader = request.headers.get('x-dev-bypass') === '1';
-      if (!(bypassEnabled && bypassHeader)) {
-        if (!env.SHOPIFY_APP_SECRET) {
-          return new Response('Server misconfigured', { status: 500, headers: cors(env) });
-        }
-        const cloned = new Request(request);
-        const valid = await verifyAppProxyHmac(cloned, env.SHOPIFY_APP_SECRET);
-        if (!valid) {
-          return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+    // [NOWE] Globalny strażnik HMAC dla App Proxy: wszystkie POST-y pod /apps/assistant/*
+    if (url.pathname.startsWith('/apps/assistant/') && request.method === 'POST') {
+      if (!env.SHOPIFY_APP_SECRET) {
+        return new Response('Server misconfigured', { status: 500, headers: cors(env) });
+      }
+      const result = await verifyAppProxyHmac(request, env.SHOPIFY_APP_SECRET);
+      if (!result.ok) {
+        console.warn('HMAC verification failed:', result.reason);
+        return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
+      }
+
+      // [NOWE] Replay protection: sprawdź czy signature nie była już użyta
+      const signature = url.searchParams.get('signature') ?? request.headers.get('x-shopify-hmac-sha256') ?? '';
+      const timestamp = url.searchParams.get('timestamp') ?? '';
+      if (signature && timestamp) {
+        const doId = env.SESSION_DO.idFromName('replay-protection-global');
+        const stub = env.SESSION_DO.get(doId);
+        const replayResult = await replayCheck(stub, signature, timestamp);
+        if (!replayResult.ok) {
+          console.warn('Replay check failed:', replayResult.reason);
+          return new Response('Unauthorized: Signature already used', { status: 401, headers: cors(env) });
         }
       }
     }
 
+    // [ZABEZPIECZONY] Chat przez App Proxy
+    if (url.pathname === '/apps/assistant/chat' && request.method === 'POST') {
+      return handleChat(request, env);
+    }
+
+    // (opcjonalnie) lokalny endpoint bez App Proxy, np. do testów
     if (url.pathname === '/chat' && request.method === 'POST') {
       return handleChat(request, env);
     }
 
+    // MCP server (JSON-RPC 2.0) – narzędzia Shopify
+    if (request.method === 'POST' && (url.pathname === '/mcp/tools/call' || url.pathname === '/apps/assistant/mcp')) {
+      return handleMcpRequest(request, env);
+    }
+
     return new Response('Not Found', { status: 404, headers: cors(env) });
   },
+};
+
+// Export for testing
+export {
+  parseAppendPayload,
+  parseChatRequestBody,
+  parseEndPayload,
+  ensureHistoryArray,
+  cors,
+  generateAIResponse,
+  generateAIResponseStream,
+  handleChat,
+  streamAssistantResponse,
+  verifyAppProxyHmac,
+  handleMcpRequest,
+  getGroqResponse,
+  streamGroqResponse,
 };

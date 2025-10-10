@@ -1,6 +1,7 @@
 {
   "name": "epir-art-jewellery-worker",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",

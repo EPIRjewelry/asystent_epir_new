@@ -1,0 +1,2201 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - button "Scroll to Top" [ref=e2] [cursor=pointer]:
+    - img [ref=e3]
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - generic [ref=e10]:
+        - generic [ref=e12]: Kupuj teraz, zapłać później - Raty z PayPo lub Twisto
+        - generic [ref=e14]: Darmowa dostawa powyżej 500 zl. wartości zakupów
+        - generic [ref=e16]: Kupuj teraz, zapłać później - Raty z PayPo lub Twisto
+        - generic [ref=e18]: Darmowa dostawa powyżej 500 zl. wartości zakupów
+      - generic:
+        - generic:
+          - button "Previous" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+          - button "Next" [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+    - img [ref=e26] [cursor=pointer]
+  - generic [ref=e29]:
+    - generic [ref=e33] [cursor=pointer]:
+      - link "+48 698 718 564" [ref=e34]:
+        - /url: tel:+48 698 718 564
+        - img [ref=e35]
+        - generic [ref=e37]: +48 698 718 564
+      - link "epir@epirbizuteria.pl" [ref=e38]:
+        - /url: mailto:epir@epirbizuteria.pl
+        - img [ref=e39]
+        - generic [ref=e41]: epir@epirbizuteria.pl
+    - banner [ref=e43]:
+      - generic [ref=e45]:
+        - heading "EPIR Art Jewellery&Gemstone" [level=1] [ref=e47]:
+          - link "EPIR Art Jewellery&Gemstone" [ref=e48] [cursor=pointer]:
+            - /url: /
+            - img "EPIR Art Jewellery&Gemstone" [ref=e50]
+        - list [ref=e53]:
+          - listitem [ref=e54]:
+            - link "BIŻUTERIA SREBRNA" [ref=e55] [cursor=pointer]:
+              - /url: /
+              - text: BIŻUTERIA SREBRNA
+              - img [ref=e57]
+          - listitem [ref=e59]:
+            - link "BIŻUTERIA ZŁOTA" [ref=e60] [cursor=pointer]:
+              - /url: /collections/zlota-bizuteria/Z%C5%81OTO-585+Z%C5%81OTO-333
+          - listitem [ref=e61]:
+            - link "KOLEKCJE Z KAMIENIAMI" [ref=e62] [cursor=pointer]:
+              - /url: /collections/bizuteria-z-ametystem-ametrynem
+              - text: KOLEKCJE Z KAMIENIAMI
+              - img [ref=e64]
+          - listitem [ref=e66]:
+            - link "KOLEKCJE AUTORSKIE" [ref=e67] [cursor=pointer]:
+              - /url: /
+              - text: KOLEKCJE AUTORSKIE
+              - img [ref=e69]
+          - listitem [ref=e71]:
+            - link "KARTA PODARUNKOWA" [ref=e72] [cursor=pointer]:
+              - /url: /products/karta-podarunkowa
+          - listitem [ref=e73]:
+            - link "NASZE ARCHIWUM" [ref=e74] [cursor=pointer]:
+              - /url: /collections/archiwum-inspiracji/sprzedane
+        - generic [ref=e75]:
+          - generic [ref=e80] [cursor=pointer]:
+            - generic [ref=e82]: Polska (PLN zł)
+            - img [ref=e84]
+          - button "Szukaj" [ref=e87] [cursor=pointer]:
+            - img [ref=e89]
+          - link "Ulubione" [ref=e91] [cursor=pointer]:
+            - /url: /pages/wishlist
+            - img [ref=e93]
+          - button "0" [ref=e95] [cursor=pointer]:
+            - img [ref=e97]
+  - main [ref=e99]:
+    - generic [ref=e103]:
+      - iframe [ref=e105]:
+        - generic "YouTube Video Player" [ref=f1e3]:
+          - button "Copy link" [ref=f1e7] [cursor=pointer]:
+            - generic [ref=f1e8]:
+              - img
+            - generic [ref=f1e9]: Copy link
+          - generic [ref=f1e11]:
+            - generic [ref=f1e12] [cursor=pointer]:
+              - slider "Seek slider" [ref=f1e13]
+              - generic:
+                - generic:
+                  - generic:
+                    - slider "Click or scroll the panel for the precise seeking."
+            - generic [ref=f1e24]:
+              - generic [ref=f1e25]:
+                - button "Play" [ref=f1e26] [cursor=pointer]:
+                  - img
+                - generic [ref=f1e27]:
+                  - button "Unmute" [ref=f1e28] [cursor=pointer]:
+                    - generic [ref=f1e29]:
+                      - img
+                  - slider "Volume"
+                - generic [ref=f1e33]: 0:02 / 0:21
+              - generic [ref=f1e34]:
+                - button "Subtitles/closed captions unavailable" [ref=f1e35] [cursor=pointer]:
+                  - img
+                - button "Settings" [ref=f1e36] [cursor=pointer]:
+                  - img
+                - link "Watch on YouTube" [ref=f1e37] [cursor=pointer]:
+                  - /url: https://www.youtube.com/watch?v=XYQG5hDB_3U
+                  - img
+      - generic [ref=e107]:
+        - heading "Od ognia do pierścionka" [level=3] [ref=e108]
+        - link "ZOBACZ NASZE KOLEKCJE" [ref=e110] [cursor=pointer]:
+          - /url: /collections
+    - generic [ref=e122]:
+      - heading "NOWOŚCI" [level=2] [ref=e124]
+      - generic [ref=e125]:
+        - generic [ref=e127]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - link "Pierścionek Złoty piasek z perłą" [ref=e131] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-piasek-z-perla
+                - img "Pierścionek Złoty piasek z perłą" [ref=e136]
+              - generic [ref=e137]:
+                - button "Dodaj do listy życzeń" [ref=e138] [cursor=pointer]:
+                  - img [ref=e140]
+                - button "Wybierz opcje" [ref=e142] [cursor=pointer]:
+                  - img [ref=e144]
+                - button "Szybki podgląd" [ref=e146] [cursor=pointer]:
+                  - img [ref=e148]
+                - button "Porównaj" [ref=e150] [cursor=pointer]:
+                  - img [ref=e152]
+            - generic [ref=e155]:
+              - heading "Pierścionek Złoty piasek z perłą" [level=3] [ref=e156]:
+                - link "Pierścionek Złoty piasek z perłą" [ref=e157] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-piasek-z-perla
+              - generic [ref=e160]:
+                - generic [ref=e161]: Normalna cena
+                - generic [ref=e162]: 210,00 zl
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - link "Kolczyki Złocone z Perłą" [ref=e166] [cursor=pointer]:
+                - /url: /products/kolczyki-sztyfty-zloty-piasek-z-perlami
+                - img "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [ref=e171]
+              - generic [ref=e172]:
+                - button "Dodaj do listy życzeń" [ref=e173] [cursor=pointer]:
+                  - img [ref=e175]
+                - button "Dodaj do koszyka" [ref=e179] [cursor=pointer]:
+                  - img [ref=e181]
+                - button "Szybki podgląd" [ref=e183] [cursor=pointer]:
+                  - img [ref=e185]
+                - button "Porównaj" [ref=e187] [cursor=pointer]:
+                  - img [ref=e189]
+            - generic [ref=e192]:
+              - heading "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [level=3] [ref=e193]:
+                - link "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [ref=e194] [cursor=pointer]:
+                  - /url: /products/kolczyki-sztyfty-zloty-piasek-z-perlami
+              - generic [ref=e197]:
+                - generic [ref=e198]: Normalna cena
+                - generic [ref=e199]: 250,00 zl
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - link "Złoty pierścionek z moissanitem z kolekcji" [ref=e203] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+                - img "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [ref=e208]
+              - generic [ref=e209]:
+                - button "Dodaj do listy życzeń" [ref=e210] [cursor=pointer]:
+                  - img [ref=e212]
+                - button "Wybierz opcje" [ref=e214] [cursor=pointer]:
+                  - img [ref=e216]
+                - button "Szybki podgląd" [ref=e218] [cursor=pointer]:
+                  - img [ref=e220]
+                - button "Porównaj" [ref=e222] [cursor=pointer]:
+                  - img [ref=e224]
+            - generic [ref=e227]:
+              - heading "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [level=3] [ref=e228]:
+                - link "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [ref=e229] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+              - generic [ref=e232]:
+                - generic [ref=e233]: Normalna cena
+                - generic [ref=e234]: 2.190,00 zl
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e238] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-ametystem-epir
+                - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e241]
+                - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e244]
+              - generic [ref=e245]:
+                - button "Dodaj do listy życzeń" [ref=e246] [cursor=pointer]:
+                  - img [ref=e248]
+                - button "Wybierz opcje" [ref=e250] [cursor=pointer]:
+                  - img [ref=e252]
+                - button "Szybki podgląd" [ref=e254] [cursor=pointer]:
+                  - img [ref=e256]
+                - button "Porównaj" [ref=e258] [cursor=pointer]:
+                  - img [ref=e260]
+            - generic [ref=e263]:
+              - heading "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [level=3] [ref=e264]:
+                - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e265] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-ametystem-epir
+              - generic [ref=e268]:
+                - generic [ref=e269]: Normalna cena
+                - generic [ref=e270]: 1.895,00 zl
+          - generic [ref=e272]:
+            - generic [ref=e273]:
+              - link "Delikatny pierścionek z topazem swiss blue" [ref=e274] [cursor=pointer]:
+                - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+                - img "Delikatny pierścionek z topazem swiss blue" [ref=e279]
+              - generic [ref=e280]:
+                - button "Dodaj do listy życzeń" [ref=e281] [cursor=pointer]:
+                  - img [ref=e283]
+                - button "Wybierz opcje" [ref=e285] [cursor=pointer]:
+                  - img [ref=e287]
+                - button "Szybki podgląd" [ref=e289] [cursor=pointer]:
+                  - img [ref=e291]
+                - button "Porównaj" [ref=e293] [cursor=pointer]:
+                  - img [ref=e295]
+            - generic [ref=e298]:
+              - heading "Delikatny pierścionek z topazem swiss blue" [level=3] [ref=e299]:
+                - link "Delikatny pierścionek z topazem swiss blue" [ref=e300] [cursor=pointer]:
+                  - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+              - generic [ref=e303]:
+                - generic [ref=e304]: Normalna cena
+                - generic [ref=e305]: 310,00 zl
+          - generic [ref=e307]:
+            - generic [ref=e308]:
+              - link "Pierścionek srebrny z oliwinem" [ref=e309] [cursor=pointer]:
+                - /url: /products/pierscionek-z-oliwinem-1
+                - img "Pierścionek srebrny z oliwinem" [ref=e314]
+              - generic [ref=e315]:
+                - button "Dodaj do listy życzeń" [ref=e316] [cursor=pointer]:
+                  - img [ref=e318]
+                - button "Wybierz opcje" [ref=e320] [cursor=pointer]:
+                  - img [ref=e322]
+                - button "Szybki podgląd" [ref=e324] [cursor=pointer]:
+                  - img [ref=e326]
+                - button "Porównaj" [ref=e328] [cursor=pointer]:
+                  - img [ref=e330]
+            - generic [ref=e333]:
+              - heading "Pierścionek srebrny z oliwinem" [level=3] [ref=e334]:
+                - link "Pierścionek srebrny z oliwinem" [ref=e335] [cursor=pointer]:
+                  - /url: /products/pierscionek-z-oliwinem-1
+              - generic [ref=e338]:
+                - generic [ref=e339]: Normalna cena
+                - generic [ref=e340]: 380,00 zl
+          - generic [ref=e342]:
+            - generic [ref=e343]:
+              - link "Srebrny Wisior" [ref=e344] [cursor=pointer]:
+                - /url: /products/wisior-z-oliwinem-na-naszyjniku-z-turmalinow
+                - img "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [ref=e349]
+              - generic [ref=e350]:
+                - button "Dodaj do listy życzeń" [ref=e351] [cursor=pointer]:
+                  - img [ref=e353]
+                - button "Dodaj do koszyka" [ref=e357] [cursor=pointer]:
+                  - img [ref=e359]
+                - button "Szybki podgląd" [ref=e361] [cursor=pointer]:
+                  - img [ref=e363]
+                - button "Porównaj" [ref=e365] [cursor=pointer]:
+                  - img [ref=e367]
+            - generic [ref=e370]:
+              - heading "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [level=3] [ref=e371]:
+                - link "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [ref=e372] [cursor=pointer]:
+                  - /url: /products/wisior-z-oliwinem-na-naszyjniku-z-turmalinow
+              - generic [ref=e375]:
+                - generic [ref=e376]: Normalna cena
+                - generic [ref=e377]: 360,00 zl
+          - generic [ref=e379]:
+            - generic [ref=e380]:
+              - link "Pierścionek złoty z moissanitem 9x7 mm" [ref=e381] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-z-moissanitem-9x7-mm
+                - img "Pierścionek złoty z moissanitem 9x7 mm" [ref=e386]
+              - generic [ref=e387]:
+                - button "Dodaj do listy życzeń" [ref=e388] [cursor=pointer]:
+                  - img [ref=e390]
+                - button "Wybierz opcje" [ref=e392] [cursor=pointer]:
+                  - img [ref=e394]
+                - button "Szybki podgląd" [ref=e396] [cursor=pointer]:
+                  - img [ref=e398]
+                - button "Porównaj" [ref=e400] [cursor=pointer]:
+                  - img [ref=e402]
+            - generic [ref=e405]:
+              - heading "Pierścionek złoty z moissanitem 9x7 mm" [level=3] [ref=e406]:
+                - link "Pierścionek złoty z moissanitem 9x7 mm" [ref=e407] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-moissanitem-9x7-mm
+              - generic [ref=e410]:
+                - generic [ref=e411]: Normalna cena
+                - generic [ref=e412]: 5.650,00 zl
+          - generic [ref=e414]:
+            - generic [ref=e415]:
+              - link "Pierścionek złoty z moissanitem diamentami i rubinami" [ref=e416] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-z-moissanitem-i-rubinami-kwitnacy-ogrod
+                - img "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [ref=e421]
+              - generic [ref=e422]:
+                - button "Dodaj do listy życzeń" [ref=e423] [cursor=pointer]:
+                  - img [ref=e425]
+                - button "Wybierz opcje" [ref=e427] [cursor=pointer]:
+                  - img [ref=e429]
+                - button "Szybki podgląd" [ref=e431] [cursor=pointer]:
+                  - img [ref=e433]
+                - button "Porównaj" [ref=e435] [cursor=pointer]:
+                  - img [ref=e437]
+            - generic [ref=e440]:
+              - heading "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [level=3] [ref=e441]:
+                - link "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [ref=e442] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-moissanitem-i-rubinami-kwitnacy-ogrod
+              - generic [ref=e445]:
+                - generic [ref=e446]: Normalna cena
+                - generic [ref=e447]: 5.780,00 zl
+          - generic [ref=e449]:
+            - generic [ref=e450]:
+              - link "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e451] [cursor=pointer]:
+                - /url: /products/pierscionek-pozlacany-z-perla-organiczne-echa-rafy-koralowej
+                - img "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e456]
+              - generic [ref=e457]:
+                - button "Dodaj do listy życzeń" [ref=e458] [cursor=pointer]:
+                  - img [ref=e460]
+                - button "Wybierz opcje" [ref=e462] [cursor=pointer]:
+                  - img [ref=e464]
+                - button "Szybki podgląd" [ref=e466] [cursor=pointer]:
+                  - img [ref=e468]
+                - button "Porównaj" [ref=e470] [cursor=pointer]:
+                  - img [ref=e472]
+            - generic [ref=e475]:
+              - heading "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [level=3] [ref=e476]:
+                - link "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e477] [cursor=pointer]:
+                  - /url: /products/pierscionek-pozlacany-z-perla-organiczne-echa-rafy-koralowej
+              - generic [ref=e480]:
+                - generic [ref=e481]: Normalna cena
+                - generic [ref=e482]: 280,00 zl
+          - generic [ref=e484]:
+            - generic [ref=e485]:
+              - link "Pierścionek Złoty piasek z perłą" [ref=e486] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-piasek-z-perla
+                - img "Pierścionek Złoty piasek z perłą" [ref=e491]
+              - generic [ref=e492]:
+                - button "Dodaj do listy życzeń" [ref=e493] [cursor=pointer]:
+                  - img [ref=e495]
+                - button "Wybierz opcje" [ref=e497] [cursor=pointer]:
+                  - img [ref=e499]
+                - button "Szybki podgląd" [ref=e501] [cursor=pointer]:
+                  - img [ref=e503]
+                - button "Porównaj" [ref=e505] [cursor=pointer]:
+                  - img [ref=e507]
+            - generic [ref=e510]:
+              - heading "Pierścionek Złoty piasek z perłą" [level=3] [ref=e511]:
+                - link "Pierścionek Złoty piasek z perłą" [ref=e512] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-piasek-z-perla
+              - generic [ref=e515]:
+                - generic [ref=e516]: Normalna cena
+                - generic [ref=e517]: 210,00 zl
+          - generic [ref=e519]:
+            - generic [ref=e520]:
+              - link "Kolczyki Złocone z Perłą" [ref=e521] [cursor=pointer]:
+                - /url: /products/kolczyki-sztyfty-zloty-piasek-z-perlami
+                - img "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [ref=e526]
+              - generic [ref=e527]:
+                - button "Dodaj do listy życzeń" [ref=e528] [cursor=pointer]:
+                  - img [ref=e530]
+                - button "Dodaj do koszyka" [ref=e534] [cursor=pointer]:
+                  - img [ref=e536]
+                - button "Szybki podgląd" [ref=e538] [cursor=pointer]:
+                  - img [ref=e540]
+                - button "Porównaj" [ref=e542] [cursor=pointer]:
+                  - img [ref=e544]
+            - generic [ref=e547]:
+              - heading "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [level=3] [ref=e548]:
+                - link "Kolczyki Złocone z Perłą \"Złoty Piasek\"" [ref=e549] [cursor=pointer]:
+                  - /url: /products/kolczyki-sztyfty-zloty-piasek-z-perlami
+              - generic [ref=e552]:
+                - generic [ref=e553]: Normalna cena
+                - generic [ref=e554]: 250,00 zl
+          - generic [ref=e556]:
+            - generic [ref=e557]:
+              - link "Złoty pierścionek z moissanitem z kolekcji" [ref=e558] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+                - img "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [ref=e563]
+              - generic [ref=e564]:
+                - button "Dodaj do listy życzeń" [ref=e565] [cursor=pointer]:
+                  - img [ref=e567]
+                - button "Wybierz opcje" [ref=e569] [cursor=pointer]:
+                  - img [ref=e571]
+                - button "Szybki podgląd" [ref=e573] [cursor=pointer]:
+                  - img [ref=e575]
+                - button "Porównaj" [ref=e577] [cursor=pointer]:
+                  - img [ref=e579]
+            - generic [ref=e582]:
+              - heading "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [level=3] [ref=e583]:
+                - link "Złoty pierścionek z moissanitem z kolekcji \"Gałązki\"" [ref=e584] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+              - generic [ref=e587]:
+                - generic [ref=e588]: Normalna cena
+                - generic [ref=e589]: 2.190,00 zl
+          - generic [ref=e591]:
+            - generic [ref=e592]:
+              - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e593] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-ametystem-epir
+                - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e596]
+                - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e599]
+              - generic [ref=e600]:
+                - button "Dodaj do listy życzeń" [ref=e601] [cursor=pointer]:
+                  - img [ref=e603]
+                - button "Wybierz opcje" [ref=e605] [cursor=pointer]:
+                  - img [ref=e607]
+                - button "Szybki podgląd" [ref=e609] [cursor=pointer]:
+                  - img [ref=e611]
+                - button "Porównaj" [ref=e613] [cursor=pointer]:
+                  - img [ref=e615]
+            - generic [ref=e618]:
+              - heading "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [level=3] [ref=e619]:
+                - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e620] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-ametystem-epir
+              - generic [ref=e623]:
+                - generic [ref=e624]: Normalna cena
+                - generic [ref=e625]: 1.895,00 zl
+          - generic [ref=e627]:
+            - generic [ref=e628]:
+              - link "Delikatny pierścionek z topazem swiss blue" [ref=e629] [cursor=pointer]:
+                - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+                - img "Delikatny pierścionek z topazem swiss blue" [ref=e634]
+              - generic [ref=e635]:
+                - button "Dodaj do listy życzeń" [ref=e636] [cursor=pointer]:
+                  - img [ref=e638]
+                - button "Wybierz opcje" [ref=e640] [cursor=pointer]:
+                  - img [ref=e642]
+                - button "Szybki podgląd" [ref=e644] [cursor=pointer]:
+                  - img [ref=e646]
+                - button "Porównaj" [ref=e648] [cursor=pointer]:
+                  - img [ref=e650]
+            - generic [ref=e653]:
+              - heading "Delikatny pierścionek z topazem swiss blue" [level=3] [ref=e654]:
+                - link "Delikatny pierścionek z topazem swiss blue" [ref=e655] [cursor=pointer]:
+                  - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+              - generic [ref=e658]:
+                - generic [ref=e659]: Normalna cena
+                - generic [ref=e660]: 310,00 zl
+          - generic [ref=e662]:
+            - generic [ref=e663]:
+              - link "Pierścionek srebrny z oliwinem" [ref=e664] [cursor=pointer]:
+                - /url: /products/pierscionek-z-oliwinem-1
+                - img "Pierścionek srebrny z oliwinem" [ref=e669]
+              - generic [ref=e670]:
+                - button "Dodaj do listy życzeń" [ref=e671] [cursor=pointer]:
+                  - img [ref=e673]
+                - button "Wybierz opcje" [ref=e675] [cursor=pointer]:
+                  - img [ref=e677]
+                - button "Szybki podgląd" [ref=e679] [cursor=pointer]:
+                  - img [ref=e681]
+                - button "Porównaj" [ref=e683] [cursor=pointer]:
+                  - img [ref=e685]
+            - generic [ref=e688]:
+              - heading "Pierścionek srebrny z oliwinem" [level=3] [ref=e689]:
+                - link "Pierścionek srebrny z oliwinem" [ref=e690] [cursor=pointer]:
+                  - /url: /products/pierscionek-z-oliwinem-1
+              - generic [ref=e693]:
+                - generic [ref=e694]: Normalna cena
+                - generic [ref=e695]: 380,00 zl
+          - generic [ref=e697]:
+            - generic [ref=e698]:
+              - link "Srebrny Wisior" [ref=e699] [cursor=pointer]:
+                - /url: /products/wisior-z-oliwinem-na-naszyjniku-z-turmalinow
+                - img "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [ref=e704]
+              - generic [ref=e705]:
+                - button "Dodaj do listy życzeń" [ref=e706] [cursor=pointer]:
+                  - img [ref=e708]
+                - button "Dodaj do koszyka" [ref=e712] [cursor=pointer]:
+                  - img [ref=e714]
+                - button "Szybki podgląd" [ref=e716] [cursor=pointer]:
+                  - img [ref=e718]
+                - button "Porównaj" [ref=e720] [cursor=pointer]:
+                  - img [ref=e722]
+            - generic [ref=e725]:
+              - heading "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [level=3] [ref=e726]:
+                - link "Srebrny Wisior \"Gałązki\" z Oliwinem i Turmalinami" [ref=e727] [cursor=pointer]:
+                  - /url: /products/wisior-z-oliwinem-na-naszyjniku-z-turmalinow
+              - generic [ref=e730]:
+                - generic [ref=e731]: Normalna cena
+                - generic [ref=e732]: 360,00 zl
+          - generic [ref=e734]:
+            - generic [ref=e735]:
+              - link "Pierścionek złoty z moissanitem 9x7 mm" [ref=e736] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-z-moissanitem-9x7-mm
+                - img "Pierścionek złoty z moissanitem 9x7 mm" [ref=e741]
+              - generic [ref=e742]:
+                - button "Dodaj do listy życzeń" [ref=e743] [cursor=pointer]:
+                  - img [ref=e745]
+                - button "Wybierz opcje" [ref=e747] [cursor=pointer]:
+                  - img [ref=e749]
+                - button "Szybki podgląd" [ref=e751] [cursor=pointer]:
+                  - img [ref=e753]
+                - button "Porównaj" [ref=e755] [cursor=pointer]:
+                  - img [ref=e757]
+            - generic [ref=e760]:
+              - heading "Pierścionek złoty z moissanitem 9x7 mm" [level=3] [ref=e761]:
+                - link "Pierścionek złoty z moissanitem 9x7 mm" [ref=e762] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-moissanitem-9x7-mm
+              - generic [ref=e765]:
+                - generic [ref=e766]: Normalna cena
+                - generic [ref=e767]: 5.650,00 zl
+          - generic [ref=e769]:
+            - generic [ref=e770]:
+              - link "Pierścionek złoty z moissanitem diamentami i rubinami" [ref=e771] [cursor=pointer]:
+                - /url: /products/pierscionek-zloty-z-moissanitem-i-rubinami-kwitnacy-ogrod
+                - img "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [ref=e776]
+              - generic [ref=e777]:
+                - button "Dodaj do listy życzeń" [ref=e778] [cursor=pointer]:
+                  - img [ref=e780]
+                - button "Wybierz opcje" [ref=e782] [cursor=pointer]:
+                  - img [ref=e784]
+                - button "Szybki podgląd" [ref=e786] [cursor=pointer]:
+                  - img [ref=e788]
+                - button "Porównaj" [ref=e790] [cursor=pointer]:
+                  - img [ref=e792]
+            - generic [ref=e795]:
+              - heading "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [level=3] [ref=e796]:
+                - link "Pierścionek złoty z moissanitem diamentami i rubinami \"Magiczny Ogród\"" [ref=e797] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-moissanitem-i-rubinami-kwitnacy-ogrod
+              - generic [ref=e800]:
+                - generic [ref=e801]: Normalna cena
+                - generic [ref=e802]: 5.780,00 zl
+          - generic [ref=e804]:
+            - generic [ref=e805]:
+              - link "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e806] [cursor=pointer]:
+                - /url: /products/pierscionek-pozlacany-z-perla-organiczne-echa-rafy-koralowej
+                - img "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e811]
+              - generic [ref=e812]:
+                - button "Dodaj do listy życzeń" [ref=e813] [cursor=pointer]:
+                  - img [ref=e815]
+                - button "Wybierz opcje" [ref=e817] [cursor=pointer]:
+                  - img [ref=e819]
+                - button "Szybki podgląd" [ref=e821] [cursor=pointer]:
+                  - img [ref=e823]
+                - button "Porównaj" [ref=e825] [cursor=pointer]:
+                  - img [ref=e827]
+            - generic [ref=e830]:
+              - heading "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [level=3] [ref=e831]:
+                - link "Pierścionek Pozłacany z Perłą – Organiczne Echa Rafy Koralowej" [ref=e832] [cursor=pointer]:
+                  - /url: /products/pierscionek-pozlacany-z-perla-organiczne-echa-rafy-koralowej
+              - generic [ref=e835]:
+                - generic [ref=e836]: Normalna cena
+                - generic [ref=e837]: 280,00 zl
+        - generic [ref=e838]:
+          - generic:
+            - button "Previous" [ref=e839] [cursor=pointer]:
+              - img [ref=e840]
+            - button "Next" [ref=e853] [cursor=pointer]:
+              - img [ref=e854]
+      - link "zobacz więcej" [ref=e857] [cursor=pointer]:
+        - /url: /collections/nowosci-1
+    - generic [ref=e865]:
+      - generic [ref=e867]:
+        - heading "NASZE WSZYSTKIE KOLEKCJE" [level=2] [ref=e868]
+        - generic [ref=e869]: Poszukujesz biżuterii w oryginalnej , wyjątkowej formie, rzadkich kamieni szlachetnych, o niezwykłej urodzie? Zapraszamy do krainy Epiru.
+        - generic [ref=e871]:
+          - generic:
+            - button "Previous" [ref=e872] [cursor=pointer]:
+              - img [ref=e873]
+            - generic [ref=e875]:
+              - generic [ref=e876]: "5"
+              - text: /
+              - generic [ref=e877]: "12"
+            - button "Next" [ref=e878] [cursor=pointer]:
+              - img [ref=e879]
+      - generic [ref=e885]:
+        - generic [ref=e888] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e889]:
+            - /url: /collections/bizuteria-z-ametystem-ametrynem
+          - generic [ref=e892]:
+            - heading "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [level=3] [ref=e893]:
+              - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e894]:
+                - /url: /collections/bizuteria-z-ametystem-ametrynem
+            - paragraph [ref=e895]: 14 elementów
+            - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e896]:
+              - /url: /collections/bizuteria-z-ametystem-ametrynem
+              - img [ref=e897]
+        - generic [ref=e901] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e902]:
+            - /url: /collections/bizuteria-z-turmalinami
+          - generic [ref=e905]:
+            - heading "BIŻUTERIA SREBRNA Z TURMALINAMI" [level=3] [ref=e906]:
+              - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e907]:
+                - /url: /collections/bizuteria-z-turmalinami
+            - paragraph [ref=e908]: 8 elementów
+            - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e909]:
+              - /url: /collections/bizuteria-z-turmalinami
+              - img [ref=e910]
+        - generic [ref=e914] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e915]:
+            - /url: /collections/bizuteria-srebrna-z-granatami
+          - generic [ref=e918]:
+            - heading "BIŻUTERIA SREBRNA Z GRANATAMI" [level=3] [ref=e919]:
+              - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e920]:
+                - /url: /collections/bizuteria-srebrna-z-granatami
+            - paragraph [ref=e921]: 24 elementów
+            - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e922]:
+              - /url: /collections/bizuteria-srebrna-z-granatami
+              - img [ref=e923]
+        - generic [ref=e927] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e928]:
+            - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+          - generic [ref=e931]:
+            - heading "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [level=3] [ref=e932]:
+              - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e933]:
+                - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+            - paragraph [ref=e934]: 7 elementów
+            - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e935]:
+              - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+              - img [ref=e936]
+        - generic [ref=e940] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e941]:
+            - /url: /collections/bizuteria-srebrna-z-topazami
+            - img "Złoty pierścionek z topazem swiss-blue na ręku" [ref=e944]
+          - generic [ref=e945]:
+            - heading "BIŻUTERIA SREBRNA Z TOPAZAMI" [level=3] [ref=e946]:
+              - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e947]:
+                - /url: /collections/bizuteria-srebrna-z-topazami
+            - paragraph [ref=e948]: 8 elementów
+            - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e949]:
+              - /url: /collections/bizuteria-srebrna-z-topazami
+              - img [ref=e950]
+        - generic [ref=e954] [cursor=pointer]:
+          - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e955]:
+            - /url: /collections/pierscionki-obraczki
+          - generic [ref=e958]:
+            - heading "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [level=3] [ref=e959]:
+              - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e960]:
+                - /url: /collections/pierscionki-obraczki
+            - paragraph [ref=e961]: 93 elementów
+            - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e962]:
+              - /url: /collections/pierscionki-obraczki
+              - img [ref=e963]
+        - generic [ref=e967] [cursor=pointer]:
+          - link "KOLCZYKI SREBRNE" [ref=e968]:
+            - /url: /collections/kolczyki-kolczyki-srebrne
+          - generic [ref=e971]:
+            - heading "KOLCZYKI SREBRNE" [level=3] [ref=e972]:
+              - link "KOLCZYKI SREBRNE" [ref=e973]:
+                - /url: /collections/kolczyki-kolczyki-srebrne
+            - paragraph [ref=e974]: 44 elementów
+            - link "KOLCZYKI SREBRNE" [ref=e975]:
+              - /url: /collections/kolczyki-kolczyki-srebrne
+              - img [ref=e976]
+        - generic [ref=e980] [cursor=pointer]:
+          - link "BIŻUTERIA ZŁOTA" [ref=e981]:
+            - /url: /collections/zlota-bizuteria
+          - generic [ref=e984]:
+            - heading "BIŻUTERIA ZŁOTA" [level=3] [ref=e985]:
+              - link "BIŻUTERIA ZŁOTA" [ref=e986]:
+                - /url: /collections/zlota-bizuteria
+            - paragraph [ref=e987]: 10 elementów
+            - link "BIŻUTERIA ZŁOTA" [ref=e988]:
+              - /url: /collections/zlota-bizuteria
+              - img [ref=e989]
+        - generic [ref=e993] [cursor=pointer]:
+          - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e994]:
+            - /url: /collections/wisiory
+          - generic [ref=e997]:
+            - heading "WISIORY / NASZYJNIKI SREBRNE" [level=3] [ref=e998]:
+              - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e999]:
+                - /url: /collections/wisiory
+            - paragraph [ref=e1000]: 15 elementów
+            - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e1001]:
+              - /url: /collections/wisiory
+              - img [ref=e1002]
+        - generic [ref=e1006] [cursor=pointer]:
+          - link "BRANSOLETKI SREBRNE" [ref=e1007]:
+            - /url: /collections/bransoletki-bransoletki-srebrne
+          - generic [ref=e1010]:
+            - heading "BRANSOLETKI SREBRNE" [level=3] [ref=e1011]:
+              - link "BRANSOLETKI SREBRNE" [ref=e1012]:
+                - /url: /collections/bransoletki-bransoletki-srebrne
+            - paragraph [ref=e1013]: 11 elementów
+            - link "BRANSOLETKI SREBRNE" [ref=e1014]:
+              - /url: /collections/bransoletki-bransoletki-srebrne
+              - img [ref=e1015]
+        - generic [ref=e1019] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [ref=e1020]:
+            - /url: /collections/b-bizuteria-srebrna-z-akwamarynami
+          - generic [ref=e1023]:
+            - heading "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [level=3] [ref=e1024]:
+              - link "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [ref=e1025]:
+                - /url: /collections/b-bizuteria-srebrna-z-akwamarynami
+            - paragraph [ref=e1026]: 6 elementów
+            - link "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [ref=e1027]:
+              - /url: /collections/b-bizuteria-srebrna-z-akwamarynami
+              - img [ref=e1028]
+        - generic [ref=e1032] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z OPALAMI" [ref=e1033]:
+            - /url: /collections/bizuteria-z-opalami
+          - generic [ref=e1036]:
+            - heading "BIŻUTERIA SREBRNA Z OPALAMI" [level=3] [ref=e1037]:
+              - link "BIŻUTERIA SREBRNA Z OPALAMI" [ref=e1038]:
+                - /url: /collections/bizuteria-z-opalami
+            - paragraph [ref=e1039]: 49 elementów
+            - link "BIŻUTERIA SREBRNA Z OPALAMI" [ref=e1040]:
+              - /url: /collections/bizuteria-z-opalami
+              - img [ref=e1041]
+        - generic [ref=e1045] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e1046]:
+            - /url: /collections/bizuteria-z-ametystem-ametrynem
+          - generic [ref=e1049]:
+            - heading "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [level=3] [ref=e1050]:
+              - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e1051]:
+                - /url: /collections/bizuteria-z-ametystem-ametrynem
+            - paragraph [ref=e1052]: 14 elementów
+            - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e1053]:
+              - /url: /collections/bizuteria-z-ametystem-ametrynem
+              - img [ref=e1054]
+        - generic [ref=e1058] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e1059]:
+            - /url: /collections/bizuteria-z-turmalinami
+          - generic [ref=e1062]:
+            - heading "BIŻUTERIA SREBRNA Z TURMALINAMI" [level=3] [ref=e1063]:
+              - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e1064]:
+                - /url: /collections/bizuteria-z-turmalinami
+            - paragraph [ref=e1065]: 8 elementów
+            - link "BIŻUTERIA SREBRNA Z TURMALINAMI" [ref=e1066]:
+              - /url: /collections/bizuteria-z-turmalinami
+              - img [ref=e1067]
+        - generic [ref=e1071] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e1072]:
+            - /url: /collections/bizuteria-srebrna-z-granatami
+          - generic [ref=e1075]:
+            - heading "BIŻUTERIA SREBRNA Z GRANATAMI" [level=3] [ref=e1076]:
+              - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e1077]:
+                - /url: /collections/bizuteria-srebrna-z-granatami
+            - paragraph [ref=e1078]: 24 elementów
+            - link "BIŻUTERIA SREBRNA Z GRANATAMI" [ref=e1079]:
+              - /url: /collections/bizuteria-srebrna-z-granatami
+              - img [ref=e1080]
+        - generic [ref=e1084] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e1085]:
+            - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+          - generic [ref=e1088]:
+            - heading "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [level=3] [ref=e1089]:
+              - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e1090]:
+                - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+            - paragraph [ref=e1091]: 7 elementów
+            - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e1092]:
+              - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+              - img [ref=e1093]
+        - generic [ref=e1097] [cursor=pointer]:
+          - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e1098]:
+            - /url: /collections/bizuteria-srebrna-z-topazami
+            - img "Złoty pierścionek z topazem swiss-blue na ręku" [ref=e1101]
+          - generic [ref=e1102]:
+            - heading "BIŻUTERIA SREBRNA Z TOPAZAMI" [level=3] [ref=e1103]:
+              - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e1104]:
+                - /url: /collections/bizuteria-srebrna-z-topazami
+            - paragraph [ref=e1105]: 8 elementów
+            - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e1106]:
+              - /url: /collections/bizuteria-srebrna-z-topazami
+              - img [ref=e1107]
+        - generic [ref=e1111] [cursor=pointer]:
+          - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e1112]:
+            - /url: /collections/pierscionki-obraczki
+          - generic [ref=e1115]:
+            - heading "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [level=3] [ref=e1116]:
+              - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e1117]:
+                - /url: /collections/pierscionki-obraczki
+            - paragraph [ref=e1118]: 93 elementów
+            - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e1119]:
+              - /url: /collections/pierscionki-obraczki
+              - img [ref=e1120]
+        - generic [ref=e1124] [cursor=pointer]:
+          - link "KOLCZYKI SREBRNE" [ref=e1125]:
+            - /url: /collections/kolczyki-kolczyki-srebrne
+          - generic [ref=e1128]:
+            - heading "KOLCZYKI SREBRNE" [level=3] [ref=e1129]:
+              - link "KOLCZYKI SREBRNE" [ref=e1130]:
+                - /url: /collections/kolczyki-kolczyki-srebrne
+            - paragraph [ref=e1131]: 44 elementów
+            - link "KOLCZYKI SREBRNE" [ref=e1132]:
+              - /url: /collections/kolczyki-kolczyki-srebrne
+              - img [ref=e1133]
+        - generic [ref=e1137] [cursor=pointer]:
+          - link "BIŻUTERIA ZŁOTA" [ref=e1138]:
+            - /url: /collections/zlota-bizuteria
+          - generic [ref=e1141]:
+            - heading "BIŻUTERIA ZŁOTA" [level=3] [ref=e1142]:
+              - link "BIŻUTERIA ZŁOTA" [ref=e1143]:
+                - /url: /collections/zlota-bizuteria
+            - paragraph [ref=e1144]: 10 elementów
+            - link "BIŻUTERIA ZŁOTA" [ref=e1145]:
+              - /url: /collections/zlota-bizuteria
+              - img [ref=e1146]
+        - generic [ref=e1150] [cursor=pointer]:
+          - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e1151]:
+            - /url: /collections/wisiory
+          - generic [ref=e1154]:
+            - heading "WISIORY / NASZYJNIKI SREBRNE" [level=3] [ref=e1155]:
+              - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e1156]:
+                - /url: /collections/wisiory
+            - paragraph [ref=e1157]: 15 elementów
+            - link "WISIORY / NASZYJNIKI SREBRNE" [ref=e1158]:
+              - /url: /collections/wisiory
+              - img [ref=e1159]
+        - generic [ref=e1163] [cursor=pointer]:
+          - link "BRANSOLETKI SREBRNE" [ref=e1164]:
+            - /url: /collections/bransoletki-bransoletki-srebrne
+          - generic [ref=e1167]:
+            - heading "BRANSOLETKI SREBRNE" [level=3] [ref=e1168]:
+              - link "BRANSOLETKI SREBRNE" [ref=e1169]:
+                - /url: /collections/bransoletki-bransoletki-srebrne
+            - paragraph [ref=e1170]: 11 elementów
+            - link "BRANSOLETKI SREBRNE" [ref=e1171]:
+              - /url: /collections/bransoletki-bransoletki-srebrne
+              - img [ref=e1172]
+    - generic [ref=e1176]:
+      - generic [ref=e1177]:
+        - paragraph [ref=e1178]: Zapraszamy do zapoznania się z naszą kolekcją biżuterii złotej. W tej kolekcji prezentujemy nasze autorskie wzory wykonane w złocie. Jest też w naszej firmie możliwość skąłdanai zamówień indywidualnych na biżuterięze złota.
+        - heading "ZOBACZ NASZE AUTORSKIE WZORY BIŻUTERII ZŁOTEJ" [level=2] [ref=e1179]
+      - generic [ref=e1180]:
+        - generic [ref=e1200]:
+          - heading "Pierścionek złoty z topazem" [level=2] [ref=e1201]
+          - link "BIŻUTERIA ZŁOTA" [ref=e1203] [cursor=pointer]:
+            - /url: /collections/zlota-bizuteria
+        - generic [ref=e1219]:
+          - generic [ref=e1220]:
+            - link "banner-1" [ref=e1221] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+            - link "KUP TERAZ" [ref=e1225] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-moissanitem-z-kolekcji-galazki
+          - generic [ref=e1226]:
+            - link "banner-2" [ref=e1227] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-ametystem-epir
+            - link "KUP TERAZ" [ref=e1231] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-ametystem-epir
+          - generic [ref=e1232]:
+            - link "banner-3" [ref=e1233] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+            - link "KUP TERAZ" [ref=e1237] [cursor=pointer]:
+              - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+          - generic [ref=e1238]:
+            - link "banner-4" [ref=e1239] [cursor=pointer]:
+              - /url: "#"
+              - img "Złoty pierścionek z szafirem, 3mm, pierścionek w formie rzeźbionej gałązki" [ref=e1242]
+            - link "KUP TERAZ" [ref=e1244] [cursor=pointer]:
+              - /url: "#"
+    - generic [ref=e1256]:
+      - generic [ref=e1257]:
+        - heading "NASZE BESTSELLERY" [level=2] [ref=e1258]
+        - generic [ref=e1259]: Poznajcie nasze najlepiej sprzedające się obecnie produkty. Może znajdziesz tu cos dla siebie.
+      - generic [ref=e1260]:
+        - generic [ref=e1262]:
+          - generic [ref=e1264]:
+            - generic [ref=e1265]:
+              - link "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [ref=e1266] [cursor=pointer]:
+                - /url: /products/pierscionek-srebrny-z-topazem-1
+                - img "Srebrny pierścionek z topazem Swiss Blue o oksydowanym wykończeniu i surowej fakturze" [ref=e1269]
+                - img "Srebrny pierścionek z topazem Swiss Blue o oksydowanym wykończeniu i surowej fakturze" [ref=e1272]
+              - generic [ref=e1273]:
+                - button "Dodaj do listy życzeń" [ref=e1274] [cursor=pointer]:
+                  - img [ref=e1276]
+                - button "Wybierz opcje" [ref=e1278] [cursor=pointer]:
+                  - img [ref=e1280]
+                - button "Szybki podgląd" [ref=e1282] [cursor=pointer]:
+                  - img [ref=e1284]
+                - button "Porównaj" [ref=e1286] [cursor=pointer]:
+                  - img [ref=e1288]
+            - generic [ref=e1291]:
+              - heading "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [level=3] [ref=e1292]:
+                - link "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [ref=e1293] [cursor=pointer]:
+                  - /url: /products/pierscionek-srebrny-z-topazem-1
+              - generic [ref=e1296]:
+                - generic [ref=e1297]: Normalna cena
+                - generic [ref=e1298]: 280,00 zl
+          - generic [ref=e1300]:
+            - generic [ref=e1301]:
+              - link "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1302] [cursor=pointer]:
+                - /url: /products/pierscionek-pozlacany-galazki-z-topazem-sky-blue
+                - img "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1307]
+              - generic [ref=e1308]:
+                - button "Dodaj do listy życzeń" [ref=e1309] [cursor=pointer]:
+                  - img [ref=e1311]
+                - button "Wybierz opcje" [ref=e1313] [cursor=pointer]:
+                  - img [ref=e1315]
+                - button "Szybki podgląd" [ref=e1317] [cursor=pointer]:
+                  - img [ref=e1319]
+                - button "Porównaj" [ref=e1321] [cursor=pointer]:
+                  - img [ref=e1323]
+            - generic [ref=e1326]:
+              - heading "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [level=3] [ref=e1327]:
+                - link "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1328] [cursor=pointer]:
+                  - /url: /products/pierscionek-pozlacany-galazki-z-topazem-sky-blue
+              - generic [ref=e1331]:
+                - generic [ref=e1332]: Normalna cena
+                - generic [ref=e1333]: 295,00 zl
+          - generic [ref=e1335]:
+            - generic [ref=e1336]:
+              - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e1337] [cursor=pointer]:
+                - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                - img "Pierścionek srebrny o ciekawej organicznej fakturze przypominającej rafę koralowa" [ref=e1342]
+              - generic [ref=e1343]:
+                - button "Dodaj do listy życzeń" [ref=e1344] [cursor=pointer]:
+                  - img [ref=e1346]
+                - button "Wybierz opcje" [ref=e1348] [cursor=pointer]:
+                  - img [ref=e1350]
+                - button "Szybki podgląd" [ref=e1352] [cursor=pointer]:
+                  - img [ref=e1354]
+                - button "Porównaj" [ref=e1356] [cursor=pointer]:
+                  - img [ref=e1358]
+            - generic [ref=e1361]:
+              - heading "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [level=3] [ref=e1362]:
+                - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e1363] [cursor=pointer]:
+                  - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+              - generic [ref=e1366]:
+                - generic [ref=e1367]: Normalna cena
+                - generic [ref=e1368]: 260,00 zl
+          - generic [ref=e1370]:
+            - generic [ref=e1371]:
+              - link "Złoty pierścionek z naturalnym szafirem" [ref=e1372] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+                - img "Złoty pierścionek z naturalnym szafirem" [ref=e1377]
+              - generic [ref=e1378]:
+                - button "Dodaj do listy życzeń" [ref=e1379] [cursor=pointer]:
+                  - img [ref=e1381]
+                - button "Wybierz opcje" [ref=e1383] [cursor=pointer]:
+                  - img [ref=e1385]
+                - button "Szybki podgląd" [ref=e1387] [cursor=pointer]:
+                  - img [ref=e1389]
+                - button "Porównaj" [ref=e1391] [cursor=pointer]:
+                  - img [ref=e1393]
+            - generic [ref=e1396]:
+              - heading "Złoty pierścionek z naturalnym szafirem" [level=3] [ref=e1397]:
+                - link "Złoty pierścionek z naturalnym szafirem" [ref=e1398] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+              - generic [ref=e1401]:
+                - generic [ref=e1402]: Normalna cena
+                - generic [ref=e1403]: 2.450,00 zl
+          - generic [ref=e1405]:
+            - generic [ref=e1406]:
+              - link "Pierścionek z czarnym turmalinem z kolekcji" [ref=e1407] [cursor=pointer]:
+                - /url: /products/pierscionek-galazki-z-czarnym-turmalinem
+                - img "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e1412]
+              - generic [ref=e1413]:
+                - button "Dodaj do listy życzeń" [ref=e1414] [cursor=pointer]:
+                  - img [ref=e1416]
+                - button "Wybierz opcje" [ref=e1418] [cursor=pointer]:
+                  - img [ref=e1420]
+                - button "Szybki podgląd" [ref=e1422] [cursor=pointer]:
+                  - img [ref=e1424]
+                - button "Porównaj" [ref=e1426] [cursor=pointer]:
+                  - img [ref=e1428]
+            - generic [ref=e1431]:
+              - heading "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [level=3] [ref=e1432]:
+                - link "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e1433] [cursor=pointer]:
+                  - /url: /products/pierscionek-galazki-z-czarnym-turmalinem
+              - generic [ref=e1436]:
+                - generic [ref=e1437]: Normalna cena
+                - generic [ref=e1438]: 280,00 zl
+          - generic [ref=e1440]:
+            - generic [ref=e1441]:
+              - link "Srebrne kolczyki z czarnymi perłami" [ref=e1442] [cursor=pointer]:
+                - /url: /products/kolczyki-z-czarnymi-perlami
+                - img "Srebrne kolczyki z czarnymi perłami - EPIR Art Jewellery&Gemstone" [ref=e1445]
+                - img "Srebrne kolczyki z czarnymi perłami - EPIR Art Jewellery&Gemstone" [ref=e1448]
+              - generic [ref=e1449]:
+                - button "Dodaj do listy życzeń" [ref=e1450] [cursor=pointer]:
+                  - img [ref=e1452]
+                - button "Dodaj do koszyka" [ref=e1456] [cursor=pointer]:
+                  - img [ref=e1458]
+                - button "Szybki podgląd" [ref=e1460] [cursor=pointer]:
+                  - img [ref=e1462]
+                - button "Porównaj" [ref=e1464] [cursor=pointer]:
+                  - img [ref=e1466]
+            - generic [ref=e1469]:
+              - heading "Srebrne kolczyki z czarnymi perłami" [level=3] [ref=e1470]:
+                - link "Srebrne kolczyki z czarnymi perłami" [ref=e1471] [cursor=pointer]:
+                  - /url: /products/kolczyki-z-czarnymi-perlami
+              - generic [ref=e1474]:
+                - generic [ref=e1475]: Normalna cena
+                - generic [ref=e1476]: 230,00 zl
+          - generic [ref=e1478]:
+            - generic [ref=e1479]:
+              - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem" [ref=e1480] [cursor=pointer]:
+                - /url: /products/zlota-obraczka-galazka
+                - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e1483]
+                - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e1486]
+              - generic [ref=e1487]:
+                - button "Dodaj do listy życzeń" [ref=e1488] [cursor=pointer]:
+                  - img [ref=e1490]
+                - button "Wybierz opcje" [ref=e1492] [cursor=pointer]:
+                  - img [ref=e1494]
+                - button "Szybki podgląd" [ref=e1496] [cursor=pointer]:
+                  - img [ref=e1498]
+                - button "Porównaj" [ref=e1500] [cursor=pointer]:
+                  - img [ref=e1502]
+            - generic [ref=e1505]:
+              - heading "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [level=3] [ref=e1506]:
+                - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e1507] [cursor=pointer]:
+                  - /url: /products/zlota-obraczka-galazka
+              - generic [ref=e1510]:
+                - generic [ref=e1511]: Normalna cena
+                - generic [ref=e1512]: 1.230,00 zl
+          - generic [ref=e1514]:
+            - generic [ref=e1515]:
+              - link "Pierścionek srebrny z ametystem z kolekcji" [ref=e1516] [cursor=pointer]:
+                - /url: /products/pierscionek-srebrny-z-ametystem-kora-drzewa
+                - img "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\" - EPIR Art Jewellery&Gemstone" [ref=e1519]
+                - img "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\" - EPIR Art Jewellery&Gemstone" [ref=e1522]
+              - generic [ref=e1523]:
+                - button "Dodaj do listy życzeń" [ref=e1524] [cursor=pointer]:
+                  - img [ref=e1526]
+                - button "Wybierz opcje" [ref=e1528] [cursor=pointer]:
+                  - img [ref=e1530]
+                - button "Szybki podgląd" [ref=e1532] [cursor=pointer]:
+                  - img [ref=e1534]
+                - button "Porównaj" [ref=e1536] [cursor=pointer]:
+                  - img [ref=e1538]
+            - generic [ref=e1541]:
+              - heading "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\"" [level=3] [ref=e1542]:
+                - link "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\"" [ref=e1543] [cursor=pointer]:
+                  - /url: /products/pierscionek-srebrny-z-ametystem-kora-drzewa
+              - generic [ref=e1546]:
+                - generic [ref=e1547]: Normalna cena
+                - generic [ref=e1548]: 290,00 zl
+          - generic [ref=e1550]:
+            - generic [ref=e1551]:
+              - link "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [ref=e1552] [cursor=pointer]:
+                - /url: /products/pierscionek-srebrny-z-topazem-1
+                - img "Srebrny pierścionek z topazem Swiss Blue o oksydowanym wykończeniu i surowej fakturze" [ref=e1555]
+                - img "Srebrny pierścionek z topazem Swiss Blue o oksydowanym wykończeniu i surowej fakturze" [ref=e1558]
+              - generic [ref=e1559]:
+                - button "Dodaj do listy życzeń" [ref=e1560] [cursor=pointer]:
+                  - img [ref=e1562]
+                - button "Wybierz opcje" [ref=e1564] [cursor=pointer]:
+                  - img [ref=e1566]
+                - button "Szybki podgląd" [ref=e1568] [cursor=pointer]:
+                  - img [ref=e1570]
+                - button "Porównaj" [ref=e1572] [cursor=pointer]:
+                  - img [ref=e1574]
+            - generic [ref=e1577]:
+              - heading "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [level=3] [ref=e1578]:
+                - link "Srebrny pierścionek z topazem Swiss Blue – organiczna forma inspirowana naturą" [ref=e1579] [cursor=pointer]:
+                  - /url: /products/pierscionek-srebrny-z-topazem-1
+              - generic [ref=e1582]:
+                - generic [ref=e1583]: Normalna cena
+                - generic [ref=e1584]: 280,00 zl
+          - generic [ref=e1586]:
+            - generic [ref=e1587]:
+              - link "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1588] [cursor=pointer]:
+                - /url: /products/pierscionek-pozlacany-galazki-z-topazem-sky-blue
+                - img "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1593]
+              - generic [ref=e1594]:
+                - button "Dodaj do listy życzeń" [ref=e1595] [cursor=pointer]:
+                  - img [ref=e1597]
+                - button "Wybierz opcje" [ref=e1599] [cursor=pointer]:
+                  - img [ref=e1601]
+                - button "Szybki podgląd" [ref=e1603] [cursor=pointer]:
+                  - img [ref=e1605]
+                - button "Porównaj" [ref=e1607] [cursor=pointer]:
+                  - img [ref=e1609]
+            - generic [ref=e1612]:
+              - heading "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [level=3] [ref=e1613]:
+                - link "Pozłacany Srebrny Pierścionek z Topazem Sky Blue – Złociste Organiczne Echa" [ref=e1614] [cursor=pointer]:
+                  - /url: /products/pierscionek-pozlacany-galazki-z-topazem-sky-blue
+              - generic [ref=e1617]:
+                - generic [ref=e1618]: Normalna cena
+                - generic [ref=e1619]: 295,00 zl
+          - generic [ref=e1621]:
+            - generic [ref=e1622]:
+              - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e1623] [cursor=pointer]:
+                - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                - img "Pierścionek srebrny o ciekawej organicznej fakturze przypominającej rafę koralowa" [ref=e1628]
+              - generic [ref=e1629]:
+                - button "Dodaj do listy życzeń" [ref=e1630] [cursor=pointer]:
+                  - img [ref=e1632]
+                - button "Wybierz opcje" [ref=e1634] [cursor=pointer]:
+                  - img [ref=e1636]
+                - button "Szybki podgląd" [ref=e1638] [cursor=pointer]:
+                  - img [ref=e1640]
+                - button "Porównaj" [ref=e1642] [cursor=pointer]:
+                  - img [ref=e1644]
+            - generic [ref=e1647]:
+              - heading "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [level=3] [ref=e1648]:
+                - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e1649] [cursor=pointer]:
+                  - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+              - generic [ref=e1652]:
+                - generic [ref=e1653]: Normalna cena
+                - generic [ref=e1654]: 260,00 zl
+          - generic [ref=e1656]:
+            - generic [ref=e1657]:
+              - link "Złoty pierścionek z naturalnym szafirem" [ref=e1658] [cursor=pointer]:
+                - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+                - img "Złoty pierścionek z naturalnym szafirem" [ref=e1663]
+              - generic [ref=e1664]:
+                - button "Dodaj do listy życzeń" [ref=e1665] [cursor=pointer]:
+                  - img [ref=e1667]
+                - button "Wybierz opcje" [ref=e1669] [cursor=pointer]:
+                  - img [ref=e1671]
+                - button "Szybki podgląd" [ref=e1673] [cursor=pointer]:
+                  - img [ref=e1675]
+                - button "Porównaj" [ref=e1677] [cursor=pointer]:
+                  - img [ref=e1679]
+            - generic [ref=e1682]:
+              - heading "Złoty pierścionek z naturalnym szafirem" [level=3] [ref=e1683]:
+                - link "Złoty pierścionek z naturalnym szafirem" [ref=e1684] [cursor=pointer]:
+                  - /url: /products/zloty-pierscionek-z-naturalnym-szafirem
+              - generic [ref=e1687]:
+                - generic [ref=e1688]: Normalna cena
+                - generic [ref=e1689]: 2.450,00 zl
+          - generic [ref=e1691]:
+            - generic [ref=e1692]:
+              - link "Pierścionek z czarnym turmalinem z kolekcji" [ref=e1693] [cursor=pointer]:
+                - /url: /products/pierscionek-galazki-z-czarnym-turmalinem
+                - img "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e1698]
+              - generic [ref=e1699]:
+                - button "Dodaj do listy życzeń" [ref=e1700] [cursor=pointer]:
+                  - img [ref=e1702]
+                - button "Wybierz opcje" [ref=e1704] [cursor=pointer]:
+                  - img [ref=e1706]
+                - button "Szybki podgląd" [ref=e1708] [cursor=pointer]:
+                  - img [ref=e1710]
+                - button "Porównaj" [ref=e1712] [cursor=pointer]:
+                  - img [ref=e1714]
+            - generic [ref=e1717]:
+              - heading "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [level=3] [ref=e1718]:
+                - link "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e1719] [cursor=pointer]:
+                  - /url: /products/pierscionek-galazki-z-czarnym-turmalinem
+              - generic [ref=e1722]:
+                - generic [ref=e1723]: Normalna cena
+                - generic [ref=e1724]: 280,00 zl
+          - generic [ref=e1726]:
+            - generic [ref=e1727]:
+              - link "Srebrne kolczyki z czarnymi perłami" [ref=e1728] [cursor=pointer]:
+                - /url: /products/kolczyki-z-czarnymi-perlami
+                - img "Srebrne kolczyki z czarnymi perłami - EPIR Art Jewellery&Gemstone" [ref=e1731]
+                - img "Srebrne kolczyki z czarnymi perłami - EPIR Art Jewellery&Gemstone" [ref=e1734]
+              - generic [ref=e1735]:
+                - button "Dodaj do listy życzeń" [ref=e1736] [cursor=pointer]:
+                  - img [ref=e1738]
+                - button "Dodaj do koszyka" [ref=e1742] [cursor=pointer]:
+                  - img [ref=e1744]
+                - button "Szybki podgląd" [ref=e1746] [cursor=pointer]:
+                  - img [ref=e1748]
+                - button "Porównaj" [ref=e1750] [cursor=pointer]:
+                  - img [ref=e1752]
+            - generic [ref=e1755]:
+              - heading "Srebrne kolczyki z czarnymi perłami" [level=3] [ref=e1756]:
+                - link "Srebrne kolczyki z czarnymi perłami" [ref=e1757] [cursor=pointer]:
+                  - /url: /products/kolczyki-z-czarnymi-perlami
+              - generic [ref=e1760]:
+                - generic [ref=e1761]: Normalna cena
+                - generic [ref=e1762]: 230,00 zl
+          - generic [ref=e1764]:
+            - generic [ref=e1765]:
+              - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem" [ref=e1766] [cursor=pointer]:
+                - /url: /products/zlota-obraczka-galazka
+                - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e1769]
+                - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e1772]
+              - generic [ref=e1773]:
+                - button "Dodaj do listy życzeń" [ref=e1774] [cursor=pointer]:
+                  - img [ref=e1776]
+                - button "Wybierz opcje" [ref=e1778] [cursor=pointer]:
+                  - img [ref=e1780]
+                - button "Szybki podgląd" [ref=e1782] [cursor=pointer]:
+                  - img [ref=e1784]
+                - button "Porównaj" [ref=e1786] [cursor=pointer]:
+                  - img [ref=e1788]
+            - generic [ref=e1791]:
+              - heading "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [level=3] [ref=e1792]:
+                - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e1793] [cursor=pointer]:
+                  - /url: /products/zlota-obraczka-galazka
+              - generic [ref=e1796]:
+                - generic [ref=e1797]: Normalna cena
+                - generic [ref=e1798]: 1.230,00 zl
+          - generic [ref=e1800]:
+            - generic [ref=e1801]:
+              - link "Pierścionek srebrny z ametystem z kolekcji" [ref=e1802] [cursor=pointer]:
+                - /url: /products/pierscionek-srebrny-z-ametystem-kora-drzewa
+                - img "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\" - EPIR Art Jewellery&Gemstone" [ref=e1805]
+                - img "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\" - EPIR Art Jewellery&Gemstone" [ref=e1808]
+              - generic [ref=e1809]:
+                - button "Dodaj do listy życzeń" [ref=e1810] [cursor=pointer]:
+                  - img [ref=e1812]
+                - button "Wybierz opcje" [ref=e1814] [cursor=pointer]:
+                  - img [ref=e1816]
+                - button "Szybki podgląd" [ref=e1818] [cursor=pointer]:
+                  - img [ref=e1820]
+                - button "Porównaj" [ref=e1822] [cursor=pointer]:
+                  - img [ref=e1824]
+            - generic [ref=e1827]:
+              - heading "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\"" [level=3] [ref=e1828]:
+                - link "Pierścionek srebrny z ametystem z kolekcji \"Kora Drzew\"" [ref=e1829] [cursor=pointer]:
+                  - /url: /products/pierscionek-srebrny-z-ametystem-kora-drzewa
+              - generic [ref=e1832]:
+                - generic [ref=e1833]: Normalna cena
+                - generic [ref=e1834]: 290,00 zl
+        - generic [ref=e1835]:
+          - generic:
+            - button "Previous" [ref=e1836] [cursor=pointer]:
+              - img [ref=e1837]
+            - button "Next" [ref=e1848] [cursor=pointer]:
+              - img [ref=e1849]
+      - link "BESTSELLERY" [ref=e1852] [cursor=pointer]:
+        - /url: /collections/bestsellery
+    - generic [ref=e1860]:
+      - heading "Pracownia jubilerska EPIR" [level=2] [ref=e1861]
+      - heading "Tworzymy autorską biżuterię artystyczną z pasją do tradycyjnego rzemiosła. Nasza wrocławska pracownia łączy srebro próby 925, złoto i kamienie naturalne w unikalne dzieła inspirowane naturą – od organicznych pierścionków po kolczyki z etiopskimi opalami. Każdy egzemplarz powstaje ręcznie, by opowiadać Waszą osobistą historię." [level=5] [ref=e1863]:
+        - text: Tworzymy autorską biżuterię artystyczną z pasją do tradycyjnego rzemiosła
+        - strong [ref=e1864]: .
+        - text: Nasza wrocławska pracownia łączy srebro próby 925, złoto i kamienie naturalne w unikalne dzieła inspirowane naturą – od organicznych pierścionków po kolczyki z etiopskimi opalami. Każdy egzemplarz powstaje ręcznie, by opowiadać Waszą osobistą historię.
+    - link "O NAS" [ref=e1873] [cursor=pointer]:
+      - /url: /pages/o-nas
+    - generic [ref=e1884]:
+      - generic [ref=e1885]:
+        - heading "OPINIE KLIENTÓW" [level=2] [ref=e1886]
+        - generic [ref=e1887]:
+          - img "4.97 stars" [ref=e1888]:
+            - generic [ref=e1889]: 
+            - generic [ref=e1890]: 
+            - generic [ref=e1891]: 
+            - generic [ref=e1892]: 
+            - generic [ref=e1893]: 
+          - generic [ref=e1894]:
+            - link "z 176 recenzji" [ref=e1895] [cursor=pointer]:
+              - /url: https://app.judge.me/reviews/stores/epirbizuteria.pl
+            - img [ref=e1896]
+      - generic [ref=e1900]:
+        - generic [ref=e1902]:
+          - generic [ref=e1903]:
+            - img "5 stars" [ref=e1904]:
+              - generic [ref=e1905]: 
+              - generic [ref=e1906]: 
+              - generic [ref=e1907]: 
+              - generic [ref=e1908]: 
+              - generic [ref=e1909]: 
+            - generic [ref=e1910]:
+              - generic [ref=e1911]: Bardzo
+              - paragraph [ref=e1913]: Bardzo zadowolona
+          - generic [ref=e1914]:
+            - generic [ref=e1915]: KAROLINA M.
+            - link:
+              - /url: /#judgeme_product_reviews
+        - generic [ref=e1916]:
+          - img "Obrączka \"Kora Drzewa\" ze szmaragdem" [ref=e1917]
+          - generic [ref=e1918]:
+            - generic [ref=e1919]:
+              - img "5 stars" [ref=e1920]:
+                - generic [ref=e1921]: 
+                - generic [ref=e1922]: 
+                - generic [ref=e1923]: 
+                - generic [ref=e1924]: 
+                - generic [ref=e1925]: 
+              - generic [ref=e1926]:
+                - generic [ref=e1927]: Obrączka ze szmaragdem kora drzewa
+                - paragraph [ref=e1929]: Witam.Obrączka w formie kory drzewa z osadzonym w niej szmaragdem to arcydzieło, które codziennie zdobi moją dłoń. W zależności od oświetlenia szmaragd lśni inna barwą, raz bardziej intensywną zielenią,raz miętowym delikatnym odcieniem. Jestem bardzo zadowolona z jakości pierścionka i szybkiej realizacji mojego zamówienia.Właśnie takie pracownie powinno się promowa, które produkują piękne, indywidualne dzieła,a nie masówki z wątpliwą jakością. Dzieł, których nie będzie miał nikt inny,co jeszcze bardziej podkreśla szczególnośc danej rzeczy. Serdecznie dziękuję za spełnienie moich odwiecznych marzeń o pierścionku ze szmaragdem.
+            - generic [ref=e1930]:
+              - generic [ref=e1931]: KAROLINA M.
+              - link:
+                - /url: /products/obraczka-kora-drzewa-ze-szmaragdem#judgeme_product_reviews
+        - generic [ref=e1932]:
+          - 'img "Złocone Srebrne Kolczyki EPIR: Opale Etiopskie, Wachlarzowa Oprawa z Granulacją" [ref=e1933]'
+          - generic [ref=e1934]:
+            - generic [ref=e1935]:
+              - img "5 stars" [ref=e1936]:
+                - generic [ref=e1937]: 
+                - generic [ref=e1938]: 
+                - generic [ref=e1939]: 
+                - generic [ref=e1940]: 
+                - generic [ref=e1941]: 
+              - generic [ref=e1942]:
+                - generic [ref=e1943]: Polecam piękne kolczyki profesjonalna
+                - paragraph [ref=e1945]: Polecam piękne kolczyki profesjonalna obsługa
+            - generic [ref=e1946]:
+              - generic [ref=e1947]: Mirosława
+              - link:
+                - /url: /products/kolczyki-wachlarze-pozlacane-badz-zlote-z-niebieskimi-opalami#judgeme_product_reviews
+        - generic [ref=e1948]:
+          - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e1949]
+          - generic [ref=e1950]:
+            - generic [ref=e1951]:
+              - img "5 stars" [ref=e1952]:
+                - generic [ref=e1953]: 
+                - generic [ref=e1954]: 
+                - generic [ref=e1955]: 
+                - generic [ref=e1956]: 
+                - generic [ref=e1957]: 
+              - generic [ref=e1958]:
+                - generic [ref=e1959]: Pięknie wykonane
+                - paragraph [ref=e1961]: Pięknie wykonane, jeszczenie wiemy jak się będą nosić, bo narazie tylko przymierzane przed ślubem
+            - generic [ref=e1962]:
+              - generic [ref=e1963]: Teodora
+              - link:
+                - /url: /products/zlota-obraczka-galazka#judgeme_product_reviews
+        - generic [ref=e1964]:
+          - img "Kolczyki srebrne z akwamarynami „Gałązki”" [ref=e1965]
+          - generic [ref=e1966]:
+            - generic [ref=e1967]:
+              - img "5 stars" [ref=e1968]:
+                - generic [ref=e1969]: 
+                - generic [ref=e1970]: 
+                - generic [ref=e1971]: 
+                - generic [ref=e1972]: 
+                - generic [ref=e1973]: 
+              - generic [ref=e1974]:
+                - generic [ref=e1975]: Spojrzenie morza
+                - paragraph [ref=e1977]:
+                  - text: Kolczyki piękne,delikatne,ale jednoczesnie krzykliwie rzucaja sie w oczy swym błekitno-zielonym odcieniem.
+                  - text: Bardzo podoba mi sie niebanalny wzór galązki.
+            - generic [ref=e1978]:
+              - generic [ref=e1979]: Iwetta
+              - link:
+                - /url: /products/kolczyki-srebrne-z-akwamarynami-galazki#judgeme_product_reviews
+        - generic [ref=e1980]:
+          - img "Pierścionek srebrny z granatem" [ref=e1981]
+          - generic [ref=e1982]:
+            - generic [ref=e1983]:
+              - img "5 stars" [ref=e1984]:
+                - generic [ref=e1985]: 
+                - generic [ref=e1986]: 
+                - generic [ref=e1987]: 
+                - generic [ref=e1988]: 
+                - generic [ref=e1989]: 
+              - generic [ref=e1990]:
+                - generic [ref=e1991]: Naprawdę warto
+                - paragraph [ref=e1993]: Pierścionek jest przepiękny, majestatyczny, wpada w oko i jestem w nim zakochana. Jest on na prezent dla przyjaciółki, ale mam ochotę mieć taki sam. Robicie kawał dobrej roboty.
+            - generic [ref=e1994]:
+              - generic [ref=e1995]: lena
+              - link:
+                - /url: /products/pierscionek-srebrny-z-granatem#judgeme_product_reviews
+        - generic [ref=e1996]:
+          - img "Kolczyki srebrne z labradorytami \"Złoty piasek\"" [ref=e1997]
+          - generic [ref=e1998]:
+            - generic [ref=e1999]:
+              - img "5 stars" [ref=e2000]:
+                - generic [ref=e2001]: 
+                - generic [ref=e2002]: 
+                - generic [ref=e2003]: 
+                - generic [ref=e2004]: 
+                - generic [ref=e2005]: 
+              - paragraph [ref=e2008]: efektowne
+            - generic [ref=e2009]:
+              - generic [ref=e2010]: Jeżyna
+              - link:
+                - /url: "#judgeme_product_reviews"
+        - generic [ref=e2011]:
+          - img "Pierścionek pozłacany z niebieskim opalem" [ref=e2012]
+          - generic [ref=e2013]:
+            - generic [ref=e2014]:
+              - img "5 stars" [ref=e2015]:
+                - generic [ref=e2016]: 
+                - generic [ref=e2017]: 
+                - generic [ref=e2018]: 
+                - generic [ref=e2019]: 
+                - generic [ref=e2020]: 
+              - generic [ref=e2021]:
+                - generic [ref=e2022]: Miłość od pierwszego wejrzenia
+                - paragraph [ref=e2024]: Z każdym dniem jestem coraz bardziej zakochana w tym pierścionku. Piękna, ręczna robota, niezwykle oryginalna oprawa i opal, który pokazuje całe swoje oblicze. Jestem zachwycona i na pewno wrócę po kolejne małe co nie co. 😍
+            - generic [ref=e2025]:
+              - generic [ref=e2026]: Customer
+              - link:
+                - /url: "#judgeme_product_reviews"
+        - generic [ref=e2027]:
+          - img "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e2028]
+          - generic [ref=e2029]:
+            - generic [ref=e2030]:
+              - img "5 stars" [ref=e2031]:
+                - generic [ref=e2032]: 
+                - generic [ref=e2033]: 
+                - generic [ref=e2034]: 
+                - generic [ref=e2035]: 
+                - generic [ref=e2036]: 
+              - paragraph [ref=e2039]: przepiękny! polecam z całego serca
+            - generic [ref=e2040]:
+              - generic [ref=e2041]: Marlena G.
+              - link:
+                - /url: /products/pierscionek-galazki-z-czarnym-turmalinem#judgeme_product_reviews
+        - generic [ref=e2042]:
+          - img "Szeroka obrączka srebrna z zielonym kyanitem" [ref=e2043]
+          - generic [ref=e2044]:
+            - generic [ref=e2045]:
+              - img "5 stars" [ref=e2046]:
+                - generic [ref=e2047]: 
+                - generic [ref=e2048]: 
+                - generic [ref=e2049]: 
+                - generic [ref=e2050]: 
+                - generic [ref=e2051]: 
+              - generic [ref=e2052]:
+                - generic [ref=e2053]: Zielony kyanit. Obrączka.
+                - paragraph [ref=e2055]: Piękna i majestatyczna obrączka. Tak jak lubię. Trochę surowa, Przyciąga uwagę i dlatego ją mam.
+            - generic [ref=e2056]:
+              - generic [ref=e2057]: Eliza
+              - link:
+                - /url: /products/szeroka-obraczka-z-zielonym-kyanitem#judgeme_product_reviews
+        - generic [ref=e2058]:
+          - img "Kolczyki srebrne z czarnymi opalami etiopskimi \"Planety\"" [ref=e2059]
+          - generic [ref=e2060]:
+            - generic [ref=e2061]:
+              - img "5 stars" [ref=e2062]:
+                - generic [ref=e2063]: 
+                - generic [ref=e2064]: 
+                - generic [ref=e2065]: 
+                - generic [ref=e2066]: 
+                - generic [ref=e2067]: 
+              - generic [ref=e2068]:
+                - generic [ref=e2069]: Kolczyki
+                - paragraph [ref=e2071]: Kolczyki bardzo ładne.Lubię biżuterie od Epir Małgorzata.
+            - generic [ref=e2072]:
+              - generic [ref=e2073]: Małgorzata N.
+              - link:
+                - /url: /products/kolczyki-planety-z-czarnymi-opalami#judgeme_product_reviews
+        - generic [ref=e2074]:
+          - img "Pierścionek srebrny \"Kwiat Paproci\" z granatem" [ref=e2075]
+          - generic [ref=e2076]:
+            - generic [ref=e2077]:
+              - img "5 stars" [ref=e2078]:
+                - generic [ref=e2079]: 
+                - generic [ref=e2080]: 
+                - generic [ref=e2081]: 
+                - generic [ref=e2082]: 
+                - generic [ref=e2083]: 
+              - generic [ref=e2084]:
+                - generic [ref=e2085]: Misterna robota
+                - paragraph [ref=e2087]: Pierścionek jest wykonany z dbałością o najmniejsze szczegóły a przy okazji jest bardzo solidny. Świetna korelacja ceny do jakości!
+            - generic [ref=e2088]:
+              - generic [ref=e2089]: Iwo W.
+              - link:
+                - /url: /products/pierscionek-kwiat-z-granatem#judgeme_product_reviews
+        - generic [ref=e2090]:
+          - img "Pozłacany pierścionek srebrny z etiopskim opalem – szeroka obrączka" [ref=e2091]
+          - generic [ref=e2092]:
+            - generic [ref=e2093]:
+              - img "5 stars" [ref=e2094]:
+                - generic [ref=e2095]: 
+                - generic [ref=e2096]: 
+                - generic [ref=e2097]: 
+                - generic [ref=e2098]: 
+                - generic [ref=e2099]: 
+              - generic [ref=e2100]:
+                - generic [ref=e2101]: Piękny pierścionek z dużym opalem
+                - paragraph [ref=e2103]: Pierścionek jest iście "królewski", okazały, dokładnie taki jak na zdjęciu- obrączka starannie rzeźbiona - jakby kora drzewa, a opal przyciąga uwagę migotliwą, wielokolorową opalescencją.
+            - generic [ref=e2104]:
+              - generic [ref=e2105]: Jolanta K.
+              - link:
+                - /url: "#judgeme_product_reviews"
+        - generic [ref=e2106]:
+          - img "Pierścionek z czarnym turmalinem z kolekcji \"Gałązki\"" [ref=e2107]
+          - generic [ref=e2108]:
+            - generic [ref=e2109]:
+              - img "5 stars" [ref=e2110]:
+                - generic [ref=e2111]: 
+                - generic [ref=e2112]: 
+                - generic [ref=e2113]: 
+                - generic [ref=e2114]: 
+                - generic [ref=e2115]: 
+              - generic [ref=e2116]:
+                - generic [ref=e2117]: Uwielbiam go 🤍
+                - paragraph [ref=e2119]: To najbardziej efektowny pierścionek jaki posiadam, jest niesamowicie wygodny, ciężki, co lubię - bo go łatwo nie zgubię. Pasuję mi do każdego ubioru, daję wrażenie niezniszczalnego. Dla mnie ma piękne symboliczne znaczenie. Wiem, że został wykonany z największą starannością, co znaczy dla mnie więcej niż potrafię wyrazić. Dziękuję 🤍.
+            - generic [ref=e2120]:
+              - generic [ref=e2121]: Serafina M.
+              - link:
+                - /url: /products/pierscionek-galazki-z-czarnym-turmalinem#judgeme_product_reviews
+        - generic [ref=e2122]:
+          - img "Pierścionek z cytrynem- Słoneczny blask w srebrnej oprawie" [ref=e2123]
+          - generic [ref=e2124]:
+            - generic [ref=e2125]:
+              - img "5 stars" [ref=e2126]:
+                - generic [ref=e2127]: 
+                - generic [ref=e2128]: 
+                - generic [ref=e2129]: 
+                - generic [ref=e2130]: 
+                - generic [ref=e2131]: 
+              - generic [ref=e2132]:
+                - generic [ref=e2133]: Biżuteria
+                - paragraph [ref=e2135]: Pierścionek jeszcze lepszy na żywo niż na zdjęciach
+            - generic [ref=e2136]:
+              - generic [ref=e2137]: Dominik L.
+              - link:
+                - /url: /products/pierscionek-kulki-z-cytrynem-epir#judgeme_product_reviews
+    - generic [ref=e2150]:
+      - heading "Zamówienia indywidualne" [level=3] [ref=e2151]
+      - paragraph [ref=e2153]: "Biżuteria srebrna czy złota jest od wieków uznawana za najlepszy sposób upamiętniania wyjątkowych momentów w życiu, jak i za najlepsze prezenty, ponieważ jest trwała i zostanie z wami na długo jako pamiątka tych szczególnych chwil. W naszej pracowni wykonujemy biżuterię na specjalne, indywidualne zamówienia: tak ze złota, jak i ze srebra. Jeżeli chcecie spełnić swoje biżuteryjne marzenia zapraszamy ."
+      - link "Zamówienia indywidualne" [ref=e2155] [cursor=pointer]:
+        - /url: /pages/zamowienia-indywidualne
+    - generic [ref=e2162]:
+      - generic [ref=e2163]:
+        - heading "ZARĘCZYNY I ŚLUB" [level=2] [ref=e2164]
+        - generic [ref=e2165]: Moment zaręczyn i przysięga ślubna to jedne z najbardziej osobistych i wzruszających chwil w życiu. W EPIR Jewellery wierzymy, że symbol Waszej miłości powinien być równie wyjątkowy i niepowtarzalny jak Wasza wspólna historia. Dlatego w naszej pracowni tworzymy pierścionki zaręczynowe i obrączki ślubne, które wykraczają poza konwencjonalne wzorce. Każdy projekt to połączenie artystycznej wizji, mistrzowskiego rzemiosła i najwyższej jakości metali szlachetnych oraz kamieni. Szukamy inspiracji w naturze, sztuce i architekturze, by nadać naszym wyrobom unikalny charakter i głębię.
+      - generic [ref=e2167]:
+        - img [ref=e2171]
+        - generic [ref=e2175]:
+          - generic [ref=e2178]:
+            - generic [ref=e2180]:
+              - generic [ref=e2181]:
+                - link "Obrączka" [ref=e2182] [cursor=pointer]:
+                  - /url: /products/obraczka-kora-drzewa-z-granatem
+                  - img "Obrączka \"Kora Drzewa\" z granatem - EPIR Art Jewellery&Gemstone" [ref=e2185]
+                  - img "Obrączka \"Kora Drzewa\" z granatem - EPIR Art Jewellery&Gemstone" [ref=e2188]
+                - generic [ref=e2189]:
+                  - button "Dodaj do listy życzeń" [ref=e2190] [cursor=pointer]:
+                    - img [ref=e2192]
+                  - button "Wybierz opcje" [ref=e2194] [cursor=pointer]:
+                    - img [ref=e2196]
+                  - button "Szybki podgląd" [ref=e2198] [cursor=pointer]:
+                    - img [ref=e2200]
+                  - button "Porównaj" [ref=e2202] [cursor=pointer]:
+                    - img [ref=e2204]
+              - generic [ref=e2207]:
+                - heading "Obrączka \"Kora Drzewa\" z granatem" [level=3] [ref=e2208]:
+                  - link "Obrączka \"Kora Drzewa\" z granatem" [ref=e2209] [cursor=pointer]:
+                    - /url: /products/obraczka-kora-drzewa-z-granatem
+                - generic [ref=e2212]:
+                  - generic [ref=e2213]: Normalna cena
+                  - generic [ref=e2214]: 210,00 zl
+            - generic [ref=e2216]:
+              - generic [ref=e2217]:
+                - link "Pierścionek złoty z turmalinem z kolekcji" [ref=e2218] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-turmalinem
+                  - img "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\" - EPIR Art Jewellery&Gemstone" [ref=e2221]
+                  - img "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\" - EPIR Art Jewellery&Gemstone" [ref=e2224]
+                - generic [ref=e2225]:
+                  - button "Dodaj do listy życzeń" [ref=e2226] [cursor=pointer]:
+                    - img [ref=e2228]
+                  - button "Wybierz opcje" [ref=e2230] [cursor=pointer]:
+                    - img [ref=e2232]
+                  - button "Szybki podgląd" [ref=e2234] [cursor=pointer]:
+                    - img [ref=e2236]
+                  - button "Porównaj" [ref=e2238] [cursor=pointer]:
+                    - img [ref=e2240]
+              - generic [ref=e2243]:
+                - heading "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\"" [level=3] [ref=e2244]:
+                  - link "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\"" [ref=e2245] [cursor=pointer]:
+                    - /url: /products/pierscionek-zloty-z-turmalinem
+                - generic [ref=e2248]:
+                  - generic [ref=e2249]: Normalna cena
+                  - generic [ref=e2250]: 1.665,00 zl
+            - generic [ref=e2252]:
+              - generic [ref=e2253]:
+                - link "Delikatny pierścionek z topazem swiss blue" [ref=e2254] [cursor=pointer]:
+                  - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+                  - img "Delikatny pierścionek z topazem swiss blue" [ref=e2259]
+                - generic [ref=e2260]:
+                  - button "Dodaj do listy życzeń" [ref=e2261] [cursor=pointer]:
+                    - img [ref=e2263]
+                  - button "Wybierz opcje" [ref=e2265] [cursor=pointer]:
+                    - img [ref=e2267]
+                  - button "Szybki podgląd" [ref=e2269] [cursor=pointer]:
+                    - img [ref=e2271]
+                  - button "Porównaj" [ref=e2273] [cursor=pointer]:
+                    - img [ref=e2275]
+              - generic [ref=e2278]:
+                - heading "Delikatny pierścionek z topazem swiss blue" [level=3] [ref=e2279]:
+                  - link "Delikatny pierścionek z topazem swiss blue" [ref=e2280] [cursor=pointer]:
+                    - /url: /products/delikatana-galazka-z-topazem-swiss-blue
+                - generic [ref=e2283]:
+                  - generic [ref=e2284]: Normalna cena
+                  - generic [ref=e2285]: 310,00 zl
+            - generic [ref=e2287]:
+              - generic [ref=e2288]:
+                - link "Obrączka" [ref=e2289] [cursor=pointer]:
+                  - /url: /products/obraczka-kora-drzewa-z-granatem
+                  - img "Obrączka \"Kora Drzewa\" z granatem - EPIR Art Jewellery&Gemstone" [ref=e2292]
+                  - img "Obrączka \"Kora Drzewa\" z granatem - EPIR Art Jewellery&Gemstone" [ref=e2295]
+                - generic [ref=e2296]:
+                  - button "Dodaj do listy życzeń" [ref=e2297] [cursor=pointer]:
+                    - img [ref=e2299]
+                  - button "Wybierz opcje" [ref=e2301] [cursor=pointer]:
+                    - img [ref=e2303]
+                  - button "Szybki podgląd" [ref=e2305] [cursor=pointer]:
+                    - img [ref=e2307]
+                  - button "Porównaj" [ref=e2309] [cursor=pointer]:
+                    - img [ref=e2311]
+              - generic [ref=e2314]:
+                - heading "Obrączka \"Kora Drzewa\" z granatem" [level=3] [ref=e2315]:
+                  - link "Obrączka \"Kora Drzewa\" z granatem" [ref=e2316] [cursor=pointer]:
+                    - /url: /products/obraczka-kora-drzewa-z-granatem
+                - generic [ref=e2319]:
+                  - generic [ref=e2320]: Normalna cena
+                  - generic [ref=e2321]: 210,00 zl
+            - generic [ref=e2323]:
+              - generic [ref=e2324]:
+                - link "Pierścionek złoty z turmalinem z kolekcji" [ref=e2325] [cursor=pointer]:
+                  - /url: /products/pierscionek-zloty-z-turmalinem
+                  - img "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\" - EPIR Art Jewellery&Gemstone" [ref=e2328]
+                  - img "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\" - EPIR Art Jewellery&Gemstone" [ref=e2331]
+                - generic [ref=e2332]:
+                  - button "Dodaj do listy życzeń" [ref=e2333] [cursor=pointer]:
+                    - img [ref=e2335]
+                  - button "Wybierz opcje" [ref=e2337] [cursor=pointer]:
+                    - img [ref=e2339]
+                  - button "Szybki podgląd" [ref=e2341] [cursor=pointer]:
+                    - img [ref=e2343]
+                  - button "Porównaj" [ref=e2345] [cursor=pointer]:
+                    - img [ref=e2347]
+              - generic [ref=e2350]:
+                - heading "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\"" [level=3] [ref=e2351]:
+                  - link "Pierścionek złoty z turmalinem z kolekcji \"Gałązki\"" [ref=e2352] [cursor=pointer]:
+                    - /url: /products/pierscionek-zloty-z-turmalinem
+                - generic [ref=e2355]:
+                  - generic [ref=e2356]: Normalna cena
+                  - generic [ref=e2357]: 1.665,00 zl
+          - generic [ref=e2358]:
+            - generic:
+              - button "Previous" [ref=e2359] [cursor=pointer]:
+                - img [ref=e2360]
+              - generic [ref=e2362]:
+                - generic [ref=e2363]: "1"
+                - text: /
+                - generic [ref=e2364]: "3"
+              - button "Next" [ref=e2365] [cursor=pointer]:
+                - img [ref=e2366]
+      - generic [ref=e2370]:
+        - generic [ref=e2371]:
+          - img [ref=e2373]
+          - generic [ref=e2375] [cursor=pointer]:
+            - link "Pierścionek pozłacany Gałązka ze szmaragdem":
+              - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+            - link "Pierścionek pozłacany Gałązka ze szmaragdem" [ref=e2376]:
+              - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+            - paragraph [ref=e2377]: 430,00 zl
+        - generic [ref=e2381]:
+          - generic [ref=e2382]:
+            - heading "Pierścionki zaręczynowe" [level=3] [ref=e2383]
+            - heading "Nasze pierścionki zaręczynowe to więcej niż biżuteria; to obietnica, zamknięta w formie, która odzwierciedla indywidualność i głębię uczuć. Od subtelnych, organicznych kształtów, po odważne, nowoczesne kompozycje – każdy z nich jest świadectwem miłości, która nie boi się wyróżniać i opowiadać własnej, niepowtarzalnej historii." [level=5] [ref=e2385]: Nasze pierścionki zaręczynowe to więcej niż biżuteria; to obietnica, zamknięta w formie, która odzwierciedla indywidualność i głębię uczuć. Od subtelnych, organicznych kształtów, po odważne, nowoczesne kompozycje – każdy z nich jest świadectwem miłości, która nie boi się wyróżniać i opowiadać własnej, niepowtarzalnej historii.
+          - generic [ref=e2386]:
+            - generic [ref=e2389]:
+              - generic [ref=e2391]:
+                - generic [ref=e2392]:
+                  - link "Złoty pierścionek gałązka z topazem swiss blue" [ref=e2393] [cursor=pointer]:
+                    - /url: /products/zloty-pierscionek-galazka-z-topazem-swiss-blue
+                  - generic [ref=e2396]:
+                    - button "Dodaj do listy życzeń" [ref=e2397] [cursor=pointer]:
+                      - img [ref=e2399]
+                    - button "Wybierz opcje" [ref=e2401] [cursor=pointer]:
+                      - img [ref=e2403]
+                    - button "Szybki podgląd" [ref=e2405] [cursor=pointer]:
+                      - img [ref=e2407]
+                    - button "Porównaj" [ref=e2409] [cursor=pointer]:
+                      - img [ref=e2411]
+                - generic [ref=e2414]:
+                  - heading "Złoty pierścionek gałązka z topazem swiss blue" [level=3] [ref=e2415]:
+                    - link "Złoty pierścionek gałązka z topazem swiss blue" [ref=e2416] [cursor=pointer]:
+                      - /url: /products/zloty-pierscionek-galazka-z-topazem-swiss-blue
+                  - generic [ref=e2419]:
+                    - generic [ref=e2420]: Normalna cena
+                    - generic [ref=e2421]: 1.800,00 zl
+              - generic [ref=e2423]:
+                - generic [ref=e2424]:
+                  - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e2425] [cursor=pointer]:
+                    - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                    - img "Pierścionek srebrny o ciekawej organicznej fakturze przypominającej rafę koralowa" [ref=e2430]
+                  - generic [ref=e2431]:
+                    - button "Dodaj do listy życzeń" [ref=e2432] [cursor=pointer]:
+                      - img [ref=e2434]
+                    - button "Wybierz opcje" [ref=e2436] [cursor=pointer]:
+                      - img [ref=e2438]
+                    - button "Szybki podgląd" [ref=e2440] [cursor=pointer]:
+                      - img [ref=e2442]
+                    - button "Porównaj" [ref=e2444] [cursor=pointer]:
+                      - img [ref=e2446]
+                - generic [ref=e2449]:
+                  - heading "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [level=3] [ref=e2450]:
+                    - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e2451] [cursor=pointer]:
+                      - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                  - generic [ref=e2454]:
+                    - generic [ref=e2455]: Normalna cena
+                    - generic [ref=e2456]: 260,00 zl
+              - generic [ref=e2458]:
+                - generic [ref=e2459]:
+                  - link "Pierścionek pozłacany Gałązka ze szmaragdem" [ref=e2460] [cursor=pointer]:
+                    - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+                    - img "Pierścionek pozłacany Gałązka ze szmaragdem - EPIR Art Jewellery&Gemstone" [ref=e2463]
+                    - img "Pierścionek pozłacany Gałązka ze szmaragdem - EPIR Art Jewellery&Gemstone" [ref=e2466]
+                  - generic [ref=e2467]:
+                    - button "Dodaj do listy życzeń" [ref=e2468] [cursor=pointer]:
+                      - img [ref=e2470]
+                    - button "Dodaj do koszyka" [ref=e2474] [cursor=pointer]:
+                      - img [ref=e2476]
+                    - button "Szybki podgląd" [ref=e2478] [cursor=pointer]:
+                      - img [ref=e2480]
+                    - button "Porównaj" [ref=e2482] [cursor=pointer]:
+                      - img [ref=e2484]
+                - generic [ref=e2487]:
+                  - heading "Pierścionek pozłacany Gałązka ze szmaragdem" [level=3] [ref=e2488]:
+                    - link "Pierścionek pozłacany Gałązka ze szmaragdem" [ref=e2489] [cursor=pointer]:
+                      - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+                  - generic [ref=e2492]:
+                    - generic [ref=e2493]: Normalna cena
+                    - generic [ref=e2494]: 430,00 zl
+              - generic [ref=e2496]:
+                - generic [ref=e2497]:
+                  - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e2498] [cursor=pointer]:
+                    - /url: /products/zloty-pierscionek-z-ametystem-epir
+                    - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e2501]
+                    - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e2504]
+                  - generic [ref=e2505]:
+                    - button "Dodaj do listy życzeń" [ref=e2506] [cursor=pointer]:
+                      - img [ref=e2508]
+                    - button "Wybierz opcje" [ref=e2510] [cursor=pointer]:
+                      - img [ref=e2512]
+                    - button "Szybki podgląd" [ref=e2514] [cursor=pointer]:
+                      - img [ref=e2516]
+                    - button "Porównaj" [ref=e2518] [cursor=pointer]:
+                      - img [ref=e2520]
+                - generic [ref=e2523]:
+                  - heading "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [level=3] [ref=e2524]:
+                    - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e2525] [cursor=pointer]:
+                      - /url: /products/zloty-pierscionek-z-ametystem-epir
+                  - generic [ref=e2528]:
+                    - generic [ref=e2529]: Normalna cena
+                    - generic [ref=e2530]: 1.895,00 zl
+              - generic [ref=e2532]:
+                - generic [ref=e2533]:
+                  - link "Złoty pierścionek gałązka z topazem swiss blue" [ref=e2534] [cursor=pointer]:
+                    - /url: /products/zloty-pierscionek-galazka-z-topazem-swiss-blue
+                  - generic [ref=e2537]:
+                    - button "Dodaj do listy życzeń" [ref=e2538] [cursor=pointer]:
+                      - img [ref=e2540]
+                    - button "Wybierz opcje" [ref=e2542] [cursor=pointer]:
+                      - img [ref=e2544]
+                    - button "Szybki podgląd" [ref=e2546] [cursor=pointer]:
+                      - img [ref=e2548]
+                    - button "Porównaj" [ref=e2550] [cursor=pointer]:
+                      - img [ref=e2552]
+                - generic [ref=e2555]:
+                  - heading "Złoty pierścionek gałązka z topazem swiss blue" [level=3] [ref=e2556]:
+                    - link "Złoty pierścionek gałązka z topazem swiss blue" [ref=e2557] [cursor=pointer]:
+                      - /url: /products/zloty-pierscionek-galazka-z-topazem-swiss-blue
+                  - generic [ref=e2560]:
+                    - generic [ref=e2561]: Normalna cena
+                    - generic [ref=e2562]: 1.800,00 zl
+              - generic [ref=e2564]:
+                - generic [ref=e2565]:
+                  - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e2566] [cursor=pointer]:
+                    - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                    - img "Pierścionek srebrny o ciekawej organicznej fakturze przypominającej rafę koralowa" [ref=e2571]
+                  - generic [ref=e2572]:
+                    - button "Dodaj do listy życzeń" [ref=e2573] [cursor=pointer]:
+                      - img [ref=e2575]
+                    - button "Wybierz opcje" [ref=e2577] [cursor=pointer]:
+                      - img [ref=e2579]
+                    - button "Szybki podgląd" [ref=e2581] [cursor=pointer]:
+                      - img [ref=e2583]
+                    - button "Porównaj" [ref=e2585] [cursor=pointer]:
+                      - img [ref=e2587]
+                - generic [ref=e2590]:
+                  - heading "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [level=3] [ref=e2591]:
+                    - link "Srebrny Pierścionek z Czarnym Turmalinem – Organiczne Echa Rafy Koralowej" [ref=e2592] [cursor=pointer]:
+                      - /url: /products/nowe-galazki-rafa-koralowa-z-czarnym-turmalinem
+                  - generic [ref=e2595]:
+                    - generic [ref=e2596]: Normalna cena
+                    - generic [ref=e2597]: 260,00 zl
+              - generic [ref=e2599]:
+                - generic [ref=e2600]:
+                  - link "Pierścionek pozłacany Gałązka ze szmaragdem" [ref=e2601] [cursor=pointer]:
+                    - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+                    - img "Pierścionek pozłacany Gałązka ze szmaragdem - EPIR Art Jewellery&Gemstone" [ref=e2604]
+                    - img "Pierścionek pozłacany Gałązka ze szmaragdem - EPIR Art Jewellery&Gemstone" [ref=e2607]
+                  - generic [ref=e2608]:
+                    - button "Dodaj do listy życzeń" [ref=e2609] [cursor=pointer]:
+                      - img [ref=e2611]
+                    - button "Dodaj do koszyka" [ref=e2615] [cursor=pointer]:
+                      - img [ref=e2617]
+                    - button "Szybki podgląd" [ref=e2619] [cursor=pointer]:
+                      - img [ref=e2621]
+                    - button "Porównaj" [ref=e2623] [cursor=pointer]:
+                      - img [ref=e2625]
+                - generic [ref=e2628]:
+                  - heading "Pierścionek pozłacany Gałązka ze szmaragdem" [level=3] [ref=e2629]:
+                    - link "Pierścionek pozłacany Gałązka ze szmaragdem" [ref=e2630] [cursor=pointer]:
+                      - /url: /products/pierscionek-pozlacany-ze-szmaragdem
+                  - generic [ref=e2633]:
+                    - generic [ref=e2634]: Normalna cena
+                    - generic [ref=e2635]: 430,00 zl
+              - generic [ref=e2637]:
+                - generic [ref=e2638]:
+                  - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e2639] [cursor=pointer]:
+                    - /url: /products/zloty-pierscionek-z-ametystem-epir
+                    - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e2642]
+                    - img "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design - EPIR Art Jewellery&Gemstone" [ref=e2645]
+                  - generic [ref=e2646]:
+                    - button "Dodaj do listy życzeń" [ref=e2647] [cursor=pointer]:
+                      - img [ref=e2649]
+                    - button "Wybierz opcje" [ref=e2651] [cursor=pointer]:
+                      - img [ref=e2653]
+                    - button "Szybki podgląd" [ref=e2655] [cursor=pointer]:
+                      - img [ref=e2657]
+                    - button "Porównaj" [ref=e2659] [cursor=pointer]:
+                      - img [ref=e2661]
+                - generic [ref=e2664]:
+                  - heading "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [level=3] [ref=e2665]:
+                    - link "Złoty pierścionek z ametystem – Szept Leśnych Tajemnic, organiczny design" [ref=e2666] [cursor=pointer]:
+                      - /url: /products/zloty-pierscionek-z-ametystem-epir
+                  - generic [ref=e2669]:
+                    - generic [ref=e2670]: Normalna cena
+                    - generic [ref=e2671]: 1.895,00 zl
+            - generic [ref=e2672]:
+              - generic:
+                - button "Previous" [ref=e2673] [cursor=pointer]:
+                  - img [ref=e2674]
+                - generic [ref=e2676]:
+                  - generic [ref=e2677]: "1"
+                  - text: /
+                  - generic [ref=e2678]: "4"
+                - button "Next" [ref=e2679] [cursor=pointer]:
+                  - img [ref=e2680]
+      - generic [ref=e2684]:
+        - generic [ref=e2685]:
+          - img [ref=e2687]
+          - generic [ref=e2689] [cursor=pointer]:
+            - link "Młotkowane srebrne obrączki partnerskie/ślubne":
+              - /url: /products/obraczki-slubne
+            - link "Młotkowane srebrne obrączki partnerskie/ślubne" [ref=e2690]:
+              - /url: /products/obraczki-slubne
+            - paragraph [ref=e2691]: 400,00 zl
+        - generic [ref=e2694]:
+          - generic [ref=e2695]:
+            - heading "Obrączki ślubne" [level=3] [ref=e2696]
+            - heading "Obrączki ślubne z EPIR Jewellery to symbol trwałości i nierozerwalnej więzi. Ręcznie kute bądź rzeźbione z dbałością o każdy detal, stają się materialnym świadectwem Waszej wspólnej drogi. Są to obrączki wykonane według autorskich wzorów. Są one oryginalne , niepowtarzalne, inspirowane formami natury, formami ze świata roślinnego, falistymi liniami utrwalonymi w metalach szlachetnych tak złocie, jak i srebrze. Jest też możliwość personalizacji poprzez grawer lub indywidualny design." [level=5] [ref=e2698]: Obrączki ślubne z EPIR Jewellery to symbol trwałości i nierozerwalnej więzi. Ręcznie kute bądź rzeźbione z dbałością o każdy detal, stają się materialnym świadectwem Waszej wspólnej drogi. Są to obrączki wykonane według autorskich wzorów. Są one oryginalne , niepowtarzalne, inspirowane formami natury, formami ze świata roślinnego, falistymi liniami utrwalonymi w metalach szlachetnych tak złocie, jak i srebrze. Jest też możliwość personalizacji poprzez grawer lub indywidualny design.
+          - generic [ref=e2699]:
+            - generic [ref=e2702]:
+              - generic [ref=e2704]:
+                - generic [ref=e2705]:
+                  - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem" [ref=e2706] [cursor=pointer]:
+                    - /url: /products/zlota-obraczka-galazka
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2709]
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2712]
+                  - generic [ref=e2713]:
+                    - button "Dodaj do listy życzeń" [ref=e2714] [cursor=pointer]:
+                      - img [ref=e2716]
+                    - button "Wybierz opcje" [ref=e2718] [cursor=pointer]:
+                      - img [ref=e2720]
+                    - button "Szybki podgląd" [ref=e2722] [cursor=pointer]:
+                      - img [ref=e2724]
+                    - button "Porównaj" [ref=e2726] [cursor=pointer]:
+                      - img [ref=e2728]
+                - generic [ref=e2731]:
+                  - heading "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [level=3] [ref=e2732]:
+                    - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e2733] [cursor=pointer]:
+                      - /url: /products/zlota-obraczka-galazka
+                  - generic [ref=e2736]:
+                    - generic [ref=e2737]: Normalna cena
+                    - generic [ref=e2738]: 1.230,00 zl
+              - generic [ref=e2740]:
+                - generic [ref=e2741]:
+                  - link "Srebrne obrączki ślubne" [ref=e2742] [cursor=pointer]:
+                    - /url: /products/obraczki-slubne-kora-drzewa
+                    - img "Srebrne obrączki ślubne \"Kora drzewa\" - EPIR Art Jewellery&Gemstone" [ref=e2745]
+                    - img "Srebrne obrączki ślubne \"Kora drzewa\" - EPIR Art Jewellery&Gemstone" [ref=e2748]
+                  - generic [ref=e2749]:
+                    - button "Dodaj do listy życzeń" [ref=e2750] [cursor=pointer]:
+                      - img [ref=e2752]
+                    - button "Dodaj do koszyka" [ref=e2756] [cursor=pointer]:
+                      - img [ref=e2758]
+                    - button "Szybki podgląd" [ref=e2760] [cursor=pointer]:
+                      - img [ref=e2762]
+                    - button "Porównaj" [ref=e2764] [cursor=pointer]:
+                      - img [ref=e2766]
+                - generic [ref=e2769]:
+                  - heading "Srebrne obrączki ślubne \"Kora drzewa\"" [level=3] [ref=e2770]:
+                    - link "Srebrne obrączki ślubne \"Kora drzewa\"" [ref=e2771] [cursor=pointer]:
+                      - /url: /products/obraczki-slubne-kora-drzewa
+                  - generic [ref=e2774]:
+                    - generic [ref=e2775]: Normalna cena
+                    - generic [ref=e2776]: 460,00 zl
+              - generic [ref=e2778]:
+                - generic [ref=e2779]:
+                  - link "Młotkowane srebrne obrączki partnerskie/ślubne" [ref=e2780] [cursor=pointer]:
+                    - /url: /products/obraczki-slubne
+                    - img "Dwie młotkowane obrączki ślubne" [ref=e2785]
+                  - generic [ref=e2786]:
+                    - button "Dodaj do listy życzeń" [ref=e2787] [cursor=pointer]:
+                      - img [ref=e2789]
+                    - button "Wybierz opcje" [ref=e2791] [cursor=pointer]:
+                      - img [ref=e2793]
+                    - button "Szybki podgląd" [ref=e2795] [cursor=pointer]:
+                      - img [ref=e2797]
+                    - button "Porównaj" [ref=e2799] [cursor=pointer]:
+                      - img [ref=e2801]
+                - generic [ref=e2804]:
+                  - heading "Młotkowane srebrne obrączki partnerskie/ślubne" [level=3] [ref=e2805]:
+                    - link "Młotkowane srebrne obrączki partnerskie/ślubne" [ref=e2806] [cursor=pointer]:
+                      - /url: /products/obraczki-slubne
+                  - generic [ref=e2809]:
+                    - generic [ref=e2810]: Normalna cena
+                    - generic [ref=e2811]: 400,00 zl
+              - generic [ref=e2813]:
+                - generic [ref=e2814]:
+                  - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem" [ref=e2815] [cursor=pointer]:
+                    - /url: /products/zlota-obraczka-galazka
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2818]
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2821]
+                  - generic [ref=e2822]:
+                    - button "Dodaj do listy życzeń" [ref=e2823] [cursor=pointer]:
+                      - img [ref=e2825]
+                    - button "Wybierz opcje" [ref=e2827] [cursor=pointer]:
+                      - img [ref=e2829]
+                    - button "Szybki podgląd" [ref=e2831] [cursor=pointer]:
+                      - img [ref=e2833]
+                    - button "Porównaj" [ref=e2835] [cursor=pointer]:
+                      - img [ref=e2837]
+                - generic [ref=e2840]:
+                  - heading "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [level=3] [ref=e2841]:
+                    - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e2842] [cursor=pointer]:
+                      - /url: /products/zlota-obraczka-galazka
+                  - generic [ref=e2845]:
+                    - generic [ref=e2846]: Normalna cena
+                    - generic [ref=e2847]: 1.230,00 zl
+              - generic [ref=e2849]:
+                - generic [ref=e2850]:
+                  - link "Srebrne obrączki ślubne" [ref=e2851] [cursor=pointer]:
+                    - /url: /products/obraczki-slubne-kora-drzewa
+                    - img "Srebrne obrączki ślubne \"Kora drzewa\" - EPIR Art Jewellery&Gemstone" [ref=e2854]
+                    - img "Srebrne obrączki ślubne \"Kora drzewa\" - EPIR Art Jewellery&Gemstone" [ref=e2857]
+                  - generic [ref=e2858]:
+                    - button "Dodaj do listy życzeń" [ref=e2859] [cursor=pointer]:
+                      - img [ref=e2861]
+                    - button "Dodaj do koszyka" [ref=e2865] [cursor=pointer]:
+                      - img [ref=e2867]
+                    - button "Szybki podgląd" [ref=e2869] [cursor=pointer]:
+                      - img [ref=e2871]
+                    - button "Porównaj" [ref=e2873] [cursor=pointer]:
+                      - img [ref=e2875]
+                - generic [ref=e2878]:
+                  - heading "Srebrne obrączki ślubne \"Kora drzewa\"" [level=3] [ref=e2879]:
+                    - link "Srebrne obrączki ślubne \"Kora drzewa\"" [ref=e2880] [cursor=pointer]:
+                      - /url: /products/obraczki-slubne-kora-drzewa
+                  - generic [ref=e2883]:
+                    - generic [ref=e2884]: Normalna cena
+                    - generic [ref=e2885]: 460,00 zl
+              - generic [ref=e2887]:
+                - generic [ref=e2888]:
+                  - link "Młotkowane srebrne obrączki partnerskie/ślubne" [ref=e2889] [cursor=pointer]:
+                    - /url: /products/obraczki-slubne
+                    - img "Dwie młotkowane obrączki ślubne" [ref=e2894]
+                  - generic [ref=e2895]:
+                    - button "Dodaj do listy życzeń" [ref=e2896] [cursor=pointer]:
+                      - img [ref=e2898]
+                    - button "Wybierz opcje" [ref=e2900] [cursor=pointer]:
+                      - img [ref=e2902]
+                    - button "Szybki podgląd" [ref=e2904] [cursor=pointer]:
+                      - img [ref=e2906]
+                    - button "Porównaj" [ref=e2908] [cursor=pointer]:
+                      - img [ref=e2910]
+                - generic [ref=e2913]:
+                  - heading "Młotkowane srebrne obrączki partnerskie/ślubne" [level=3] [ref=e2914]:
+                    - link "Młotkowane srebrne obrączki partnerskie/ślubne" [ref=e2915] [cursor=pointer]:
+                      - /url: /products/obraczki-slubne
+                  - generic [ref=e2918]:
+                    - generic [ref=e2919]: Normalna cena
+                    - generic [ref=e2920]: 400,00 zl
+              - generic [ref=e2922]:
+                - generic [ref=e2923]:
+                  - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem" [ref=e2924] [cursor=pointer]:
+                    - /url: /products/zlota-obraczka-galazka
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2927]
+                    - img "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\" - EPIR Art Jewellery&Gemstone" [ref=e2930]
+                  - generic [ref=e2931]:
+                    - button "Dodaj do listy życzeń" [ref=e2932] [cursor=pointer]:
+                      - img [ref=e2934]
+                    - button "Wybierz opcje" [ref=e2936] [cursor=pointer]:
+                      - img [ref=e2938]
+                    - button "Szybki podgląd" [ref=e2940] [cursor=pointer]:
+                      - img [ref=e2942]
+                    - button "Porównaj" [ref=e2944] [cursor=pointer]:
+                      - img [ref=e2946]
+                - generic [ref=e2949]:
+                  - heading "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [level=3] [ref=e2950]:
+                    - link "Złota Obrączka z Ręcznie Rzeźbionym Wzorem \"Gałązka\"" [ref=e2951] [cursor=pointer]:
+                      - /url: /products/zlota-obraczka-galazka
+                  - generic [ref=e2954]:
+                    - generic [ref=e2955]: Normalna cena
+                    - generic [ref=e2956]: 1.230,00 zl
+            - generic [ref=e2957]:
+              - generic:
+                - button "Previous" [ref=e2958] [cursor=pointer]:
+                  - img [ref=e2959]
+                - generic [ref=e2961]:
+                  - generic [ref=e2962]: "1"
+                  - text: /
+                  - generic [ref=e2963]: "3"
+                - button "Next" [ref=e2964] [cursor=pointer]:
+                  - img [ref=e2965]
+    - generic [ref=e2971]:
+      - generic [ref=e2972]:
+        - generic:
+          - generic:
+            - img "KOLEKCJA ŻYWIOŁY"
+      - generic [ref=e2975]:
+        - heading "NASZE KOLEKCJE INSPIROWANE NATURĄ" [level=2] [ref=e2977]
+        - generic [ref=e2978]:
+          - generic [ref=e2980]:
+            - generic [ref=e2981]:
+              - button "01. KOLEKCJA \"GAŁĄZKI\"" [ref=e2982] [cursor=pointer]:
+                - generic [ref=e2983]: "01."
+                - generic [ref=e2984]: KOLEKCJA "GAŁĄZKI"
+              - link "collapse tab collection_R7DiEd" [ref=e2985] [cursor=pointer]:
+                - /url: /collections/kolekcja-galazki
+                - img [ref=e2986]
+            - paragraph [ref=e2989]: Biżuteria inspirowana delikatną grą gałęzi i organicznymi formami natury. Każdy element tej kolekcji oddaje subtelność i elegancję roślinnych wzorów w srebrze i kamieniach szlachetnych.
+          - generic [ref=e2991]:
+            - generic [ref=e2992]:
+              - button "02. KOLEKCJA \"PLANETY\"" [ref=e2993] [cursor=pointer]:
+                - generic [ref=e2994]: "02."
+                - generic [ref=e2995]: KOLEKCJA "PLANETY"
+              - link "collapse tab collection_YqLmN3" [ref=e2996] [cursor=pointer]:
+                - /url: /collections/kolekcja-planety
+                - img [ref=e2997]
+            - generic [ref=e2999]: Kolekcja biżuterii inspirowana kosmicznymi formami.
+          - generic [ref=e3002]:
+            - button "03. KOLEKCJA ŻYWIOŁY" [ref=e3003] [cursor=pointer]:
+              - generic [ref=e3004]: "03."
+              - generic [ref=e3005]: KOLEKCJA ŻYWIOŁY
+            - link "collapse tab collection_N6WNdC" [ref=e3006] [cursor=pointer]:
+              - /url: /collections/kolekcja-zywioly
+              - img [ref=e3007]
+    - generic [ref=e3017]:
+      - heading "KOLEKCJE BIŻUTERII Z KAMIENIAMI" [level=3] [ref=e3020]
+      - generic [ref=e3022]:
+        - generic [ref=e3023]:
+          - generic [ref=e3027]:
+            - link "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [ref=e3028] [cursor=pointer]:
+              - /url: /collections/b-bizuteria-srebrna-z-akwamarynami
+              - generic [ref=e3029]: BIŻUTERIA SREBRNA Z AKWAMARYNAMI
+            - link "BIŻUTERIA SREBRNA Z AKWAMARYNAMI" [ref=e3034] [cursor=pointer]:
+              - /url: /collections/b-bizuteria-srebrna-z-akwamarynami
+          - generic [ref=e3038]:
+            - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e3039] [cursor=pointer]:
+              - /url: /collections/bizuteria-srebrna-z-topazami
+              - generic [ref=e3040]: BIŻUTERIA SREBRNA Z TOPAZAMI
+            - generic [ref=e3041]:
+              - img "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e3044]
+              - link "BIŻUTERIA SREBRNA Z TOPAZAMI" [ref=e3046] [cursor=pointer]:
+                - /url: /collections/bizuteria-srebrna-z-topazami
+          - generic [ref=e3050]:
+            - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e3051] [cursor=pointer]:
+              - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+              - generic [ref=e3052]: BIŻUTERIA SREBRNA ZE SZMARAGDAMI
+            - generic [ref=e3053]:
+              - img "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e3056]
+              - link "BIŻUTERIA SREBRNA ZE SZMARAGDAMI" [ref=e3058] [cursor=pointer]:
+                - /url: /collections/bizuteria-srebrna-ze-szmaragdami
+        - generic [ref=e3059]:
+          - generic [ref=e3063]:
+            - link "BIŻUTERIA SREBRNA Z OPALAMI" [ref=e3064] [cursor=pointer]:
+              - /url: /collections/bizuteria-z-opalami
+              - generic [ref=e3065]: BIŻUTERIA SREBRNA Z OPALAMI
+            - link "BIŻUTERIA SREBRNA Z OPALAMI" [ref=e3070] [cursor=pointer]:
+              - /url: /collections/bizuteria-z-opalami
+          - generic [ref=e3074]:
+            - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e3075] [cursor=pointer]:
+              - /url: /collections/bizuteria-z-ametystem-ametrynem
+              - generic [ref=e3076]: BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM
+            - generic [ref=e3077]:
+              - img "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e3080]
+              - link "BIŻUTERIA SREBRNA Z AMETYSTEM I AMETRYNEM" [ref=e3082] [cursor=pointer]:
+                - /url: /collections/bizuteria-z-ametystem-ametrynem
+          - generic [ref=e3086]:
+            - link "BIŻUTERIA SREBRNA Z CYTRYNAMI" [ref=e3087] [cursor=pointer]:
+              - /url: /collections/bizuteria-srebrna-z-cytrynami
+              - generic [ref=e3088]: BIŻUTERIA SREBRNA Z CYTRYNAMI
+            - link "BIŻUTERIA SREBRNA Z CYTRYNAMI" [ref=e3093] [cursor=pointer]:
+              - /url: /collections/bizuteria-srebrna-z-cytrynami
+  - generic [ref=e3099]:
+    - generic [ref=e3102]:
+      - generic [ref=e3105]:
+        - generic [ref=e3106]:
+          - paragraph [ref=e3107]:
+            - strong [ref=e3108]: Pracownia biżuterii
+          - paragraph [ref=e3109]:
+            - link "EPIR Art Jewellery&Gemstone" [ref=e3110] [cursor=pointer]:
+              - /url: /pages/o-nas
+          - paragraph [ref=e3111]: 50-419 Wrocław
+          - paragraph [ref=e3112]: ul. Gen. R. Traugutta 123/5-6
+          - paragraph
+        - generic [ref=e3113]:
+          - link "+48 698 718 564" [ref=e3114] [cursor=pointer]:
+            - /url: tel:+48 698 718 564
+          - link "epir@epirbizuteria.pl" [ref=e3115] [cursor=pointer]:
+            - /url: mailto:epir@epirbizuteria.pl
+          - generic [ref=e3116]:
+            - link "EPIR na Pintereście" [ref=e3117] [cursor=pointer]:
+              - /url: https://pinterest.com/EPIR_Jewellery/
+              - img [ref=e3118]
+            - link "Obserwuj nas na Facebooku" [ref=e3120] [cursor=pointer]:
+              - /url: https://facebook.com/EPIRjewellery/
+              - img [ref=e3121]
+            - link "Śledź nas na Instagramie" [ref=e3123] [cursor=pointer]:
+              - /url: https://instagram.com/epirbizuteria/
+              - img [ref=e3124]
+            - link "Twitter" [ref=e3126] [cursor=pointer]:
+              - /url: https://twitter.com/home
+              - img [ref=e3127]
+            - link "Tiktok" [ref=e3129] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@epirjewellery
+              - img [ref=e3130]
+            - link "Whatsapp" [ref=e3132] [cursor=pointer]:
+              - /url: https://wa.me/48696553346
+              - img [ref=e3133]
+      - generic [ref=e3136]:
+        - heading "Informacje" [level=3] [ref=e3137] [cursor=pointer]
+        - list [ref=e3138]:
+          - listitem [ref=e3139] [cursor=pointer]:
+            - link "REGULAMIN" [ref=e3140]:
+              - /url: /pages/regulamin-epir-art-jewellery
+          - listitem [ref=e3141] [cursor=pointer]:
+            - link "POLITYKA PRYWATNOŚCI" [ref=e3142]:
+              - /url: /pages/polityka-prywatnosci
+          - listitem [ref=e3143] [cursor=pointer]:
+            - link "WYSYŁKA" [ref=e3144]:
+              - /url: /pages/wysylka
+          - listitem [ref=e3145] [cursor=pointer]:
+            - link "PŁATNOŚĆ" [ref=e3146]:
+              - /url: /pages/platnosc
+          - listitem [ref=e3147] [cursor=pointer]:
+            - link "O NAS" [ref=e3148]:
+              - /url: /pages/o-nas
+          - listitem [ref=e3149] [cursor=pointer]:
+            - link "KONTAKT" [ref=e3150]:
+              - /url: /pages/kontakt
+          - listitem [ref=e3151] [cursor=pointer]:
+            - link "POLITYKA ZWROTÓW" [ref=e3152]:
+              - /url: /pages/polityka-zwrotow-1
+          - listitem [ref=e3153] [cursor=pointer]:
+            - link "POLITYKA COOKIES" [ref=e3154]:
+              - /url: https://epirbizuteria.pl/pages/polityka-cookies
+      - generic [ref=e3160]:
+        - paragraph [ref=e3161]:
+          - text: Złoty blask, srebro, kamień,
+          - text: EPIRu sztuka
+        - paragraph [ref=e3162]:
+          - text: w kruszcu tkwi,
+          - text: Natura w każdym szczególe.
+    - generic [ref=e3165]:
+      - generic [ref=e3166]: © EPIR Art Jewellery&Gemstone 2024
+      - generic [ref=e3167]:
+        - generic:
+          - list
+        - list [ref=e3168]:
+          - listitem [ref=e3169] [cursor=pointer]:
+            - link "KOLEKCJE Z KAMIENIAMI" [ref=e3170]:
+              - /url: /collections/bizuteria-z-ametystem-ametrynem
+          - listitem [ref=e3171] [cursor=pointer]:
+            - link "NASZE KOLEKCJE" [ref=e3172]:
+              - /url: /
+          - listitem [ref=e3173] [cursor=pointer]:
+            - link "PIERŚCIONKI/ OBRĄCZKI SREBRNE" [ref=e3174]:
+              - /url: /collections/pierscionki-obraczki/pier%C5%9Bcionek
+          - listitem [ref=e3175] [cursor=pointer]:
+            - link "KOLCZYKI SREBRNE" [ref=e3176]:
+              - /url: /collections/kolczyki-kolczyki-srebrne
+          - listitem [ref=e3177] [cursor=pointer]:
+            - link "WISIORY SREBRNE" [ref=e3178]:
+              - /url: /collections/wisiory
+          - listitem [ref=e3179] [cursor=pointer]:
+            - link "BRANSOLETKI SREBRNE" [ref=e3180]:
+              - /url: /collections/bransoletki-bransoletki-srebrne
+          - listitem [ref=e3181] [cursor=pointer]:
+            - link "BIŻUTERIA ZŁOTA" [ref=e3182]:
+              - /url: /collections/zlota-bizuteria/bi%C5%BCuteria-z%C5%82ota
+          - listitem [ref=e3183] [cursor=pointer]:
+            - 'link "Archiwum Inspiracji: Kolekcja \"Sprzedane\"" [ref=e3184]':
+              - /url: /collections/archiwum-inspiracji
+          - listitem [ref=e3185] [cursor=pointer]:
+            - link "KARTA PODARUNKOWA" [ref=e3186]:
+              - /url: /products/karta-podarunkowa
+  - generic:
+    - complementary:
+      - generic:
+        - generic [ref=e3187]:
+          - text: 
+          - generic [ref=e3188]:
+            - button "Close popup widget" [ref=e3189] [cursor=pointer]
+            - generic [ref=e3190]:
+              - generic [ref=e3191]:
+                - img "5 stars" [ref=e3192]:
+                  - generic [ref=e3193]: 
+                  - generic [ref=e3194]: 
+                  - generic [ref=e3195]: 
+                  - generic [ref=e3196]: 
+                  - generic [ref=e3197]: 
+                - generic [ref=e3198]:
+                  - text: Bardzo
+                  - paragraph [ref=e3200]: Bardzo zadowolona
+              - generic [ref=e3202]: EPIR Art Jewellery&Gemstone
+            - button
+          - text:   
+        - generic:  Zweryfikowano  Zweryfikowano  Zweryfikowano  Zweryfikowano  Zweryfikowano
+  - generic:
+    - complementary:
+      - button "Click to open Judge.me floating reviews tab" [ref=e3203] [cursor=pointer]: ★ Recenzje
+      - generic: o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano     
+      - text:  o    Zweryfikowano   o    Zweryfikowano   o    Zweryfikowano   o    Zweryfikowano   o    Zweryfikowano             o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano      o    Zweryfikowano      
+  - generic "Czat w sklepie online Shopify" [ref=e3204]:
+    - button "Okno czatu" [expanded] [ref=e3206] [cursor=pointer]:
+      - img [ref=e3207]
+      - generic [ref=e3209]: Pomoc
+      - generic [ref=e3210]: "1"
+  - generic [ref=e3212]:
+    - button [ref=e3213] [cursor=pointer]:
+      - img [ref=e3214]
+    - generic [ref=e3218]:
+      - img "Zapraszamy do grona subskrybentów naszego newsletteru" [ref=e3220]
+      - generic [ref=e3222]:
+        - heading "Zapraszamy do grona subskrybentów naszego newsletteru" [level=3] [ref=e3223]
+        - paragraph [ref=e3225]: Zostaw adres e-mail i weź rabat 10%
+        - generic [ref=e3227]:
+          - generic [ref=e3228]: wprowadź adres e-mail
+          - textbox "wprowadź adres e-mail" [ref=e3229]
+        - button "Potwierdź" [ref=e3231] [cursor=pointer]:
+          - generic:
+            - img
+          - generic [ref=e3232]: Potwierdź
+        - generic [ref=e3233]: By signing up, you agree to our privacy policy and terms of service.
+```
