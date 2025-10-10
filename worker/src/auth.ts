@@ -1,4 +1,26 @@
 // Consolidated HMAC verification for Shopify App Proxy.
+// 
+// SECURITY IMPLEMENTATION NOTES:
+// ===============================
+// 
+// 1. CANONICALIZATION (Shopify App Proxy Format):
+//    - URL parameters are automatically decoded by URLSearchParams
+//    - Parameters are sorted alphabetically by key
+//    - Multi-value parameters are joined with commas (e.g., ids=1,2,3)
+//    - Signature-related params (signature, hmac, shopify_hmac) are excluded
+//    - Query mode: params joined WITHOUT separators (k1=v1k2=v2)
+//    - Header mode: params joined WITH '&' separator, plus '\n' + body
+// 
+// 2. CONSTANT-TIME COMPARISON:
+//    - Base64 signatures use custom constantTimeEqual() to prevent timing attacks
+//    - Hex signatures use crypto.subtle.verify() which is constant-time
+//    - Both approaches are cryptographically secure
+// 
+// 3. SIGNATURE FORMAT SUPPORT:
+//    - Header-based: Base64-encoded HMAC-SHA256 (X-Shopify-Hmac-Sha256, etc.)
+//    - Query param: Hex-encoded HMAC-SHA256 (?signature=...)
+//    - Automatically detects and validates both formats
+//
 // Supports two common cases:
 //  - header-based HMAC (base64, e.g. X-Shopify-Hmac-Sha256)
 //  - query param 'signature' (hex) fallback
@@ -44,7 +66,10 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
     const receivedHex = params.get('signature');
     if (!receivedHex) return false;
     // build canonical message used by some proxies: sorted k=values joined without separators
+    // Filter out signature-related params to prevent manipulation
     params.delete('signature');
+    params.delete('hmac');
+    params.delete('shopify_hmac');
     const keys = Array.from(new Set(Array.from(params.keys()))).sort();
     const parts: string[] = [];
     for (const k of keys) {
@@ -66,6 +91,18 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
   }
 }
 
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * 
+ * This function uses bitwise XOR to compare strings without early termination,
+ * ensuring the comparison takes the same amount of time regardless of where
+ * differences occur. This prevents attackers from using timing information
+ * to deduce the correct signature byte-by-byte.
+ * 
+ * @param a First string to compare
+ * @param b Second string to compare
+ * @returns true if strings are equal, false otherwise
+ */
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let result = 0;
@@ -73,6 +110,15 @@ function constantTimeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
+/**
+ * Convert hex string to byte array.
+ * 
+ * Validates that the input is a valid hex string (only 0-9, a-f, A-F)
+ * and has an even length before conversion.
+ * 
+ * @param hex Hexadecimal string to convert
+ * @returns Uint8Array of bytes, or empty array if invalid
+ */
 function hexToBytes(hex: string): Uint8Array {
   if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length % 2 !== 0) return new Uint8Array();
   const out = new Uint8Array(hex.length / 2);
