@@ -6,3 +6,5 @@ dist/
 .DS_Store
 .wrangler/
 .dev.vars
+encoding-report.json
+*.bak.*

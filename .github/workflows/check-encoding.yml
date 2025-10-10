@@ -1,0 +1,118 @@
+name: Check File Encodings
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  # Allow manual runs from the Actions UI
+  workflow_dispatch: {}
+
+jobs:
+  check-encoding:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: worker
+        run: npm ci
+
+      - name: Run encoding check (dry-run)
+        id: encoding-check
+        continue-on-error: true
+        run: |
+          echo "🔍 Running encoding check..."
+          npx tsx worker/scripts/remove-bom.ts --dry-run --dir=. --extensions=.ts,.tsx,.js,.jsx --ignore=node_modules,.git,.wrangler,dist,build,test-results,playwright-report
+          echo "encoding_check_exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Upload encoding report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: encoding-report
+          path: encoding-report.json
+          retention-days: 30
+
+      - name: Comment on PR (if issues found)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let reportContent = '⚠️ **Encoding Issues Detected**\n\n';
+            
+            try {
+              const report = JSON.parse(fs.readFileSync('encoding-report.json', 'utf-8'));
+              reportContent += `Files scanned: ${report.filesScanned}\n`;
+              reportContent += `Files needing conversion: ${report.filesNeedingConversion}\n\n`;
+              
+              if (report.filesNeedingConversion > 0) {
+                reportContent += '**Files with encoding issues:**\n';
+                report.files
+                  .filter(f => f.needsConversion)
+                  .slice(0, 10)
+                  .forEach(f => {
+                    reportContent += `- \`${f.path}\` (${f.encoding}${f.hasBOM ? ' with BOM' : ''})\n`;
+                  });
+                
+                if (report.filesNeedingConversion > 10) {
+                  reportContent += `\n_...and ${report.filesNeedingConversion - 10} more files_\n`;
+                }
+                
+                reportContent += '\n**To fix these issues:**\n';
+                reportContent += '```bash\n';
+                reportContent += 'npx tsx worker/scripts/remove-bom.ts --apply\n';
+                reportContent += '```\n\n';
+                reportContent += 'This will convert files to UTF-8 without BOM and create timestamped backups.\n';
+              }
+            } catch (error) {
+              reportContent += `Error reading report: ${error.message}\n`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reportContent
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Encoding Check Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f encoding-report.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📄 Report generated and uploaded as artifact" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            FILES_SCANNED=$(jq '.filesScanned' encoding-report.json)
+            FILES_NEEDING_CONVERSION=$(jq '.filesNeedingConversion' encoding-report.json)
+            
+            echo "- **Files scanned:** $FILES_SCANNED" >> $GITHUB_STEP_SUMMARY
+            echo "- **Files needing conversion:** $FILES_NEEDING_CONVERSION" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$FILES_NEEDING_CONVERSION" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Action required:** Files with encoding issues detected." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+              echo "npx tsx worker/scripts/remove-bom.ts --apply" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "✅ All files are correctly encoded (UTF-8 without BOM)." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Report file not found" >> $GITHUB_STEP_SUMMARY
+          fi

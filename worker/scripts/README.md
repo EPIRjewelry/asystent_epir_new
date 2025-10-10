@@ -1,4 +1,61 @@
-# RAG Ingest Script
+# Worker Scripts
+
+This directory contains utility scripts for the worker.
+
+## Scripts
+
+### 1. Encoding Conversion & BOM Removal (`remove-bom.ts`)
+
+Safely converts files to UTF-8 encoding and removes BOM (Byte Order Mark). Designed to fix "Unexpected \xff" (UTF-16 / bad encoding) build errors in Cloudflare Workers.
+
+**Usage:**
+
+```bash
+# Preview changes (dry-run, default)
+npx tsx worker/scripts/remove-bom.ts --dry-run
+
+# Apply conversions with backups
+npx tsx worker/scripts/remove-bom.ts --apply
+
+# Check specific directory
+npx tsx worker/scripts/remove-bom.ts --dir=worker/src
+
+# Check specific file
+npx tsx worker/scripts/remove-bom.ts --file=worker/src/index.ts
+
+# Custom extensions
+npx tsx worker/scripts/remove-bom.ts --extensions=.ts,.tsx,.js
+
+# Ignore patterns
+npx tsx worker/scripts/remove-bom.ts --ignore=node_modules,.git,.wrangler
+```
+
+**Options:**
+
+- `--dry-run` - Preview changes without applying (default)
+- `--apply` - Apply conversions and create timestamped backups
+- `--dir=<path>` - Directory to scan (default: worker)
+- `--file=<path>` - Single file to process
+- `--extensions=<list>` - Comma-separated file extensions (default: .ts,.tsx,.js,.jsx)
+- `--ignore=<patterns>` - Comma-separated ignore patterns (default: node_modules,.git,.wrangler,dist,build)
+- `--force` - Skip confirmation prompts
+
+**Output:**
+
+- Generates `encoding-report.json` with details of all files checked
+- Creates timestamped backups: `file.bak.YYYYMMDD_HHMMSS`
+- Idempotent: safe to run multiple times
+
+**Features:**
+
+- Detects UTF-8, UTF-16LE, UTF-16BE encodings
+- Detects and removes BOM from UTF-8 files
+- Converts UTF-16 files to UTF-8
+- Creates timestamped backups before any changes
+- Generates detailed JSON report
+- Dry-run mode by default for safety
+
+### 2. RAG Ingest Script (`ingest.ts`)
 
 This script populates the Cloudflare Vectorize index with shop data (products, FAQs, and policies).
 
