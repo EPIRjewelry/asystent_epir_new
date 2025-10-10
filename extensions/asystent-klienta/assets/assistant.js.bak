@@ -1,6 +1,6 @@
-﻿// extensions/asystent-klienta/assets/chat.ts
-// Lekki, poprawiony klient czatu z obsĹ‚ugÄ… streaming SSE/JSON + fallback.
-// Kompiluj do JS (np. tsc) przed uĹĽyciem w Theme App Extension.
+// extensions/asystent-klienta/assets/chat.ts
+// Lekki, poprawiony klient czatu z obsługą streaming SSE/JSON + fallback.
+// Kompiluj do JS (np. tsc) przed użyciem w Theme App Extension.
 
 // Minimal initializer: bind toggle button to open/close the assistant
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,9 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* Typy - usuniÄ™te dla kompatybilnoĹ›ci z przeglÄ…darkÄ… (TypeScript â†’ JavaScript) */
-// type MessageElement = { id; el };
-// type StreamPayload = { content?; delta?; session_id?; error?; done? };
+/* Typy - usunięte dla kompatybilności z przeglądarką (TypeScript → JavaScript) */
+// type MessageElement = { id: string; el: HTMLElement };
+// type StreamPayload = { content?: string; delta?: string; session_id?: string; error?: string; done?: boolean };
 
 /* Pomocnicze UI */
 export function createAssistantMessage(messagesEl) {
@@ -52,7 +52,7 @@ export function finalizeAssistantMessage(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('msg-typing');
-  // accessibility: usuĹ„ aria-busy jeĹ›li ustawione, pozostaw role=status
+  // accessibility: usuń aria-busy jeśli ustawione, pozostaw role=status
   el.removeAttribute('aria-busy');
   el.setAttribute('role', 'status');
 }
@@ -65,7 +65,7 @@ export function createUserMessage(messagesEl, text) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* Robustny parser SSE/JSONL z obsĹ‚ugÄ… delta (nowy) i content (fallback) */
+/* Robustny parser SSE/JSONL z obsługą delta (nowy) i content (fallback) */
 export async function processSSEStream(
   body,
   msgId,
@@ -83,13 +83,13 @@ export async function processSSEStream(
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      // Procesuj peĹ‚ne eventy (oddzielone pustÄ… liniÄ…)
-      let index;
+      // Procesuj pełne eventy (oddzielone pustą linią)
+      let index: number;
       while ((index = buffer.indexOf('\n\n')) !== -1) {
         const rawEvent = buffer.slice(0, index);
         buffer = buffer.slice(index + 2);
 
-        // ZĹ‚ĂłĹĽ wszystkie linie 'data:' w rawEvent
+        // Złóż wszystkie linie 'data:' w rawEvent
         const lines = rawEvent.split(/\r?\n/);
         const dataLines = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5));
         const dataStr = dataLines.join('\n').trim();
@@ -97,12 +97,12 @@ export async function processSSEStream(
 
         if (dataStr === '[DONE]') return;
 
-        let parsed;
+        let parsed: StreamPayload;
         try {
-          parsed = JSON.parse(dataStr);
+          parsed = JSON.parse(dataStr) as StreamPayload;
         } catch (e) {
           console.error('SSE JSON parse error', e, dataStr);
-          throw new Error('BĹ‚Ä…d komunikacji: otrzymano nieprawidĹ‚owe dane strumienia.');
+          throw new Error('Błąd komunikacji: otrzymano nieprawidłowe dane strumienia.');
         }
 
         if (parsed.error) throw new Error(parsed.error);
@@ -111,7 +111,7 @@ export async function processSSEStream(
           try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch (e) { /* silent */ }
         }
 
-        // Nowa obsĹ‚uga: delta (incremental) lub content (full replacement)
+        // Nowa obsługa: delta (incremental) lub content (full replacement)
         if (parsed.delta !== undefined) {
           accumulated += parsed.delta;
           onUpdate(accumulated);
@@ -124,14 +124,14 @@ export async function processSSEStream(
       }
     }
 
-    // Po zakoĹ„czeniu odczytu: sprĂłbuj przetworzyÄ‡ pozostaĹ‚oĹ›ci w bufferze
+    // Po zakończeniu odczytu: spróbuj przetworzyć pozostałości w bufferze
     if (buffer.trim()) {
       const lines = buffer.split(/\r?\n/);
       const dataLines = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5));
       const dataStr = dataLines.join('\n').trim();
       if (dataStr && dataStr !== '[DONE]') {
         try {
-          const parsed = JSON.parse(dataStr);
+          const parsed = JSON.parse(dataStr) as StreamPayload;
           if (parsed.session_id) try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch {}
           if (parsed.delta !== undefined) {
             accumulated += parsed.delta;
@@ -150,15 +150,15 @@ export async function processSSEStream(
   }
 }
 
-/* GĹ‚Ăłwna funkcja wysyĹ‚ki z fallbackiem JSON */
+/* Główna funkcja wysyłki z fallbackiem JSON */
 export async function sendMessageToWorker(
-  text,
-  endpoint,
-  sessionIdKey,
-  messagesEl,
-  setLoading,
-  controller
-) {
+  text: string,
+  endpoint: string,
+  sessionIdKey: string,
+  messagesEl: HTMLElement,
+  setLoading: (b: boolean) => void,
+  controller: AbortController
+): Promise<void> {
   setLoading(true);
   createUserMessage(messagesEl, text);
   const { id: msgId } = createAssistantMessage(messagesEl);
@@ -183,38 +183,38 @@ export async function sendMessageToWorker(
     if (!res.ok) {
       const errText = await (async () => { try { return await res.text(); } catch { return ''; } })();
       console.error('Server error:', res.status, errText);
-      throw new Error(`Serwer zwrĂłciĹ‚ bĹ‚Ä…d (${res.status}).`);
+      throw new Error(`Serwer zwrócił błąd (${res.status}).`);
     }
 
     const contentType = res.headers.get('content-type') || '';
-    const hasStreamAPI = res.body && typeof (res.body).getReader === 'function';
+    const hasStreamAPI = res.body && typeof (res.body as any).getReader === 'function';
 
     if (hasStreamAPI && contentType.includes('text/event-stream')) {
       // streaming SSE
-      await processSSEStream(res.body, msgId, sessionIdKey, (content) => {
+      await processSSEStream(res.body as ReadableStream<Uint8Array>, msgId, sessionIdKey, (content) => {
         accumulated = content;
         updateAssistantMessage(msgId, accumulated);
       });
     } else if (hasStreamAPI && contentType.includes('application/ndjson')) {
-      // ewentualne inne formy newline-delimited json - moĹĽna dodaÄ‡ parser
-      await processSSEStream(res.body, msgId, sessionIdKey, (content) => {
+      // ewentualne inne formy newline-delimited json - można dodać parser
+      await processSSEStream(res.body as ReadableStream<Uint8Array>, msgId, sessionIdKey, (content) => {
         accumulated = content;
         updateAssistantMessage(msgId, accumulated);
       });
     } else {
-      // fallback JSON (serwer buforuje / starsze przeglÄ…darki)
-      const data = await res.json().catch((e) => { throw new Error('NieprawidĹ‚owa odpowiedĹş serwera.'); });
+      // fallback JSON (serwer buforuje / starsze przeglądarki)
+      const data = await res.json().catch((e) => { throw new Error('Nieprawidłowa odpowiedź serwera.'); });
       if (data.error) throw new Error(data.error);
-      accumulated = (data.reply) || 'Otrzymano pustÄ… odpowiedĹş.';
+      accumulated = (data.reply as string) || 'Otrzymano pustą odpowiedź.';
       updateAssistantMessage(msgId, accumulated);
       if (data.session_id) {
         try { sessionStorage.setItem(sessionIdKey, data.session_id); } catch {}
       }
     }
   } catch (err: any) {
-    console.error('BĹ‚Ä…d czatu:', err);
-    const safeMsg = err instanceof Error ? err.message : 'Nieznany bĹ‚Ä…d.';
-    const finalText = accumulated.length > 0 ? `${accumulated} (BĹ‚Ä…d: ${safeMsg})` : 'Przepraszam, wystÄ…piĹ‚ bĹ‚Ä…d. SprĂłbuj ponownie.';
+    console.error('Błąd czatu:', err);
+    const safeMsg = err instanceof Error ? err.message : 'Nieznany błąd.';
+    const finalText = accumulated.length > 0 ? `${accumulated} (Błąd: ${safeMsg})` : 'Przepraszam, wystąpił błąd. Spróbuj ponownie.';
     updateAssistantMessage(msgId, finalText);
     const el = document.getElementById(msgId);
     if (el) el.classList.add('msg-error');
@@ -233,7 +233,7 @@ export default {
   sendMessageToWorker,
 };
 
-// DODANE: fix przeĹ‚adowania strony (preventDefault) i wywoĹ‚anie /apps/assistant/chat
+// DODANE: fix przeładowania strony (preventDefault) i wywołanie /apps/assistant/chat
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const form = document.querySelector('#assistant-form');
@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const input = document.querySelector('#assistant-input');
-      const messagesEl = document.querySelector('#assistant-messages');
+      const input = document.querySelector('#assistant-input') as HTMLInputElement | null;
+      const messagesEl = document.querySelector('#assistant-messages') as HTMLElement | null;
       const text = input?.value?.trim() || '';
       if (!text || !messagesEl) {
         console.warn('assistant.js: input or messages container not found');
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       input.value = '';
       const controller = new AbortController();
-      const setLoading = (b) => {
+      const setLoading = (b: boolean) => {
         if (!messagesEl) return;
         if (b) messagesEl.classList.add('is-loading'); else messagesEl.classList.remove('is-loading');
       };
@@ -267,5 +267,3 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('assistant.js DOMContentLoaded submit handler error:', e);
   }
 });
-
-
