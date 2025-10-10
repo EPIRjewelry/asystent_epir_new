@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/convert-encodings
+      - copilot/fixconvert-encodings
   workflow_dispatch: {}
 
 jobs:
