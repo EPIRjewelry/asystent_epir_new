@@ -26,7 +26,7 @@ jobs:
       # Yarn v1 stores dependencies in node_modules (not .yarn/cache like v2+)
       # We cache node_modules directly for faster builds
       - name: Cache Yarn dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -81,7 +81,7 @@ jobs:
       # Yarn v1 stores dependencies in node_modules (not .yarn/cache like v2+)
       # We cache node_modules directly for faster builds
       - name: Cache Yarn dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
