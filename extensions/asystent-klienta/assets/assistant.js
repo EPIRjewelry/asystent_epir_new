@@ -236,15 +236,21 @@ export default {
 // DODANE: fix przeładowania strony (preventDefault) i wywołanie /apps/assistant/chat
 document.addEventListener('DOMContentLoaded', () => {
   try {
-    const form = document.querySelector('#chat-form');
-    if (!form) return;
+    const form = document.querySelector('#assistant-form');
+    if (!form) {
+      console.warn('assistant.js: #assistant-form not found');
+      return;
+    }
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const input = document.querySelector('#message-input') as HTMLInputElement | null;
-      const messagesEl = document.querySelector('#messages') as HTMLElement | null;
+      const input = document.querySelector('#assistant-input') as HTMLInputElement | null;
+      const messagesEl = document.querySelector('#assistant-messages') as HTMLElement | null;
       const text = input?.value?.trim() || '';
-      if (!text || !messagesEl) return;
+      if (!text || !messagesEl) {
+        console.warn('assistant.js: input or messages container not found');
+        return;
+      }
       input.value = '';
       const controller = new AbortController();
       const setLoading = (b: boolean) => {
