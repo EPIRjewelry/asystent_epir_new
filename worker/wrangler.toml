@@ -26,4 +26,5 @@ binding = "AI"
 
 [vars]
 ALLOWED_ORIGIN = "*"
+SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"
 
