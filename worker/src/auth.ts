@@ -43,7 +43,7 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
     const params = new URLSearchParams(url.search);
     const receivedHex = params.get('signature');
     if (!receivedHex) return false;
-    // build canonical message used by some proxies: sorted k=values joined without separators
+    // build canonical message used by some proxies: sorted k=values joined without separators + body
     params.delete('signature');
     const keys = Array.from(new Set(Array.from(params.keys()))).sort();
     const parts: string[] = [];
@@ -52,7 +52,8 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
       const joined = values.length > 1 ? values.join(',') : values[0] ?? '';
       parts.push(`${k}=${joined}`);
     }
-    const message = parts.join('');
+    // Include body in message for POST requests (security fix)
+    const message = parts.length > 0 ? parts.join('') + bodyText : bodyText || '';
 
     const enc = new TextEncoder();
     const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);

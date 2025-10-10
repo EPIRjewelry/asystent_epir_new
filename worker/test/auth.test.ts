@@ -56,7 +56,7 @@ describe('verifyAppProxyHmac', () => {
     expect(result).toBe(false);
   });
 
-  it('should verify valid hex query param signature', async () => {
+  it('should verify valid hex query param signature (GET request, no body)', async () => {
     // Build canonical message (query-based: sorted k=v joined without &)
     const message = 'foo=barshop=test.myshopify.com';
     const enc = new TextEncoder();
@@ -66,7 +66,26 @@ describe('verifyAppProxyHmac', () => {
     const hexSig = Array.from(sigBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 
     const req = new Request(`https://example.com/chat?foo=bar&shop=test.myshopify.com&signature=${hexSig}`, {
+      method: 'GET',
+    });
+
+    const result = await verifyAppProxyHmac(req, SECRET);
+    expect(result).toBe(true);
+  });
+
+  it('should verify valid hex query param signature with body (POST request)', async () => {
+    // Build canonical message with body (query-based: sorted k=v joined without & + body)
+    const bodyText = JSON.stringify({ message: 'test' });
+    const message = 'foo=barshop=test.myshopify.com' + bodyText;
+    const enc = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(message));
+    const sigBytes = new Uint8Array(sigBuf);
+    const hexSig = Array.from(sigBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+
+    const req = new Request(`https://example.com/chat?foo=bar&shop=test.myshopify.com&signature=${hexSig}`, {
       method: 'POST',
+      body: bodyText,
     });
 
     const result = await verifyAppProxyHmac(req, SECRET);
@@ -80,5 +99,24 @@ describe('verifyAppProxyHmac', () => {
 
     const result = await verifyAppProxyHmac(req, SECRET);
     expect(result).toBe(false);
+  });
+
+  it('should reject query param signature that excludes body (security test)', async () => {
+    // Build signature WITHOUT body (old vulnerable behavior)
+    const message = 'foo=barshop=test.myshopify.com';
+    const enc = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(message));
+    const sigBytes = new Uint8Array(sigBuf);
+    const hexSig = Array.from(sigBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+
+    // But send request WITH body - this should fail
+    const req = new Request(`https://example.com/chat?foo=bar&shop=test.myshopify.com&signature=${hexSig}`, {
+      method: 'POST',
+      body: JSON.stringify({ message: 'malicious' }),
+    });
+
+    const result = await verifyAppProxyHmac(req, SECRET);
+    expect(result).toBe(false); // Should fail because body wasn't included in signature
   });
 });
