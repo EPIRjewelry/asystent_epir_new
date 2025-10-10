@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!toggle) return;
     toggle.addEventListener('click', (e) => {
       e.preventDefault();
-      const isClosed = content?.classList.toggle('is-closed');
+      const isClosed = content && content.classList.toggle('is-closed');
       // update ARIA
       toggle.setAttribute('aria-expanded', isClosed ? 'false' : 'true');
     });
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const input = document.querySelector('#assistant-input');
       const messagesEl = document.querySelector('#assistant-messages');
-      const text = input?.value?.trim() || '';
+      const text = (input && input.value && input.value.trim()) || '';
       if (!text || !messagesEl) {
         console.warn('assistant.js: input or messages container not found');
         return;
