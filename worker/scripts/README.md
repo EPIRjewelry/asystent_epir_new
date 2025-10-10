@@ -1,4 +1,52 @@
-# RAG Ingest Script
+# Worker Scripts
+
+This directory contains utility scripts for the EPIR worker.
+
+## Encoding Converter (`convert-encodings.ts`)
+
+Recursively converts TypeScript files to UTF-8 encoding without BOM (Byte Order Mark).
+
+### Features
+
+- Detects BOM encodings: UTF-8 BOM, UTF-16 LE, UTF-16 BE
+- Creates `.bak` backup files before conversion
+- Recursively scans directories for `.ts` files
+- Safe conversion to UTF-8 without BOM
+- Error handling with non-zero exit codes
+
+### Usage
+
+```bash
+# Convert files in worker/src (default directory)
+npx tsx worker/scripts/convert-encodings.ts
+
+# Convert files in a specific directory
+npx tsx worker/scripts/convert-encodings.ts --dir=worker/src
+
+# Enable auto-commit mode (used by GitHub Actions)
+npx tsx worker/scripts/convert-encodings.ts --dir=worker/src --commit
+```
+
+### Options
+
+- `--dir=<path>`: Directory to scan (default: `worker/src`)
+- `--commit`: Enable automatic commit mode (for CI/CD)
+
+### Supported BOM Types
+
+| Type | Signature | Description |
+|------|-----------|-------------|
+| UTF-8 BOM | `0xEF 0xBB 0xBF` | UTF-8 with Byte Order Mark |
+| UTF-16 LE | `0xFF 0xFE` | UTF-16 Little Endian |
+| UTF-16 BE | `0xFE 0xFF` | UTF-16 Big Endian |
+
+### GitHub Action
+
+The encoding converter can be automatically triggered via GitHub Actions on the `fix/convert-encodings` branch. See `.github/workflows/convert-encodings.yml`.
+
+---
+
+## RAG Ingest Script (`ingest.ts`)
 
 This script populates the Cloudflare Vectorize index with shop data (products, FAQs, and policies).
 

@@ -1,0 +1,53 @@
+name: Convert Encodings to UTF-8
+
+on:
+  push:
+    branches:
+      - fix/convert-encodings
+  workflow_dispatch: {}
+
+jobs:
+  convert-encodings:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: worker
+        run: npm ci
+      
+      - name: Run encoding converter
+        run: npx tsx worker/scripts/convert-encodings.ts --dir=worker/src --commit
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "chore: convert TypeScript files to UTF-8 without BOM"
+          git push
+      
+      - name: No changes detected
+        if: steps.check_changes.outputs.changes == 'false'
+        run: echo "✓ All files are already UTF-8 without BOM - no changes needed"
