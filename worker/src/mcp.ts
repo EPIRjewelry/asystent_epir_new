@@ -213,10 +213,9 @@ export async function mcpCall(shopDomain: string, toolName: string, args: any): 
 export async function mcpCatalogSearch(
   shopDomain: string,
   query: string,
-  context?: string
+  context: string = 'luxury fair trade jewelry'
 ): Promise<Array<{name: string; price: string; url: string; image: string; id: string}> | null> {
-  const args: any = { query };
-  if (context) args.context = context;
+  const args = { query, context };
   
   const result = await mcpCall(shopDomain, 'search_shop_catalog', args);
   

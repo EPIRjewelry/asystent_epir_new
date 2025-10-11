@@ -245,17 +245,21 @@ export class SessionDO {
   }
 }
 
-async function generateAIResponse(history: HistoryEntry[], userMessage: string, env: Env): Promise<string> {
+async function generateAIResponse(history: HistoryEntry[], userMessage: string, env: Env, ragContext?: string): Promise<string> {
   const ai = env.AI;
   if (!ai || typeof ai.run !== 'function') {
     return `Echo: ${userMessage}`;
   }
 
   const recentHistory = history.slice(-10);
+  const systemPrompt = ragContext 
+    ? `Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie. Użyj poniższych informacji ze sklepu, aby odpowiedzieć na pytanie użytkownika:\n\n${ragContext}`
+    : 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.';
+  
   const messages = [
     {
       role: 'system',
-      content: 'Jeste┼Ť pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+      content: systemPrompt,
     },
     ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
     { role: 'user' as const, content: userMessage },
@@ -282,13 +286,17 @@ async function generateAIResponse(history: HistoryEntry[], userMessage: string, 
  * If the configured env.AI supports streaming, try to obtain a ReadableStream<string>
  * that yields incremental text chunks. Return null if not available.
  */
-async function generateAIResponseStream(history: HistoryEntry[], userMessage: string, env: Env): Promise<ReadableStream<string> | null> {
+async function generateAIResponseStream(history: HistoryEntry[], userMessage: string, env: Env, ragContext?: string): Promise<ReadableStream<string> | null> {
   // Build messages same as non-streaming
   const recentHistory = history.slice(-10);
+  const systemPrompt = ragContext 
+    ? `Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie. Użyj poniższych informacji ze sklepu, aby odpowiedzieć na pytanie użytkownika:\n\n${ragContext}`
+    : 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.';
+  
   const messages = [
     {
       role: 'system',
-      content: 'Jeste┼Ť pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.',
+      content: systemPrompt,
     },
     ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
     { role: 'user' as const, content: userMessage },
@@ -358,11 +366,8 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   // Check if it's a product query - use MCP catalog search
   if (env.SHOP_DOMAIN) {
     const mcpResult = await searchProductCatalogWithMCP(
-      env,
-      payload.message, 
-      env.SHOP_DOMAIN,
-      env.SHOPIFY_ADMIN_TOKEN,
-      env.SHOPIFY_STOREFRONT_TOKEN
+      payload.message,
+      env.SHOP_DOMAIN
     );
     if (mcpResult) {
       // mcpResult to string z formatowanymi produktami
@@ -403,7 +408,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     const messages = buildGroqMessages(history, payload.message, ragContext);
     reply = await getGroqResponse(messages, env.GROQ_API_KEY);
   } else {
-    reply = await generateAIResponse(history, payload.message, env);
+    reply = await generateAIResponse(history, payload.message, env, ragContext);
   }
 
   await stub.fetch('https://session/append', {
@@ -440,11 +445,8 @@ function streamAssistantResponse(
       // Check if it's a product query - use MCP catalog search
       if (env.SHOP_DOMAIN) {
         const mcpResult = await searchProductCatalogWithMCP(
-          env,
-          userMessage, 
-          env.SHOP_DOMAIN,
-          env.SHOPIFY_ADMIN_TOKEN,
-          env.SHOPIFY_STOREFRONT_TOKEN
+          userMessage,
+          env.SHOP_DOMAIN
         );
         if (mcpResult) {
           // mcpResult to string z formatowanymi produktami
@@ -507,7 +509,7 @@ function streamAssistantResponse(
         }
       } else {
         // Fallback: Try Workers AI streaming, else generate full reply
-        const stream = await generateAIResponseStream(history, userMessage, env);
+        const stream = await generateAIResponseStream(history, userMessage, env, ragContext);
         
         if (stream) {
           // Real streaming from Workers AI

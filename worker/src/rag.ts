@@ -92,7 +92,9 @@ export async function searchProductCatalogWithMCP(
   try {
     // Import MCP module to use mcpCatalogSearch
     const mcp = await import('./mcp');
-    const products = await mcp.mcpCatalogSearch(shopDomain, query, context);
+    // Context is REQUIRED by MCP spec - use default if not provided
+    const searchContext = context || 'luxury fair trade jewelry';
+    const products = await mcp.mcpCatalogSearch(shopDomain, query, searchContext);
     
     if (!products || products.length === 0) return '';
     
@@ -149,7 +151,7 @@ export async function searchShopPoliciesAndFaqsWithMCP(
     if (vectorIndex && aiBinding) {
       try {
         // Get embedding for query
-        const embeddingResult = await aiBinding.run('@cf/baai/bge-base-en-v1.5', {
+        const embeddingResult = await aiBinding.run('@cf/baai/bge-large-en-v1.5', {
           text: [query]
         });
         
@@ -193,7 +195,7 @@ export async function searchShopPoliciesAndFaqs(
   try {
     if (vectorIndex && aiBinding) {
       // Get embedding for query
-      const embeddingResult = await aiBinding.run('@cf/baai/bge-base-en-v1.5', {
+      const embeddingResult = await aiBinding.run('@cf/baai/bge-large-en-v1.5', {
         text: [query]
       });
       

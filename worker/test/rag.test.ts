@@ -52,7 +52,7 @@ describe('RAG Module', () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0].text).toBe('Sample policy text');
       expect(result.results[0].score).toBe(0.95);
-      expect(mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', {
+      expect(mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-large-en-v1.5', {
         text: ['test query'],
       });
       expect(mockVectorIndex.query).toHaveBeenCalled();
@@ -428,7 +428,7 @@ describe('RAG Module', () => {
 
       expect(result).toBeInstanceOf(Float32Array);
       expect(result.length).toBeGreaterThan(0);
-      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', {
+      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-large-en-v1.5', {
         text: ['test text'],
       });
     });
