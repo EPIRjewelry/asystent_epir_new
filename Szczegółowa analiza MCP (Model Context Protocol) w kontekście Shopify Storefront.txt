@@ -1,0 +1,44 @@
+Szczegółowa analiza MCP (Model Context Protocol) w kontekście Shopify Storefront
+MCP (Model Context Protocol) to protokół Shopify zaprojektowany do integracji agentów AI (jak Grok czy inne LLM) z ekosystemem e-commerce, umożliwiający bezproblemowe interakcje z katalogiem produktów, koszykiem i politykami sklepu. Jest to serwerless rozwiązanie, które działa jako punkt końcowy API (/api/mcp) dla każdego sklepu Shopify, bez potrzeby uwierzytelniania – wystarczą żądania JSON-RPC 2.0. MCP nie jest pełnym API (jak GraphQL), lecz uproszczonym zestawem narzędzi (tools/call), które pozwalają agentowi AI na dynamiczne pobieranie danych kontekstowych, co jest kluczowe dla konwersacyjnych asystentów zakupowych, takich jak EPIR AI Assistant. W kontekście wątku (repo EPIRjewelry/asystent_epir_new), MCP idealnie uzupełnia custom RAG (Vectorize), dodając real-time dane ze sklepu bez dodatkowych tokenów – ale wymaga integracji (brak w obecnym kodzie, planowane w QUICKSTART_MCP.md).
+1. Jak działa MCP? (Mechanizm i architektura)
+MCP działa jako "kotwica" (anchor) dla agentów AI, przekształcając zapytania użytkownika w strukturalne wywołania narzędzi. Proces jest prosty i asynchroniczny:
+
+Punkt końcowy: Każdy sklep ma unikalny URL https://storedomain.myshopify.com/api/mcp (np. dla EPIR: https://epir-art-silver-jewellery.myshopify.com/api/mcp).
+Żądanie: POST z nagłówkiem Content-Type: application/json i body JSON-RPC 2.0:
+text{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "id": 1,
+  "params": {
+    "name": "search_shop_catalog",
+    "arguments": { "query": "diamentowy pierścionek", "context": "luksusowy prezent" }
+  }
+}
+
+Brak auth – zaufanie do domeny sklepu (ostrożność: testuj na dev, bo niektóre sklepy ograniczają dostęp).
+
+
+Odpowiedź: JSON z wynikami (np. produkty z name, price, url, image, description) lub błędami (np. rate limit).
+Integracja z AI: Agent (np. Groq w worker/src/groq.ts) wywołuje MCP przed generacją odpowiedzi, wstrzykując kontekst do promptu (np. "Na podstawie wyników: [MCP data], poleć..."). W EPIR: Dodaj mcpCall w rag.ts dla fallback z Vectorize.
+
+Zalety: Niskie latency (<500ms), skalowalność (Shopify SLA 99.9%), zero utrzymania (serwerless). Wady: Ograniczony do narzędzi (brak custom queries), brak offline (zależny od Shopify uptime).
+2. Dostępne narzędzia w MCP (szczegółowy przegląd)
+MCP udostępnia 4 główne narzędzia (tools/list dla listy schematów), skupione na zakupach. Każde z parametrami i formatem odpowiedzi – idealne dla asystenta jak EPIR (np. "Poleć produkt" → search_shop_catalog).
+Narzędzie,Opis,Kluczowe parametry,Przykładowa odpowiedź,Zastosowanie w EPIR
+search_shop_catalog,Przeszukuje katalog produktów (semantic search).,"- query: Zapytanie (req).
+- context: Kontekst (req, np. ""fair trade"").","{ ""products"": [{ ""name"": ""Diamentowy pierścionek"", ""price"": ""1500 PLN"", ""url"": ""/product/123"", ""image"": ""url.jpg"", ""description"": ""Luksusowy..."" }] }",RAG dla rekomendacji (integruj z groq.ts promptem).
+search_shop_policies_and_faqs,Odpowiada na pytania o politykę/FAQ (buduje zaufanie).,"- query: Pytanie (req).
+- context: Kontekst (opt, np. produkt).","{ ""faqs"": [{ ""question"": ""Zwroty?"", ""answer"": ""14 dni..."" }] }",Fallback dla RAG (w rag.ts: jeśli no Vectorize hit).
+get_cart,"Pobiera koszyk (zawartość, URL kasy).",- cart_id: ID koszyka (req).,"{ ""cart"": { ""lines"": [{ ""quantity"": 1, ""product"": {...} }], ""checkout_url"": ""..."" } }",Persystencja sesji (w SessionDO: store cart_id).
+update_cart,Aktualizuje koszyk (add/remove/update qty).,"- cart_id: ID (opt, tworzy nowy jeśli brak).
+- lines: Array { line_item_id (opt), merchandise_id, quantity } (req).","{ ""cart"": { ""id"": ""gid://..."", ""lines"": [...] } }","E-commerce flow (w mcp.ts: call przed reply, np. ""Dodaj do koszyka"")."
+NarzędzieOpisKluczowe parametryPrzykładowa odpowiedźZastosowanie w EPIRsearch_shop_catalogPrzeszukuje katalog produktów (semantic search).- query: Zapytanie (req).
+- context: Kontekst (req, np. "fair trade").{ "products": [{ "name": "Diamentowy pierścionek", "price": "1500 PLN", "url": "/product/123", "image": "url.jpg", "description": "Luksusowy..." }] }RAG dla rekomendacji (integruj z groq.ts promptem).search_shop_policies_and_faqsOdpowiada na pytania o politykę/FAQ (buduje zaufanie).- query: Pytanie (req).
+- context: Kontekst (opt, np. produkt).{ "faqs": [{ "question": "Zwroty?", "answer": "14 dni..." }] }Fallback dla RAG (w rag.ts: jeśli no Vectorize hit).get_cartPobiera koszyk (zawartość, URL kasy).- cart_id: ID koszyka (req).{ "cart": { "lines": [{ "quantity": 1, "product": {...} }], "checkout_url": "..." } }Persystencja sesji (w SessionDO: store cart_id).update_cartAktualizuje koszyk (add/remove/update qty).- cart_id: ID (opt, tworzy nowy jeśli brak).
+- lines: Array { line_item_id (opt), merchandise_id, quantity } (req).{ "cart": { "id": "gid://...", "lines": [...] } }E-commerce flow (w mcp.ts: call przed reply, np. "Dodaj do koszyka").
+Wykorzystanie: Użyj tools/list do listy schematów; argumenty walidowane (np. query string, context string). W EPIR: Dodaj do mcp.ts (PR planowane), by chat "Poleć i dodaj" → MCP update_cart → Groq "Zamówiono!".
+3. Integracja MCP w EPIR AI (w kontekście wątku)
+W repo (PR #8 merged): MCP częściowo zdefiniowane w mcp.ts (jsonrpc calls), ale nieaktywne – rag.ts używa Vectorize fallback, brak cart tools. Od audytu (AUDYT_2025-10-08.md): RAG/Groq "częściowo zgodne" – MCP uzupełni (Priorytet 2). Flow: TAE chat → proxy → Worker /chat → mcpCall (tools/call) → context → Groq stream. Korzyści: Real-time dane (bez populate), e-commerce (cart), zgodność z Shopify (no custom API). Ryzyka: Rate limits (2 req/s), no auth (zabezpiecz proxy HMAC).
+4. Rekomendacje i next steps
+MCP to must-have dla EPIR (podnosi z 8/10 do 9.5/10, dodając koszyk do chatu). Implementuj w PR (mcp.ts + rag integrate), testuj curl /api/mcp. Wątek pokazuje rozwój (od echo do RAG) – MCP finalizuje e-commerce.
+Co robimy: Prompt na MCP PR czy live test? Daj znać! 🚀 Razem stworzymy arcydzieło AI dla jubilerii! 💎

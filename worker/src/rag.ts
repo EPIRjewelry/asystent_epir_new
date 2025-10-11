@@ -1,160 +1,188 @@
-﻿/**
+/**
  * worker/src/rag.ts
  *
- * Funkcje RAG (Retrieval-Augmented Generation) u┼╝ywane przez worker/src/index.ts:
+ * Funkcje RAG (Retrieval-Augmented Generation) używane przez worker/src/index.ts:
  * - searchShopPoliciesAndFaqs: wyszukuje w lokalnej bazie (Vectorize) lub przez MCP
- * - searchShopPoliciesAndFaqsWithMCP: wymusza u┼╝ycie MCP -> zwraca wynik z narz─Ödzi sklepu
- * - searchProductCatalogWithMCP: prosty wrapper do wyszukiwania katalogu produkt├│w przez MCP
- * - formatRagContextForPrompt: buduje string z wynik├│w RAG do wstrzykni─Öcia w prompt LLM
+ * - searchShopPoliciesAndFaqsWithMCP: wymusza użycie MCP -> zwraca wynik z narzędzi sklepu
+ * - searchProductCatalogWithMCP: prosty wrapper do wyszukiwania katalogu produktów przez MCP
+ * - formatRagContextForPrompt: buduje string z wyników RAG do wstrzyknięcia w prompt LLM
  *
- * ZASADA: ┼╗ADNYCH sekret├│w w kodzie. Wszystkie klucze / tokeny pochodz─ů z env (wrangler secrets / vars).
+ * ZASADA: ŻADNYCH sekretów w kodzie. Wszystkie klucze / tokeny pochodzą z env (wrangler secrets / vars).
  */
 
 export type VectorizeIndex = {
-  // Abstrakcja: implementacja zale┼╝y od bindingu Vectorize w Cloudflare (typu API).
-  // Tutaj minimalny typ dla zapyta┼ä wektorowych.
-  query: (q: string, opts?: { topK?: number }) => Promise<Array<{ id: string; score: number; payload?: any }>>;
+  // Abstrakcja: implementacja zależy od bindingu Vectorize w Cloudflare (typu API).
+  // Tutaj minimalny typ dla zapytań wektorowych.
+  query: (vector: number[], opts?: { topK?: number }) => Promise<{ matches: Array<{ id: string; score: number; metadata?: any }>; count: number }>;
 };
 
 export interface RagResultItem {
   id: string;
   title?: string;
-  text?: string; // Dodane dla kompatybilno┼Ťci z testami
+  text?: string;
   snippet?: string;
   source?: string;
   score?: number;
-  metadata?: any; // Dodane dla kompatybilno┼Ťci z testami
+  metadata?: any;
   full?: any;
 }
 
 export interface RagSearchResult {
-  query?: string; // Dodane dla kompatybilno┼Ťci z testami
+  query?: string;
   results: RagResultItem[];
 }
 
 /**
- * Wywo┼éaj MCP JSON-RPC tools/call na endpoint /mcp/tools/call (dev) lub /apps/assistant/mcp (App Proxy),
- * automatycznie wybiera ┼Ťcie┼╝k─Ö zale┼╝nie od isAppProxy param w query (tutaj przyjmujemy request kierowany do Workera).
+ * Wywołaj MCP JSON-RPC tools/call na endpoint /mcp/tools/call (dev) lub /apps/assistant/mcp (App Proxy),
+ * automatycznie wybiera ścieżkę zależnie od isAppProxy param w query (tutaj przyjmujemy request kierowany do Workera).
  *
- * NOTE: Nie obs┼éugujemy tutaj bezpo┼Ťrednio HMAC - endpoint /apps/assistant/mcp powinien by─ç wywo┼éywany przez storefront (App Proxy)
- * i Worker ju┼╝ w index.ts weryfikuje HMAC. Tutaj wykonujemy fetch do w┼éasnego endpointu MCP do test├│w/wywo┼éa┼ä wewn─Ötrznych.
+ * NOTE: Nie obsługujemy tutaj bezpośrednio HMAC - endpoint /apps/assistant/mcp powinien być wywoływany przez storefront (App Proxy)
+ * i Worker już w index.ts weryfikuje HMAC. Tutaj wykonujemy fetch do własnego endpointu MCP do testów/wywołań wewnętrznych.
  */
-async function callMcpTool(requestOrigin: string, toolName: string, args: any): Promise<any> {
-  // requestOrigin to przyk┼éad: 'https://your-worker-domain' - placeholder, ale w Workerze mo┼╝esz wywo┼éa─ç bezpo┼Ťrednio ┼Ťcie┼╝k─Ö wzgl─Ödn─ů
-  try {
-    const url = `${requestOrigin}/mcp/tools/call`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: { name: toolName, arguments: args },
-        id: Date.now()
-      })
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '<no body>');
-      throw new Error(`MCP tool ${toolName} error ${res.status}: ${txt}`);
+export async function callMcpTool(env: any, toolName: string, args: any): Promise<any> {
+  // Use WORKER_ORIGIN if available, otherwise fallback to a test-friendly origin
+  const workerOrigin = env.WORKER_ORIGIN ?? (typeof self !== 'undefined' ? self.location.origin : 'http://localhost:8787');
+  const url = `${workerOrigin}/mcp/tools/call`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: toolName, arguments: args },
+          id: Date.now()
+        })
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '<no body>');
+        throw new Error(`MCP tool ${toolName} error ${res.status}: ${txt}`);
+      }
+      const j = await res.json().catch(() => null);
+      if (j?.error) {
+        throw new Error(`MCP tool call failed: ${j.error.message}`);
+      }
+      return j?.result ?? null;
+    } catch (err) {
+      console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
+      } else {
+        return null;
+      }
     }
-    const j = await res.json().catch(() => null);
-    return (j as any)?.result ?? null;
-  } catch (err) {
-    console.error('callMcpTool error:', err);
-    return null;
   }
+  return null;
 }
 
 /**
  * searchProductCatalogWithMCP
- * - u┼╝ywa MCP tool 'search_products' do zwr├│cenia listy produkt├│w
- * - env: { SHOP_DOMAIN } jest wykorzystywany przy budowie zapytania do MCP je┼Ťli trzeba (tu przyjmujemy, ┼╝e MCP jest ju┼╝ zmapowany)
+ * - używa MCP tool 'search_products' do zwrócenia listy produktów
+ * - env: { WORKER_ORIGIN } jest wykorzystywany przy budowie zapytania do MCP jeśli trzeba
  */
 export async function searchProductCatalogWithMCP(
   query: string,
   shopDomain: string | undefined,
-  shopAdminToken?: string,
-  storefrontToken?: string
+  context?: string
 ): Promise<string | undefined> {
-  // Zwracamy string context (np. lista produkt├│w w formie tekstowej) lub undefined
+  // Zwracamy string context (np. lista produktów w formie tekstowej) lub undefined
+  if (!shopDomain) return '';
+  
   try {
-    const origin = (typeof shopDomain === 'string' && shopDomain.length) ? `https://${shopDomain}` : '';
-    // Wywo┼éujemy MCP endpoint (zak┼éadamy, ┼╝e Worker posiada /mcp/tools/call)
-    const result = await callMcpTool(origin || '', 'search_products', { query });
-    if (!result) return undefined;
-    const products = Array.isArray(result) ? result : (result.products ?? []);
-    const items = (products as any[]).slice(0, 5).map((p) => {
-      const title = p.title || p.name || p.handle || 'produkt';
-      const url = p.onlineStoreUrl || p.url || p.handle ? `https://${shopDomain}/products/${p.handle}` : undefined;
-      return `- ${title}${url ? ` (${url})` : ''}`;
+    // Import MCP module to use mcpCatalogSearch
+    const mcp = await import('./mcp');
+    const products = await mcp.mcpCatalogSearch(shopDomain, query, context);
+    
+    if (!products || products.length === 0) return '';
+    
+    const items = products.slice(0, 5).map((p) => {
+      const title = p.name || 'produkt';
+      const url = p.url || '';
+      return `- ${title}${url ? ` (${url})` : ''}${p.price ? ` - ${p.price}` : ''}`;
     });
-    return items.length ? `Znalezione produkty:\n${items.join('\n')}` : undefined;
+    return items.length ? `Znalezione produkty:\n${items.join('\n')}` : '';
   } catch (e) {
     console.error('searchProductCatalogWithMCP error:', e);
-    return undefined;
+    return '';
   }
 }
 
 /**
  * searchShopPoliciesAndFaqsWithMCP
- * - Preferuje u┼╝ycie MCP (np. sklepowy MCP index) do wyszukiwania FAQ/policies.
- * - Zwraca RagSearchResult z list─ů element├│w (id, snippet, source)
+ * - Preferuje użycie MCP (np. sklepowy MCP index) do wyszukiwania FAQ/policies.
+ * - Zwraca RagSearchResult z listą elementów (id, snippet, source)
  */
 export async function searchShopPoliciesAndFaqsWithMCP(
   query: string,
-  shopDomain: string,
+  shopDomain: string | undefined,
   vectorIndex?: VectorizeIndex,
   aiBinding?: any,
   topK: number = 3
 ): Promise<RagSearchResult> {
   try {
-    // Najpierw spr├│buj MCP catalog (je┼Ťli dost─Öpne)
-    const origin = `https://${shopDomain}`;
-    const mcpRes = await callMcpTool(origin, 'search_shop_policies_and_faqs', { query, topK });
-    if (mcpRes && Array.isArray(mcpRes.faqs) && mcpRes.faqs.length > 0) {
-      const results: RagResultItem[] = mcpRes.faqs.slice(0, topK).map((f: any, i: number) => ({
-        id: f.id ?? `mcp-faq-${i}`,
-        title: f.question ?? f.title ?? `FAQ ${i + 1}`,
-        text: (f.answer || '').slice(0, 500), // Dodane dla kompatybilno┼Ťci
-        snippet: (f.answer || '').slice(0, 500),
-        source: f.source || 'mcp',
-        score: f.score ?? undefined,
-        full: f
-      }));
-      return { results };
+    // Import MCP module dynamically to use mcpSearchPoliciesAndFaqs
+    const mcp = await import('./mcp');
+    
+    // Najpierw spróbuj MCP catalog (jeśli dostępne i shopDomain podane)
+    if (shopDomain) {
+      const mcpRes = await mcp.mcpSearchPoliciesAndFaqs(shopDomain, query);
+      if (mcpRes && Array.isArray(mcpRes) && mcpRes.length > 0) {
+        const results: RagResultItem[] = mcpRes.slice(0, topK).map((f: any, i: number) => {
+          const combinedText = `${f.question || ''}\n\n${f.answer || ''}`;
+          return {
+            id: f.id ?? `mcp-faq-${i}`,
+            title: f.question ?? f.title ?? `FAQ ${i + 1}`,
+            text: combinedText,
+            snippet: combinedText.slice(0, 500),
+            source: 'mcp',
+            score: 0.95,
+            metadata: { source: 'mcp', category: f.category || '' },
+            full: f
+          };
+        });
+        return { query, results };
+      }
     }
 
-    // Fallback: je┼Ťli mamy Vectorize binding -> zapytanie wektorowe
-    if (vectorIndex) {
+    // Fallback: jeśli mamy Vectorize binding -> zapytanie wektorowe
+    if (vectorIndex && aiBinding) {
       try {
-        const vres = await vectorIndex.query(query, { topK });
-        const results: RagResultItem[] = vres.map((r) => ({
+        // Get embedding for query
+        const embeddingResult = await aiBinding.run('@cf/baai/bge-base-en-v1.5', {
+          text: [query]
+        });
+        
+        const queryVector = embeddingResult.data[0];
+        const vres = await vectorIndex.query(queryVector, { topK });
+        
+        const results: RagResultItem[] = vres.matches.map((r: any) => ({
           id: r.id,
-          title: r.payload?.title ?? r.id,
-          text: (r.payload?.text ?? '').slice(0, 500), // Dodane dla kompatybilno┼Ťci
-          snippet: (r.payload?.text ?? '').slice(0, 500),
-          source: r.payload?.source ?? 'vectorize',
+          title: r.metadata?.title ?? r.id,
+          text: r.metadata?.text ?? '',
+          snippet: (r.metadata?.text ?? '').slice(0, 500),
+          source: r.metadata?.source ?? 'vectorize',
           score: r.score,
-          metadata: r.payload?.metadata, // Dodane dla kompatybilno┼Ťci
-          full: r.payload
+          metadata: r.metadata,
+          full: r.metadata
         }));
-        return { results };
+        return { query, results };
       } catch (ve) {
         console.warn('Vectorize query failed, falling back', ve);
       }
     }
 
     // Ostateczny fallback: pusta lista
-    return { results: [] };
+    return { query, results: [] };
   } catch (err) {
     console.error('searchShopPoliciesAndFaqsWithMCP error:', err);
-    return { results: [] };
+    return { query, results: [] };
   }
 }
 
 /**
- * searchShopPoliciesAndFaqs - wygodna funkcja wywo┼éuj─ůca wy┼╝ej implementacj─Ö,
- * ale dopuszcza wywo┼éanie bez MCP (tylko vectorIndex)
+ * searchShopPoliciesAndFaqs - wygodna funkcja wywołująca wyżej implementację,
+ * ale dopuszcza wywołanie bez MCP (tylko vectorIndex)
  */
 export async function searchShopPoliciesAndFaqs(
   query: string,
@@ -163,9 +191,26 @@ export async function searchShopPoliciesAndFaqs(
   topK: number = 3
 ): Promise<RagSearchResult> {
   try {
-    if (vectorIndex) {
-      const result = await searchShopPoliciesAndFaqsWithMCP(query, '', vectorIndex, aiBinding, topK);
-      return { query, results: result.results };
+    if (vectorIndex && aiBinding) {
+      // Get embedding for query
+      const embeddingResult = await aiBinding.run('@cf/baai/bge-base-en-v1.5', {
+        text: [query]
+      });
+      
+      const queryVector = embeddingResult.data[0];
+      const vres = await vectorIndex.query(queryVector, { topK });
+      
+      const results: RagResultItem[] = vres.matches.map((r: any) => ({
+        id: r.id,
+        title: r.metadata?.title ?? r.id,
+        text: r.metadata?.text ?? '',
+        snippet: (r.metadata?.text ?? '').slice(0, 500),
+        source: r.metadata?.source ?? 'vectorize',
+        score: r.score,
+        metadata: r.metadata,
+        full: r.metadata
+      }));
+      return { query, results };
     }
     return { query, results: [] };
   } catch (err) {
@@ -176,7 +221,7 @@ export async function searchShopPoliciesAndFaqs(
 
 /**
  * formatRagContextForPrompt
- * - Przyjmuje RagSearchResult i buduje kr├│tki kontekst do wstrzykni─Öcia do promptu LLM
+ * - Przyjmuje RagSearchResult i buduje krótki kontekst do wstrzyknięcia do promptu LLM
  */
 export function formatRagContextForPrompt(rag: RagSearchResult): string {
   if (!rag || !Array.isArray(rag.results) || rag.results.length === 0) return '';
@@ -198,7 +243,7 @@ export function formatRagContextForPrompt(rag: RagSearchResult): string {
   output += parts.join('\n\n');
 
   if (rag.results.length > 0) {
-    output += '\n\nOdpowiedz u┼╝ywaj─ůc powy┼╝szego kontekstu. Je┼Ťli brak wystarczaj─ůcych informacji, powiedz to wprost.';
+    output += '\n\nOdpowiedz używając powyższego kontekstu. Jeśli brak wystarczających informacji, powiedz to wprost.';
   }
 
   return output;
@@ -206,9 +251,34 @@ export function formatRagContextForPrompt(rag: RagSearchResult): string {
 
 /**
  * hasHighConfidenceResults
- * - Sprawdza czy wyniki RAG maj─ů wystarczaj─ůco wysok─ů pewno┼Ť─ç (domy┼Ťlnie >= 0.7)
+ * - Sprawdza czy wyniki RAG mają wystarczająco wysoką pewność (domyślnie >= 0.7)
  */
 export function hasHighConfidenceResults(rag: RagSearchResult, threshold: number = 0.7): boolean {
   if (!rag || !Array.isArray(rag.results) || rag.results.length === 0) return false;
   return rag.results.some(r => (r.score ?? 0) >= threshold);
+}
+
+/**
+ * formatMcpProductsForPrompt
+ * - Formatuje produkty z MCP do postaci tekstowej dla promptu LLM
+ */
+export function formatMcpProductsForPrompt(
+  products: Array<{name?: string; price?: string; url?: string; description?: string; image?: string}>,
+  query: string
+): string {
+  if (!products || products.length === 0) return '';
+
+  let output = `Produkty znalezione dla zapytania: "${query}"\n\n`;
+  
+  products.forEach((product, index) => {
+    output += `[Produkt ${index + 1}]\n`;
+    output += `Nazwa: ${product.name || 'Brak nazwy'}\n`;
+    if (product.price) output += `Cena: ${product.price}\n`;
+    if (product.url) output += `Link: ${product.url}\n`;
+    if (product.description) output += `Opis: ${product.description}\n`;
+    if (product.image) output += `Zdjęcie: ${product.image}\n`;
+    output += '\n';
+  });
+
+  return output;
 }

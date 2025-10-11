@@ -7,6 +7,8 @@
 // Narzędzia: get_product, search_products (Shopify Admin GraphQL 2024-07)
 
 import { verifyAppProxyHmac } from './auth';
+import { searchProductCatalog, getShopPolicies } from './mcp';
+import { Env } from './index';
 
 type JsonRpcId = string | number | null;
 
@@ -119,6 +121,22 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
     return rpcError(rpc?.id ?? null, -32600, 'Invalid Request');
   }
 
+  if (rpc.method === 'tools/list') {
+    const tools = [
+      {
+        name: 'search_products',
+        description: 'Search Shopify product catalog',
+        inputSchema: { type: 'object', properties: { query: { type: 'string' }, first: { type: 'number', default: 5 } } }
+      },
+      {
+        name: 'search_shop_policies_and_faqs',
+        description: 'Search shop policies and FAQs',
+        inputSchema: { type: 'object', properties: { query: { type: 'string' }, context: { type: 'string' } } }
+      }
+    ];
+    return rpcResult(rpc.id ?? null, { tools });
+  }
+
   if (rpc.method !== 'tools/call') {
     return rpcError(rpc.id ?? null, -32601, `Method not found: ${rpc.method}`);
   }
@@ -131,12 +149,18 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
 
   try {
     switch (name) {
-      case 'get_product': {
-        const result = await toolGetProduct(env, args);
+      case 'search_products': {
+        if (!args.query) {
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "query" required for search_products');
+        }
+        const result = await searchProductCatalog({ query: args.query, first: args.first || 5 }, env);
         return rpcResult(rpc.id ?? null, result);
       }
-      case 'search_products': {
-        const result = await toolSearchProducts(env, args);
+      case 'search_shop_policies_and_faqs': {
+        if (!args.query) {
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "query" required for search_shop_policies_and_faqs');
+        }
+        const result = await getShopPolicies({ policy_types: ['termsOfService', 'shippingPolicy', 'refundPolicy', 'privacyPolicy', 'subscriptionPolicy'] }, env);
         return rpcResult(rpc.id ?? null, result);
       }
       default:

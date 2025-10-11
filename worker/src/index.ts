@@ -7,7 +7,6 @@ import {
   formatRagContextForPrompt,
   type VectorizeIndex
 } from './rag';
-import { isProductQuery } from './mcp';
 import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
 import { handleMcpRequest } from './mcp_server';
 
@@ -56,6 +55,7 @@ export interface Env {
   SHOP_DOMAIN?: string;
   GROQ_API_KEY?: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
+  WORKER_ORIGIN?: string;
 }
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -356,15 +356,17 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   let ragContext: string | undefined;
   
   // Check if it's a product query - use MCP catalog search
-  if (isProductQuery(payload.message) && env.SHOP_DOMAIN) {
-    const productContext = await searchProductCatalogWithMCP(
+  if (env.SHOP_DOMAIN) {
+    const mcpResult = await searchProductCatalogWithMCP(
+      env,
       payload.message, 
       env.SHOP_DOMAIN,
       env.SHOPIFY_ADMIN_TOKEN,
       env.SHOPIFY_STOREFRONT_TOKEN
     );
-    if (productContext) {
-      ragContext = productContext;
+    if (mcpResult) {
+      // mcpResult to string z formatowanymi produktami
+      ragContext = mcpResult;
     }
   }
   
@@ -436,15 +438,17 @@ function streamAssistantResponse(
       let ragContext: string | undefined;
       
       // Check if it's a product query - use MCP catalog search
-      if (isProductQuery(userMessage) && env.SHOP_DOMAIN) {
-        const productContext = await searchProductCatalogWithMCP(
+      if (env.SHOP_DOMAIN) {
+        const mcpResult = await searchProductCatalogWithMCP(
+          env,
           userMessage, 
           env.SHOP_DOMAIN,
           env.SHOPIFY_ADMIN_TOKEN,
           env.SHOPIFY_STOREFRONT_TOKEN
         );
-        if (productContext) {
-          ragContext = productContext;
+        if (mcpResult) {
+          // mcpResult to string z formatowanymi produktami
+          ragContext = mcpResult;
         }
       }
       

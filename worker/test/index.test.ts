@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { 
-  SessionDO, 
+import {
+  SessionDO,
   type Env,
   parseAppendPayload,
   parseChatRequestBody,
@@ -11,41 +11,11 @@ import {
   generateAIResponseStream,
   handleChat,
   streamAssistantResponse,
-  verifyAppProxyHmac,  it('default fetch: 404', async () => {
-    const request = new Request('https://example.com/unknown', { method: 'GET' });
-    const response = await (await import('../src/index')).default.fetch(request, mockEnv);
-    expect(response.status).toBe(404);
-  });
-
-  it('Integration test: ring recommendation', async () => {
-    const request = new Request('https://example.com/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message: 'Poleć mi pierścionek', stream: false }),
-    });
-
-    // Mock AI response for ring recommendation
-    (mockEnv.AI as any).run.mockResolvedValue({
-      response: 'EPIR oferuje piękne pierścionki z diamentami i złotem. Polecam nasz pierścionek zaręczynowy "Eternal Love" z białym diamentem 1ct w oprawie z białego złota 18k. Cena: 4500 zł. Jest to doskonały wybór dla osób szukających eleganckiej biżuterii.'
-    });
-
-    const stub = { fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify([]))) };
-    vi.mocked(mockEnv.SESSION_DO.get).mockReturnValue(stub as any);
-
-    const response = await (await import('../src/index')).default.fetch(request, mockEnv);
-    expect(response.status).toBe(200);
-
-    const result = await response.json();
-    console.log('🧪 Test odpowiedzi na pytanie o pierścionek:');
-    console.log('Odpowiedź:', result.reply);
-    console.log('Session ID:', result.session_id);
-
-    expect(result.reply).toContain('pierścionek');
-    expect(result.session_id).toBeDefined();
-  });
-});dleMcpRequest,
+  verifyAppProxyHmac,
+  handleMcpRequest,
   getGroqResponse,
-  streamGroqResponse,
-} from '../src/index'; // Adjust import as needed
+  streamGroqResponse
+} from '../src/index';
 
 // Mock Date.now globally
 const mockNow = 1000000000;
@@ -99,6 +69,11 @@ const mockEnv: Env = {
   GROQ_API_KEY: 'key',
   DEV_BYPASS: '0',
 };
+
+describe('Worker Tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
 describe('Parsing Functions', () => {
   it('parseAppendPayload: valid payload', () => {
@@ -353,4 +328,5 @@ describe('Main Handlers', () => {
     const response = await (await import('../src/index')).default.fetch(request, mockEnv);
     expect(response.status).toBe(404);
   });
+});
 });
