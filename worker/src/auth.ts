@@ -22,7 +22,10 @@ export async function verifyAppProxyHmac(request: Request, envOrSecret: Env | st
     }
   }
 
-  // Kanonikalizacja
+  // Kanonikalizacja zgodnie z dokumentacją Shopify App Proxy:
+  // - sortuj klucze alfabetycznie
+  // - dla każdego klucza połącz wartości przecinkiem
+  // - połącz pary klucz=wartość za pomocą '&'
   const sortedPairs: string[] = [];
   const sortedKeys = Array.from(paramMap.keys()).sort();
   for (const key of sortedKeys) {
@@ -30,11 +33,11 @@ export async function verifyAppProxyHmac(request: Request, envOrSecret: Env | st
     const joinedValues = values.join(',');
     sortedPairs.push(`${key}=${joinedValues}`);
   }
-  const canonicalized = sortedPairs.join('');
+  const canonicalized = sortedPairs.join('&');
 
-  // Log dla debugu (usu┼ä w prod)
-  console.log('Canonicalized string:', canonicalized);
-  console.log('Received signature:', receivedSignature);
+  // (opcjonalny) Log dla debugu - usuń lub ogranicz w produkcji
+  // console.log('Canonicalized string:', canonicalized);
+  // console.log('Received signature:', receivedSignature);
 
   // HMAC-SHA256 z secret
   const encoder = new TextEncoder();

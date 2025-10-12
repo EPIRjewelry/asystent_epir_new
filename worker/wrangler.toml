@@ -5,7 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [durable_objects]
 bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
+  { name = "SESSION_DO", class_name = "SessionDO" },
+  { name = "RATE_LIMITER_DO", class_name = "RateLimiterDO" }
 ]
 
 [[d1_databases]]
@@ -30,6 +31,10 @@ index_name = "autorag-epir-chatbot-rag"
 tag = "v1"
 new_sqlite_classes = ["SessionDO"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RateLimiterDO"]
+
 # AI binding
 [ai]
 binding = "AI"
@@ -38,37 +43,7 @@ binding = "AI"
 ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
 SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"
 # WORKER_ORIGIN: URL Workera dla internal MCP calls (używane w rag.ts callMcpTool)
-# W produkcji: https://asystent-epir.epir-art-silver-jewellery.workers.dev
+# W produkcji: https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev
 # W dev: https://asystent-epir.YOUR-NAME.workers.dev
-WORKER_ORIGIN = "https://asystent-epir.epir-art-silver-jewellery.workers.dev"
+WORKER_ORIGIN = "https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev"
 
-# Staging environment
-[env.staging]
-name = "epir-art-jewellery-worker-staging"
-workers_dev = true
-
-[env.staging.durable_objects]
-bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
-]
-
-[[env.staging.d1_databases]]
-binding = "DB"
-database_name = "epir_art_jewellery"
-database_id = "6a4f7cbb-3c1c-42c7-9d79-4ef74d421f23"
-
-[[env.staging.kv_namespaces]]
-binding = "SESSIONS_KV"
-id = "08f16276a9b14ca7b3c00404e8e8d0d9"
-
-[[env.staging.vectorize]]
-binding = "VECTOR_INDEX"
-index_name = "autorag-epir-chatbot-rag"
-
-[env.staging.ai]
-binding = "AI"
-
-[env.staging.vars]
-ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"
-SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"
-WORKER_ORIGIN = "https://asystent-epir.epir-art-silver-jewellery.workers.dev"

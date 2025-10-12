@@ -9,6 +9,7 @@ import {
 } from './rag';
 import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
 import { handleMcpRequest } from './mcp_server';
+import { RateLimiterDO } from './rate-limiter';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -46,6 +47,7 @@ export interface Env {
   DB: D1Database;
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
+  RATE_LIMITER_DO: DurableObjectNamespace;
   VECTOR_INDEX?: VectorizeIndex;
   SHOPIFY_APP_SECRET: string;
   ALLOWED_ORIGIN?: string;
@@ -639,4 +641,5 @@ export {
   handleMcpRequest,
   getGroqResponse,
   streamGroqResponse,
+  RateLimiterDO,
 };

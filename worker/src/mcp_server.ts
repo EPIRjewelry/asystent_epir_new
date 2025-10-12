@@ -4,7 +4,7 @@
 // Endpointy:
 // - POST /mcp/tools/call (dev/test bez HMAC)
 // - POST /apps/assistant/mcp (App Proxy + HMAC)
-// Narzędzia: get_product, search_products (Shopify Admin GraphQL 2024-07)
+// Narzędzia: get_product, search_shop_catalog (Shopify Admin GraphQL 2024-07)
 
 import { verifyAppProxyHmac } from './auth';
 import { searchProductCatalog, getShopPolicies } from './mcp';
@@ -96,7 +96,7 @@ async function toolGetProduct(env: Env, args: any) {
 
 async function toolSearchProducts(env: Env, args: any) {
   const query = String(args?.query || '').trim();
-  if (!query) throw new Error('search_products: Missing "query"');
+  if (!query) throw new Error('search_shop_catalog: Missing "query"');
   const data = await adminGraphql<{ products: { edges: { node: any }[] } }>(
     env,
     `query Search($query: String!) {
@@ -121,10 +121,10 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
     return rpcError(rpc?.id ?? null, -32600, 'Invalid Request');
   }
 
-  if (rpc.method === 'tools/list') {
+    if (rpc.method === 'tools/list') {
     const tools = [
       {
-        name: 'search_products',
+        name: 'search_shop_catalog',
         description: 'Search Shopify product catalog',
         inputSchema: { type: 'object', properties: { query: { type: 'string' }, first: { type: 'number', default: 5 } } }
       },
@@ -149,9 +149,9 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
 
   try {
     switch (name) {
-      case 'search_products': {
+      case 'search_shop_catalog': {
         if (!args.query) {
-          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "query" required for search_products');
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "query" required for search_shop_catalog');
         }
         const result = await searchProductCatalog({ query: args.query, first: args.first || 5 }, env);
         return rpcResult(rpc.id ?? null, result);

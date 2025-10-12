@@ -25,12 +25,12 @@ interface PolicyResult {
   body: string;
 }
 
-// --- Implementacje narz─Ödzi (Tools) ---
+// --- Implementacje narzędzi (Tools) ---
 
 /**
  * Narz─Ödzie MCP: Wyszukuje produkty w katalogu Shopify za pomoc─ů Storefront API.
- * @param params Parametry wyszukiwania, g┼é├│wnie `query`.
- * @param env Zmienne ┼Ťrodowiskowe.
+ * @param params Parametry wyszukiwania, głównie `query`.
+ * @param env Zmienne srodowiskowe.
  * @returns Structured JSON z wynikami.
  */
 export async function searchProductCatalog(params: SearchProductParams, env: Env): Promise<{ products: ProductResult[] }> {

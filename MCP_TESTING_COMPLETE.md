@@ -42,7 +42,7 @@ Created `worker/test/unit/mcp.test.ts` with **11 tests** covering all MCP functi
 - ✅ Handles network errors
 
 **handleMcpRequest Tests (3 tests)**
-- ✅ Handles `tools/call` request for `search_products`
+- ✅ Handles `tools/call` request for `search_shop_catalog`
 - ✅ Returns errors for invalid methods
 - ✅ Returns errors for missing arguments
 
@@ -125,7 +125,7 @@ All MCP tools follow the JSON-RPC 2.0 spec:
   "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
-    "name": "search_products",
+  "name": "search_shop_catalog",
     "arguments": { "query": "ring", "limit": 10 }
   },
   "id": 1

@@ -46,14 +46,14 @@ describe('MCP Server', () => {
     }) as any;
   });
 
-  it('returns result for search_products', async () => {
+  it('returns result for search_shop_catalog', async () => {
     const req = new Request('https://example.com/mcp/tools/call', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'tools/call',
-        params: { name: 'search_products', arguments: { query: 'ring' } },
+        params: { name: 'search_shop_catalog', arguments: { query: 'ring' } },
         id: 1
       })
     });

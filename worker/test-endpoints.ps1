@@ -74,7 +74,7 @@ try {
         jsonrpc = "2.0"
         method = "tools/call"
         params = @{
-            name = "search_products"
+            name = "search_shop_catalog"
             arguments = @{
                 query = "pierścionek"
                 first = 3

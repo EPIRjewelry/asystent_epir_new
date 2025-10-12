@@ -78,7 +78,7 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
 
 /**
  * searchProductCatalogWithMCP
- * - u┼╝ywa MCP tool 'search_products' do zwr├│cenia listy produkt├│w
+ * - u┼╝ywa MCP tool 'search_shop_catalog' do zwr├│cenia listy produkt├│w
  * - env: { SHOP_DOMAIN } jest wykorzystywany przy budowie zapytania do MCP je┼Ťli trzeba (tu przyjmujemy, ┼╝e MCP jest ju┼╝ zmapowany)
  */
 export async function searchProductCatalogWithMCP(
@@ -92,14 +92,14 @@ export async function searchProductCatalogWithMCP(
   try {
     const origin = env.WORKER_ORIGIN ?? 'https://your-worker.workers.dev';
     // Wywo┼éujemy MCP endpoint (zak┼éadamy, ┼╝e Worker posiada /mcp/tools/call)
-    const result = await callMcpTool(env, 'search_products', { query });
+  const result = await callMcpTool(env, 'search_shop_catalog', { query });
     if (!result) return undefined;
     const products = Array.isArray(result) ? result : (result.products ?? []);
     const items = (products as any[]).slice(0, 5).map((p) => {
       const title = p.title || p.name || p.handle || 'produkt';
       const url = p.onlineStoreUrl || p.url || p.handle ? `https://${shopDomain}/products/${p.handle}` : undefined;
       return `- ${title}${url ? ` (${url})` : ''}`;
-    });
+      const result = await callMcpTool(env, 'search_shop_catalog', { query });
     return items.length ? `Znalezione produkty:\n${items.join('\n')}` : undefined;
   } catch (e) {
     console.error('searchProductCatalogWithMCP error:', e);

@@ -133,7 +133,7 @@ describe('MCP Tools', () => {
   });
 
   describe('handleMcpRequest', () => {
-    it('should handle tools/call request for search_products', async () => {
+  it('should handle tools/call request for search_shop_catalog', async () => {
       mockFetch.mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -165,8 +165,8 @@ describe('MCP Tools', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
-          method: 'tools/call',
-          params: { name: 'search_products', arguments: { query: 'ring' } },
+            method: 'tools/call',
+            params: { name: 'search_shop_catalog', arguments: { query: 'ring' } },
           id: 1,
         }),
       });
@@ -221,7 +221,7 @@ describe('MCP Tools', () => {
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'tools/call',
-          params: { name: 'search_products' }, // missing arguments
+          params: { name: 'search_shop_catalog' }, // missing arguments
           id: 1,
         }),
       });
@@ -246,7 +246,7 @@ describe('MCP Tools', () => {
         )
       );
 
-      const result = await callMcpTool(env, 'search_products', { query: 'test' });
+  const result = await callMcpTool(env, 'search_shop_catalog', { query: 'test' });
 
       expect(result).toEqual({ products: [{ id: '1', title: 'Test' }] });
       expect(mockFetch).toHaveBeenCalledWith(
@@ -261,7 +261,7 @@ describe('MCP Tools', () => {
       expect(body).toEqual({
         jsonrpc: '2.0',
         method: 'tools/call',
-        params: { name: 'search_products', arguments: { query: 'test' } },
+  params: { name: 'search_shop_catalog', arguments: { query: 'test' } },
         id: expect.any(Number),
       });
     });
