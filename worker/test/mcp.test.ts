@@ -30,7 +30,7 @@ describe('MCP Module', () => {
 
       expect(result).toEqual(mockResult);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://test.myshopify.com/api/mcp',
+        'https://test.myshopify.com/apps/assistant/mcp',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

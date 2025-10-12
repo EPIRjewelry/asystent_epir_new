@@ -176,7 +176,7 @@ export function isCartQuery(message: string): boolean {
  */
 export async function mcpCall(shopDomain: string, toolName: string, args: any): Promise<any> {
   try {
-    const url = `https://${shopDomain}/api/mcp`;
+    const url = `https://${shopDomain}/apps/assistant/mcp`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
