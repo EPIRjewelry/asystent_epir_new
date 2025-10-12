@@ -15,7 +15,6 @@ vi.mock('../src/mcp', async () => {
   const actual = await vi.importActual('../src/mcp');
   return {
     ...actual,
-    mcpSearchPoliciesAndFaqs: vi.fn(),
     mcpCatalogSearch: vi.fn(),
   };
 });
@@ -267,37 +266,39 @@ describe('RAG Module', () => {
   });
 
   describe('searchShopPoliciesAndFaqsWithMCP', () => {
-    it('should use MCP when shop domain is available', async () => {
-      const mockFaqs = [
-        { question: 'Q1', answer: 'A1', category: 'shipping' },
-        { question: 'Q2', answer: 'A2' },
-      ];
+    it('should use Vectorize when shop domain is available', async () => {
+      const mockAI = {
+        run: vi.fn().mockResolvedValue({ data: [[0.1, 0.2, 0.3]] }),
+      };
 
-      vi.mocked(mcp.mcpSearchPoliciesAndFaqs).mockResolvedValue(mockFaqs);
+      const mockVectorIndex: VectorizeIndex = {
+        query: vi.fn().mockResolvedValue({
+          matches: [
+            { id: 'doc1', score: 0.9, metadata: { text: 'Policy text 1', title: 'Q1' } },
+            { id: 'doc2', score: 0.8, metadata: { text: 'Policy text 2', title: 'Q2' } },
+          ],
+          count: 2,
+        }),
+      };
 
       const result = await searchShopPoliciesAndFaqsWithMCP(
         'test query',
         'test.myshopify.com',
-        undefined,
-        undefined,
+        mockVectorIndex,
+        mockAI,
         3
       );
 
       expect(result.query).toBe('test query');
       expect(result.results).toHaveLength(2);
-      expect(result.results[0].text).toContain('Q1');
-      expect(result.results[0].text).toContain('A1');
-      expect(result.results[0].score).toBe(0.95);
-      expect(result.results[0].metadata?.source).toBe('mcp');
-      expect(mcp.mcpSearchPoliciesAndFaqs).toHaveBeenCalledWith(
-        'test.myshopify.com',
-        'test query'
-      );
+      expect(result.results[0].text).toBe('Policy text 1');
+      expect(result.results[0].score).toBe(0.9);
+      expect(mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-large-en-v1.5', {
+        text: ['test query'],
+      });
     });
 
-    it('should fallback to Vectorize when MCP fails', async () => {
-      vi.mocked(mcp.mcpSearchPoliciesAndFaqs).mockResolvedValue(null);
-
+    it('should use Vectorize even without MCP', async () => {
       const mockAI = {
         run: vi.fn().mockResolvedValue({ data: [[0.1, 0.2, 0.3]] }),
       };
@@ -323,9 +324,7 @@ describe('RAG Module', () => {
       expect(mockVectorIndex.query).toHaveBeenCalled();
     });
 
-    it('should return empty results when both MCP and Vectorize unavailable', async () => {
-      vi.mocked(mcp.mcpSearchPoliciesAndFaqs).mockResolvedValue(null);
-
+    it('should return empty results when Vectorize unavailable', async () => {
       const result = await searchShopPoliciesAndFaqsWithMCP(
         'test query',
         undefined,
@@ -339,24 +338,40 @@ describe('RAG Module', () => {
     });
 
     it('should limit results to topK', async () => {
-      const mockFaqs = [
-        { question: 'Q1', answer: 'A1' },
-        { question: 'Q2', answer: 'A2' },
-        { question: 'Q3', answer: 'A3' },
-        { question: 'Q4', answer: 'A4' },
-      ];
+      const mockAI = {
+        run: vi.fn().mockResolvedValue({ data: [[0.1, 0.2, 0.3]] }),
+      };
 
-      vi.mocked(mcp.mcpSearchPoliciesAndFaqs).mockResolvedValue(mockFaqs);
+      const mockVectorIndex: VectorizeIndex = {
+        query: vi.fn().mockImplementation((vector, opts) => {
+          // Simulate topK limiting by returning only opts.topK results
+          const allMatches = [
+            { id: 'doc1', score: 0.9, metadata: { text: 'Text 1' } },
+            { id: 'doc2', score: 0.8, metadata: { text: 'Text 2' } },
+            { id: 'doc3', score: 0.7, metadata: { text: 'Text 3' } },
+            { id: 'doc4', score: 0.6, metadata: { text: 'Text 4' } },
+          ];
+          const topK = opts?.topK || allMatches.length;
+          return Promise.resolve({
+            matches: allMatches.slice(0, topK),
+            count: allMatches.length,
+          });
+        }),
+      };
 
       const result = await searchShopPoliciesAndFaqsWithMCP(
         'test query',
         'test.myshopify.com',
-        undefined,
-        undefined,
+        mockVectorIndex,
+        mockAI,
         2
       );
 
       expect(result.results).toHaveLength(2);
+      expect(mockVectorIndex.query).toHaveBeenCalledWith(
+        [0.1, 0.2, 0.3],
+        { topK: 2 }
+      );
     });
   });
 
@@ -368,12 +383,15 @@ describe('RAG Module', () => {
           price: '1000 PLN',
           url: 'https://shop.com/ring',
           description: 'Beautiful ring',
+          id: 'prod-1',
+          image: '',
         },
       ];
 
       vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue(mockProducts);
 
-      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', 'fair trade luxury');
+      const mockEnv = {}; // env parameter now required
+      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv, 'fair trade luxury');
 
       expect(result).toContain('Ring');
       expect(result).toContain('1000 PLN');
@@ -381,12 +399,14 @@ describe('RAG Module', () => {
       expect(mcp.mcpCatalogSearch).toHaveBeenCalledWith(
         'test.myshopify.com',
         'ring',
+        mockEnv,
         'fair trade luxury'
       );
     });
 
     it('should return empty string when no shop domain', async () => {
-      const result = await searchProductCatalogWithMCP('ring', undefined);
+      const mockEnv = {};
+      const result = await searchProductCatalogWithMCP('ring', undefined, mockEnv);
 
       expect(result).toBe('');
       // mcpCatalogSearch should not be called when shopDomain is undefined
@@ -395,7 +415,8 @@ describe('RAG Module', () => {
     it('should return empty string when MCP fails', async () => {
       vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue(null);
 
-      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com');
+      const mockEnv = {};
+      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv);
 
       expect(result).toBe('');
     });
@@ -403,7 +424,8 @@ describe('RAG Module', () => {
     it('should return empty string when no products found', async () => {
       vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue([]);
 
-      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com');
+      const mockEnv = {};
+      const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv);
 
       expect(result).toBe('');
     });
