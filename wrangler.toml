@@ -1,6 +1,0 @@
-name = "epir-art-jewellery-worker"
-main = "worker/src/index.ts"
-compatibility_date = "2025-10-02"
-
-[vars]
-ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"

@@ -112,7 +112,7 @@ export async function searchProductCatalogWithMCP(
 
 /**
  * searchShopPoliciesAndFaqsWithMCP
- * - Preferuje użycie MCP (np. sklepowy MCP index) do wyszukiwania FAQ/policies.
+ * - Wyszukuje FAQ/policies używając Vectorize (similarity search)
  * - Zwraca RagSearchResult z listą elementów (id, snippet, source)
  */
 export async function searchShopPoliciesAndFaqsWithMCP(
@@ -123,31 +123,7 @@ export async function searchShopPoliciesAndFaqsWithMCP(
   topK: number = 3
 ): Promise<RagSearchResult> {
   try {
-    // Import MCP module dynamically to use mcpSearchPoliciesAndFaqs
-    const mcp = await import('./mcp');
-    
-    // Najpierw spróbuj MCP catalog (jeśli dostępne i shopDomain podane)
-    if (shopDomain) {
-      const mcpRes = await mcp.mcpSearchPoliciesAndFaqs(shopDomain, query);
-      if (mcpRes && Array.isArray(mcpRes) && mcpRes.length > 0) {
-        const results: RagResultItem[] = mcpRes.slice(0, topK).map((f: any, i: number) => {
-          const combinedText = `${f.question || ''}\n\n${f.answer || ''}`;
-          return {
-            id: f.id ?? `mcp-faq-${i}`,
-            title: f.question ?? f.title ?? `FAQ ${i + 1}`,
-            text: combinedText,
-            snippet: combinedText.slice(0, 500),
-            source: 'mcp',
-            score: 0.95,
-            metadata: { source: 'mcp', category: f.category || '' },
-            full: f
-          };
-        });
-        return { query, results };
-      }
-    }
-
-    // Fallback: jeśli mamy Vectorize binding -> zapytanie wektorowe
+    // Use Vectorize for FAQ/policy search
     if (vectorIndex && aiBinding) {
       try {
         // Get embedding for query
@@ -170,11 +146,11 @@ export async function searchShopPoliciesAndFaqsWithMCP(
         }));
         return { query, results };
       } catch (ve) {
-        console.warn('Vectorize query failed, falling back', ve);
+        console.warn('Vectorize query failed', ve);
       }
     }
 
-    // Ostateczny fallback: pusta lista
+    // Fallback: empty results
     return { query, results: [] };
   } catch (err) {
     console.error('searchShopPoliciesAndFaqsWithMCP error:', err);

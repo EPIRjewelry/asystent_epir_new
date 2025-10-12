@@ -169,44 +169,7 @@ export function isCartQuery(message: string): boolean {
   return keywords.some(keyword => lowerCaseMessage.includes(keyword));
 }
 
-// --- JSON-RPC wrapper functions for testing ---
-
-/**
- * Generic JSON-RPC call to MCP endpoint
- */
-export async function mcpCall(shopDomain: string, toolName: string, args: any): Promise<any> {
-  try {
-    // Call Worker's own MCP endpoint directly (not through shop domain)
-    const url = `https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev/mcp/tools/call`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: { name: toolName, arguments: args },
-        id: 1
-      })
-    });
-
-    if (!response.ok) {
-      console.error(`MCP call failed: ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    const json: any = await response.json();
-    
-    if (json.error) {
-      console.error('MCP JSON-RPC error:', json.error);
-      return null;
-    }
-
-    return json.result ?? null;
-  } catch (error) {
-    console.error('MCP call exception:', error);
-    return null;
-  }
-}
+// --- MCP wrapper functions using direct calls ---
 
 /**
  * Search product catalog via MCP
@@ -237,64 +200,5 @@ export async function mcpCatalogSearch(
     console.error('mcpCatalogSearch error:', error);
     return null;
   }
-}
-
-/**
- * Search shop policies and FAQs via MCP
- */
-export async function mcpSearchPoliciesAndFaqs(
-  shopDomain: string,
-  query: string
-): Promise<Array<{question: string; answer: string; category: string}> | null> {
-  const result = await mcpCall(shopDomain, 'search_shop_policies_and_faqs', { query });
-  
-  if (!result || !result.faqs) {
-    return null;
-  }
-
-  // Normalize FAQ format
-  return result.faqs.map((faq: any) => ({
-    question: faq.question || '',
-    answer: faq.answer || '',
-    category: faq.category || ''
-  }));
-}
-
-/**
- * Get cart via MCP
- */
-export async function mcpGetCart(
-  shopDomain: string,
-  cartId: string
-): Promise<{id: string; items: any[]; total: string} | null> {
-  const result = await mcpCall(shopDomain, 'get_cart', { cart_id: cartId });
-  
-  if (!result || !result.cart) {
-    return null;
-  }
-
-  return result.cart;
-}
-
-/**
- * Update cart via MCP
- */
-export async function mcpUpdateCart(
-  shopDomain: string,
-  cartId: string,
-  action: string,
-  productId: string,
-  quantity?: number
-): Promise<{id: string; items: any[]; total: string} | null> {
-  const args: any = { cart_id: cartId, action, product_id: productId };
-  if (quantity !== undefined) args.quantity = quantity;
-  
-  const result = await mcpCall(shopDomain, 'update_cart', args);
-  
-  if (!result || !result.cart) {
-    return null;
-  }
-
-  return result.cart;
 }
 
