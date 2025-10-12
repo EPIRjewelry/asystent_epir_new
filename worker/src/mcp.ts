@@ -214,24 +214,29 @@ export async function mcpCall(shopDomain: string, toolName: string, args: any): 
 export async function mcpCatalogSearch(
   shopDomain: string,
   query: string,
+  env: Env,
   context: string = 'luxury fair trade jewelry'
 ): Promise<Array<{name: string; price: string; url: string; image: string; id: string}> | null> {
-  const args = { query, context };
-  
-  const result = await mcpCall(shopDomain, 'search_shop_catalog', args);
-  
-  if (!result || !result.products) {
+  try {
+    // Direct call to searchProductCatalog instead of HTTP fetch
+    const result = await searchProductCatalog({ query, first: 5 }, env);
+    
+    if (!result || !result.products || result.products.length === 0) {
+      return null;
+    }
+
+    // Normalize product format to match expected interface
+    return result.products.map((p: ProductResult) => ({
+      name: p.title || '',
+      price: p.price || '',
+      url: p.url || '',
+      image: '', // ProductResult doesn't have image field currently
+      id: p.id || ''
+    }));
+  } catch (error) {
+    console.error('mcpCatalogSearch error:', error);
     return null;
   }
-
-  // Normalize product format
-  return result.products.map((p: any) => ({
-    name: p.name || p.title || '',
-    price: p.price || '',
-    url: p.url || '',
-    image: p.image || p.featured_image || '',
-    id: p.id || p.product_id || ''
-  }));
 }
 
 /**

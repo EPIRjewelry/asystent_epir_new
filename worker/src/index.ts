@@ -369,7 +369,8 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   if (env.SHOP_DOMAIN) {
     const mcpResult = await searchProductCatalogWithMCP(
       payload.message,
-      env.SHOP_DOMAIN
+      env.SHOP_DOMAIN,
+      env
     );
     if (mcpResult) {
       // mcpResult to string z formatowanymi produktami
@@ -448,7 +449,8 @@ function streamAssistantResponse(
       if (env.SHOP_DOMAIN) {
         const mcpResult = await searchProductCatalogWithMCP(
           userMessage,
-          env.SHOP_DOMAIN
+          env.SHOP_DOMAIN,
+          env
         );
         if (mcpResult) {
           // mcpResult to string z formatowanymi produktami

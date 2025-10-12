@@ -78,12 +78,12 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
 
 /**
  * searchProductCatalogWithMCP
- * - używa MCP tool 'search_shop_catalog' do zwrócenia listy produktów
- * - env: { WORKER_ORIGIN } jest wykorzystywany przy budowie zapytania do MCP jeśli trzeba
+ * - używa bezpośredniego wywołania searchProductCatalog (internal call)
  */
 export async function searchProductCatalogWithMCP(
   query: string,
   shopDomain: string | undefined,
+  env: any,
   context?: string
 ): Promise<string | undefined> {
   // Zwracamy string context (np. lista produktów w formie tekstowej) lub undefined
@@ -94,11 +94,11 @@ export async function searchProductCatalogWithMCP(
     const mcp = await import('./mcp');
     // Context is REQUIRED by MCP spec - use default if not provided
     const searchContext = context || 'luxury fair trade jewelry';
-  const products = await mcp.mcpCatalogSearch(shopDomain, query, searchContext);
+    const products = await mcp.mcpCatalogSearch(shopDomain, query, env, searchContext);
     
     if (!products || products.length === 0) return '';
     
-  const items = products.slice(0, 5).map((p) => {
+    const items = products.slice(0, 5).map((p) => {
       const title = p.name || 'produkt';
       const url = p.url || '';
       return `- ${title}${url ? ` (${url})` : ''}${p.price ? ` - ${p.price}` : ''}`;
