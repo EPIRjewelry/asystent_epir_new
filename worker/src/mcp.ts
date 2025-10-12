@@ -176,7 +176,8 @@ export function isCartQuery(message: string): boolean {
  */
 export async function mcpCall(shopDomain: string, toolName: string, args: any): Promise<any> {
   try {
-    const url = `https://${shopDomain}/apps/assistant/mcp`;
+    // Call Worker's own MCP endpoint directly (not through shop domain)
+    const url = `https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev/mcp/tools/call`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
