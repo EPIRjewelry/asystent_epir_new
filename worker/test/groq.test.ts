@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGroqMessages, LUXURY_SYSTEM_PROMPT } from '../src/groq';
+import { buildMessages, LUXURY_SYSTEM_PROMPT } from '../src/cloudflare-ai';
 
 describe('Groq Module', () => {
   describe('LUXURY_SYSTEM_PROMPT', () => {
@@ -26,16 +26,16 @@ describe('Groq Module', () => {
     });
   });
 
-  describe('buildGroqMessages', () => {
+  describe('buildMessages', () => {
     it('should include system prompt as first message', () => {
-      const messages = buildGroqMessages([], 'test message');
+      const messages = buildMessages([], 'test message');
 
       expect(messages[0].role).toBe('system');
       expect(messages[0].content).toContain('EPIR-ART-JEWELLERY');
     });
 
     it('should include user message as last message', () => {
-      const messages = buildGroqMessages([], 'Pokaż pierścionki');
+      const messages = buildMessages([], 'Pokaż pierścionki');
 
       expect(messages[messages.length - 1]).toEqual({
         role: 'user',
@@ -51,7 +51,7 @@ describe('Groq Module', () => {
         { role: 'assistant' as const, content: '500 PLN' },
       ];
 
-      const messages = buildGroqMessages(history, 'Czy jest dostępny?');
+      const messages = buildMessages(history, 'Czy jest dostępny?');
 
       expect(messages).toHaveLength(6); // system + 4 history + 1 new user
       expect(messages[1]).toEqual({ role: 'user', content: 'Witaj' });
@@ -67,7 +67,7 @@ describe('Groq Module', () => {
         content: `Message ${i}`,
       }));
 
-      const messages = buildGroqMessages(history, 'New message');
+      const messages = buildMessages(history, 'New message');
 
       // system + last 10 from history + new user = 12 total
       expect(messages).toHaveLength(12);
@@ -78,7 +78,7 @@ describe('Groq Module', () => {
 
     it('should append RAG context to system prompt when provided', () => {
       const ragContext = 'Retrieved docs:\n[Doc 1]: Pierścionki z szafirem 1200 PLN';
-      const messages = buildGroqMessages([], 'test', ragContext);
+      const messages = buildMessages([], 'test', ragContext);
 
       expect(messages[0].role).toBe('system');
       expect(messages[0].content).toContain(LUXURY_SYSTEM_PROMPT);
@@ -87,14 +87,14 @@ describe('Groq Module', () => {
     });
 
     it('should not append RAG context when not provided', () => {
-      const messages = buildGroqMessages([], 'test');
+      const messages = buildMessages([], 'test');
 
       expect(messages[0].content).toBe(LUXURY_SYSTEM_PROMPT);
       expect(messages[0].content).not.toContain('Retrieved docs');
     });
 
     it('should handle empty history', () => {
-      const messages = buildGroqMessages([], 'Solo message');
+      const messages = buildMessages([], 'Solo message');
 
       expect(messages).toHaveLength(2); // system + user
       expect(messages[0].role).toBe('system');
@@ -103,7 +103,7 @@ describe('Groq Module', () => {
 
     it('should preserve message content exactly', () => {
       const userMessage = 'Szukam pierścionka z diamentem, budżet 5000 PLN';
-      const messages = buildGroqMessages([], userMessage);
+      const messages = buildMessages([], userMessage);
 
       expect(messages[1].content).toBe(userMessage);
     });
@@ -111,7 +111,7 @@ describe('Groq Module', () => {
 
   describe('Message format compliance', () => {
     it('should produce valid Groq API message format', () => {
-      const messages = buildGroqMessages(
+      const messages = buildMessages(
         [
           { role: 'user', content: 'Hello' },
           { role: 'assistant', content: 'Hi' },

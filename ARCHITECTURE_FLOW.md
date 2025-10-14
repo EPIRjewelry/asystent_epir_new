@@ -31,13 +31,13 @@ graph TB
         O --> P[Vectorize Query<br/>topK=3]
         P --> Q[Format Context<br/>citations + scores]
         
-        Q --> R{GROQ_API_KEY?}
+        Q --> R{AI Gateway?}
         M --> R
         
-        R -->|Yes| S[Build Groq Messages<br/>LUXURY_SYSTEM_PROMPT<br/>+ history + RAG context]
-        R -->|No| T[Workers AI Fallback<br/>llama-3.1-8b-instruct]
+        R -->|Yes| S[Build AI Messages<br/>LUXURY_SYSTEM_PROMPT<br/>+ history + RAG context]
+        R -->|No| T[Fallback Logic]
         
-        S --> U[Groq API<br/>llama-3.3-70b-versatile<br/>streaming=true]
+        S --> U[Cloudflare AI<br/>@cf/openai/gpt-oss-120b<br/>streaming=true]
         U --> V[SSE Stream<br/>data: delta chunks]
         
         T --> W[AI Stream/Full Response]
@@ -134,7 +134,7 @@ Step 4: Build Instruction
 
 ### 5. LLM Response Generation
 
-**Option A: Groq LLM (if GROQ_API_KEY set)**
+**Option A: Cloudflare AI LLM**
 ```
 messages = [
   { role: 'system', content: LUXURY_SYSTEM_PROMPT + ragContext },
@@ -144,34 +144,26 @@ messages = [
   { role: 'user', content: currentMessage }
 ]
   ↓
-POST https://api.groq.com/openai/v1/chat/completions
+AI.run('@cf/openai/gpt-oss-120b',
   {
-    model: "llama-3.3-70b-versatile",
     messages: messages,
     stream: true,
-    temperature: 0.7,
+    temperature: 0.3,
     max_tokens: 512
   }
+)
   ↓
 SSE stream of delta chunks
-  data: {"choices":[{"delta":{"content":"Witaj"}}]}
-  data: {"choices":[{"delta":{"content":"! "}}]}
-  data: {"choices":[{"delta":{"content":"W "}}]}
+  data: {"response":"Witaj"}
+  data: {"response":"! "}
+  data: {"response":"W "}
   ...
   data: [DONE]
 ```
 
-**Option B: Workers AI Fallback**
+**Option B: Fallback (if needed)**
 ```
-AI.run('@cf/meta/llama-3.1-8b-instruct', {
-  messages: messages,
-  max_tokens: 512,
-  temperature: 0.7
-})
-  ↓
-Full response or stream (if available)
-  ↓
-Split into word-deltas for UX
+// Fallback logic can be defined here
 ```
 
 ### 6. SSE Streaming Response
@@ -244,7 +236,6 @@ binding = "AI"
 
 ### Secrets (via wrangler)
 ```bash
-GROQ_API_KEY       # Groq LLM API key
 SHOPIFY_APP_SECRET # HMAC verification
 ```
 
@@ -386,7 +377,7 @@ HMAC Verification:    <10ms
 Session DO Fetch:     <50ms
 RAG Embedding:        <100ms (Workers AI)
 Vectorize Query:      <50ms
-Groq Streaming TTFB:  <500ms (time to first byte)
+Cloudflare AI TTFB:   <500ms (time to first byte)
 Total Response:       <1s (for first token)
 ```
 
@@ -395,9 +386,8 @@ Total Response:       <1s (for first token)
 Workers Execution:    $0.50
 Durable Objects:      $1.00
 Vectorize Queries:    $0.05
-Workers AI:           Free tier (then $0.011/1K tokens)
-Groq API:            Free tier (then varies)
-Total:               ~$1.55/1M requests (excluding Groq)
+Workers AI:           Varies by model and usage
+Total:               ~$1.55/1M requests (excluding AI)
 ```
 
 ### Scaling Limits
@@ -405,8 +395,7 @@ Total:               ~$1.55/1M requests (excluding Groq)
 Worker CPU:           10ms-50ms per request
 DO Concurrent:        Unlimited (per session)
 Vectorize RPS:        ~1000 queries/s
-Workers AI:           500 req/min (free tier)
-Groq API:             Varies by plan
+Workers AI:           Varies by plan
 ```
 
 ## 🚨 Error Handling
@@ -432,11 +421,11 @@ try {
 }
 
 try {
-  const stream = await streamGroqResponse(...);
+  const stream = await streamResponse(...);
 } catch (error) {
-  console.error('Groq API error:', error);
-  // Fallback to Workers AI
-  const reply = await generateAIResponse(...);
+  console.error('Cloudflare AI error:', error);
+  // Fallback logic can be implemented here
+  const reply = await getResponse(...);
 }
 ```
 
@@ -504,11 +493,11 @@ asystent_epir_new/
 │   ├── src/
 │   │   ├── index.ts          # Main worker + DO + chat logic
 │   │   ├── rag.ts            # RAG search + embeddings
-│   │   ├── groq.ts           # Groq LLM integration
+│   │   ├── cloudflare-ai.ts  # Cloudflare AI integration
 │   │   └── auth.ts           # HMAC verification
 │   ├── test/
 │   │   ├── rag.test.ts       # RAG unit tests
-│   │   ├── groq.test.ts      # Groq unit tests
+│   │   ├── cloudflare-ai.test.ts # AI unit tests
 │   │   └── auth.test.ts      # Auth unit tests
 │   ├── data/
 │   │   └── faqs.json         # Static FAQs for Vectorize
@@ -522,11 +511,11 @@ asystent_epir_new/
 │           └── assistant.liquid
 ├── scripts/
 │   └── populate-vectorize.ts # Vectorize index population
-├── QUICKSTART_RAG_GROQ.md    # Step-by-step activation guide
+├── QUICKSTART_RAG_CLOUDFLARE.md # Step-by-step activation guide
 ├── DEPLOYMENT_GUIDE.md       # Deployment & troubleshooting
-└── RAG_GROQ_ACTIVATION_SUMMARY.md  # This summary
+└── RAG_CLOUDFLARE_ACTIVATION_SUMMARY.md  # This summary
 ```
 
 ---
 
-**Status:** ✅ Complete architecture with RAG + Groq LLM active. Ready for production deployment.
+**Status:** ✅ Complete architecture with RAG + Cloudflare AI active. Ready for production deployment.

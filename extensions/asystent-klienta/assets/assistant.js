@@ -2,6 +2,101 @@
 // Lekki, poprawiony klient czatu z obsĹ‚ugÄ… streaming SSE/JSON + fallback.
 // Kompiluj do JS (np. tsc) przed uĹĽyciem w Theme App Extension.
 
+/* ===== CART INTEGRATION ===== */
+
+/**
+ * Pobiera cart_id z Shopify Cart API (localStorage lub /cart.js)
+ * Zwraca cart_id w formacie gid://shopify/Cart/xyz lub null
+ */
+export async function getShopifyCartId() {
+  try {
+    // Shopify cart token jest dostÄ™pny w localStorage lub przez /cart.js
+    const cartRes = await fetch('/cart.js', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!cartRes.ok) {
+      console.warn('Failed to fetch Shopify cart:', cartRes.status);
+      return null;
+    }
+    
+    const cartData = await cartRes.json();
+    // Shopify cart response: { token: "...", items: [...], ... }
+    if (cartData && cartData.token) {
+      // Convert token to GID format
+      return `gid://shopify/Cart/${cartData.token}`;
+    }
+    
+    return null;
+  } catch (e) {
+    console.error('Error fetching Shopify cart ID:', e);
+    return null;
+  }
+}
+
+/**
+ * Parsuje odpowiedĹş asystenta i wykrywa specjalne akcje (koszyk, checkout)
+ * Zwraca obiekt z parsed text + extracted actions
+ */
+export function parseAssistantResponse(text) {
+  const actions = {
+    hasCheckoutUrl: false,
+    checkoutUrl: null,
+    hasCartUpdate: false,
+    cartItems: [],
+    hasOrderStatus: false,
+    orderDetails: null
+  };
+  
+  let cleanedText = text;
+  
+  // Wykryj checkout URL
+  const checkoutUrlMatch = text.match(/https:\/\/[^\s]+\/checkouts\/[^\s]+/);
+  if (checkoutUrlMatch) {
+    actions.hasCheckoutUrl = true;
+    actions.checkoutUrl = checkoutUrlMatch[0];
+  }
+  
+  // Wykryj akcje koszyka w formacie [CART_UPDATED: ...]
+  const cartActionMatch = text.match(/\[CART_UPDATED:([^\]]+)\]/);
+  if (cartActionMatch) {
+    actions.hasCartUpdate = true;
+    cleanedText = cleanedText.replace(/\[CART_UPDATED:[^\]]+\]/, '').trim();
+  }
+  
+  // Wykryj status zamĂłwienia w formacie [ORDER_STATUS: ...]
+  const orderStatusMatch = text.match(/\[ORDER_STATUS:([^\]]+)\]/);
+  if (orderStatusMatch) {
+    actions.hasOrderStatus = true;
+    try {
+      actions.orderDetails = JSON.parse(orderStatusMatch[1]);
+    } catch (e) {
+      console.warn('Failed to parse order details:', e);
+    }
+    cleanedText = cleanedText.replace(/\[ORDER_STATUS:[^\]]+\]/, '').trim();
+  }
+  
+  return { text: cleanedText, actions };
+}
+
+/**
+ * Renderuje specjalny widget checkout button jeĹ›li wykryto URL
+ */
+export function renderCheckoutButton(checkoutUrl, messageEl) {
+  const btn = document.createElement('a');
+  btn.href = checkoutUrl;
+  btn.className = 'epir-checkout-button';
+  btn.textContent = 'PrzejdĹş do kasy â†'';
+  btn.setAttribute('target', '_blank');
+  btn.setAttribute('rel', 'noopener noreferrer');
+  btn.style.cssText = 'display:inline-block;margin-top:10px;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;';
+  
+  messageEl.appendChild(document.createElement('br'));
+  messageEl.appendChild(btn);
+}
+
 // Minimal initializer: bind toggle button to open/close the assistant
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -114,10 +209,10 @@ export async function processSSEStream(
         // Nowa obsĹ‚uga: delta (incremental) lub content (full replacement)
         if (parsed.delta !== undefined) {
           accumulated += parsed.delta;
-          onUpdate(accumulated);
+          onUpdate(accumulated, parsed);
         } else if (parsed.content !== undefined) {
           accumulated = parsed.content;
-          onUpdate(accumulated);
+          onUpdate(accumulated, parsed);
         }
 
         if (parsed.done) return;
@@ -135,10 +230,10 @@ export async function processSSEStream(
           if (parsed.session_id) try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch {}
           if (parsed.delta !== undefined) {
             accumulated += parsed.delta;
-            onUpdate(accumulated);
+            onUpdate(accumulated, parsed);
           } else if (parsed.content !== undefined) {
             accumulated = parsed.content;
-            onUpdate(accumulated);
+            onUpdate(accumulated, parsed);
           }
         } catch (e) {
           console.warn('Nieparsowalny ostatni event SSE', e);
@@ -161,10 +256,15 @@ export async function sendMessageToWorker(
 ) {
   setLoading(true);
   createUserMessage(messagesEl, text);
-  const { id: msgId } = createAssistantMessage(messagesEl);
+  const { id: msgId, el: msgEl } = createAssistantMessage(messagesEl);
   let accumulated = '';
+  let lastParsedActions = null;
 
   try {
+    // Pobierz cart_id z Shopify przed wysĹ‚aniem
+    const cartId = await getShopifyCartId();
+    console.log('[Assistant] Cart ID:', cartId);
+    
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -175,6 +275,7 @@ export async function sendMessageToWorker(
       body: JSON.stringify({
         message: text,
         session_id: (() => { try { return sessionStorage.getItem(sessionIdKey); } catch { return null; } })(),
+        cart_id: cartId, // WyĹ›lij cart_id w sesji
         stream: true,
       }),
       signal: controller.signal,
@@ -191,24 +292,70 @@ export async function sendMessageToWorker(
 
     if (hasStreamAPI && contentType.includes('text/event-stream')) {
       // streaming SSE
-      await processSSEStream(res.body, msgId, sessionIdKey, (content) => {
+      await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
         accumulated = content;
-        updateAssistantMessage(msgId, accumulated);
+        
+        // Parsuj odpowiedĹş i wykryj akcje (checkout URL, cart updates)
+        const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
+        updateAssistantMessage(msgId, cleanedText);
+        
+        // Zapisz akcje do renderowania po zakoĹ„czeniu streamu
+        if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
+          lastParsedActions = actions;
+        }
       });
     } else if (hasStreamAPI && contentType.includes('application/ndjson')) {
       // ewentualne inne formy newline-delimited json - moĹĽna dodaÄ‡ parser
-      await processSSEStream(res.body, msgId, sessionIdKey, (content) => {
+      await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
         accumulated = content;
-        updateAssistantMessage(msgId, accumulated);
+        const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
+        updateAssistantMessage(msgId, cleanedText);
+        if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
+          lastParsedActions = actions;
+        }
       });
     } else {
       // fallback JSON (serwer buforuje / starsze przeglÄ…darki)
       const data = await res.json().catch((e) => { throw new Error('NieprawidĹ‚owa odpowiedĹş serwera.'); });
       if (data.error) throw new Error(data.error);
       accumulated = (data.reply) || 'Otrzymano pustÄ… odpowiedĹş.';
-      updateAssistantMessage(msgId, accumulated);
+      
+      // Parsuj odpowiedĹş w trybie non-streaming
+      const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
+      updateAssistantMessage(msgId, cleanedText);
+      if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
+        lastParsedActions = actions;
+      }
+      
       if (data.session_id) {
         try { sessionStorage.setItem(sessionIdKey, data.session_id); } catch {}
+      }
+    }
+    
+    // Po zakoĹ„czeniu streamu: renderuj specjalne akcje (checkout button, cart status)
+    if (lastParsedActions) {
+      const msgElement = document.getElementById(msgId);
+      if (msgElement) {
+        if (lastParsedActions.hasCheckoutUrl && lastParsedActions.checkoutUrl) {
+          console.log('[Assistant] Rendering checkout button:', lastParsedActions.checkoutUrl);
+          renderCheckoutButton(lastParsedActions.checkoutUrl, msgElement);
+        }
+        
+        if (lastParsedActions.hasCartUpdate) {
+          console.log('[Assistant] Cart was updated');
+          // Opcjonalnie: odĹ›wieĹĽ licznik koszyka na stronie
+          try {
+            // Shopify theme moĹĽe mieÄ‡ event do odĹ›wieĹĽenia cart drawer
+            document.dispatchEvent(new CustomEvent('cart:refresh'));
+          } catch (e) {
+            console.warn('Failed to dispatch cart:refresh event', e);
+          }
+        }
+        
+        if (lastParsedActions.hasOrderStatus && lastParsedActions.orderDetails) {
+          console.log('[Assistant] Order status:', lastParsedActions.orderDetails);
+          // MoĹĽna dodaÄ‡ rendering szczegĂłĹ‚Ăłw zamĂłwienia
+        }
       }
     }
   } catch (err) {

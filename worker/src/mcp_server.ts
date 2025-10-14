@@ -8,7 +8,13 @@
 
 import { verifyAppProxyHmac } from './auth';
 import { searchProductCatalog, getShopPolicies } from './mcp';
-import { Env } from './index';
+import {
+  updateCart,
+  getCart,
+  getOrderStatus,
+  getMostRecentOrderStatus
+} from './shopify-mcp-client';
+import type { Env } from './index';
 
 type JsonRpcId = string | number | null;
 
@@ -29,12 +35,6 @@ interface JsonRpcError {
   jsonrpc: '2.0';
   error: { code: number; message: string; data?: any };
   id: JsonRpcId;
-}
-
-export interface Env {
-  SHOP_DOMAIN?: string;              // niesekretne: ustaw w wrangler.toml [vars]
-  SHOPIFY_ADMIN_TOKEN?: string;      // SEKRET: wrangler secret put SHOPIFY_ADMIN_TOKEN
-  SHOPIFY_APP_SECRET?: string;       // SEKRET: wrangler secret put SHOPIFY_APP_SECRET
 }
 
 function json(headers: HeadersInit = {}) {
@@ -70,7 +70,7 @@ async function adminGraphql<T = any>(env: Env, query: string, variables?: Record
     throw new Error(`Shopify GraphQL ${res.status}: ${txt}`);
   }
 
-  const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(() => ({})) as any;
   if (data?.errors) {
     throw new Error(`Shopify GraphQL errors: ${JSON.stringify(data.errors)}`);
   }
@@ -132,6 +132,55 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
         name: 'search_shop_policies_and_faqs',
         description: 'Search shop policies and FAQs',
         inputSchema: { type: 'object', properties: { query: { type: 'string' }, context: { type: 'string' } } }
+      },
+      {
+        name: 'update_cart',
+        description: 'Add, remove, or update items in the shopping cart',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            cart_id: { type: ['string', 'null'], description: 'Cart ID (null for new cart)' },
+            lines: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  merchandiseId: { type: 'string', description: 'Product variant ID' },
+                  quantity: { type: 'number', description: 'Quantity to add/update' }
+                },
+                required: ['merchandiseId', 'quantity']
+              }
+            }
+          },
+          required: ['lines']
+        }
+      },
+      {
+        name: 'get_cart',
+        description: 'Retrieve current shopping cart contents',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            cart_id: { type: 'string', description: 'Cart ID to retrieve' }
+          },
+          required: ['cart_id']
+        }
+      },
+      {
+        name: 'get_order_status',
+        description: 'Get status and details of a specific order',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            order_id: { type: 'string', description: 'Order ID to check' }
+          },
+          required: ['order_id']
+        }
+      },
+      {
+        name: 'get_most_recent_order_status',
+        description: 'Get status of the most recent order',
+        inputSchema: { type: 'object', properties: {} }
       }
     ];
     return rpcResult(rpc.id ?? null, { tools });
@@ -162,6 +211,38 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
         }
         const result = await getShopPolicies({ policy_types: ['termsOfService', 'shippingPolicy', 'refundPolicy', 'privacyPolicy', 'subscriptionPolicy'] }, env);
         return rpcResult(rpc.id ?? null, result);
+      }
+      case 'update_cart': {
+        // Walidacja params
+        if (!args.lines || !Array.isArray(args.lines)) {
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "lines" array required for update_cart');
+        }
+        // Sprawdź, czy każda linia ma wymagane pola
+        for (const line of args.lines) {
+          if (!line.merchandiseId || typeof line.quantity !== 'number') {
+            return rpcError(rpc.id ?? null, -32602, 'Invalid params: each line must have "merchandiseId" and "quantity"');
+          }
+        }
+        const result = await updateCart(env, args.cart_id || null, args.lines);
+        return rpcResult(rpc.id ?? null, { content: [{ type: 'text', text: result }] });
+      }
+      case 'get_cart': {
+        if (!args.cart_id) {
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "cart_id" required for get_cart');
+        }
+        const result = await getCart(env, args.cart_id);
+        return rpcResult(rpc.id ?? null, { content: [{ type: 'text', text: result }] });
+      }
+      case 'get_order_status': {
+        if (!args.order_id) {
+          return rpcError(rpc.id ?? null, -32602, 'Invalid params: "order_id" required for get_order_status');
+        }
+        const result = await getOrderStatus(env, args.order_id);
+        return rpcResult(rpc.id ?? null, { content: [{ type: 'text', text: result }] });
+      }
+      case 'get_most_recent_order_status': {
+        const result = await getMostRecentOrderStatus(env);
+        return rpcResult(rpc.id ?? null, { content: [{ type: 'text', text: result }] });
       }
       default:
         return rpcError(rpc.id ?? null, -32601, `Unknown tool: ${name}`);

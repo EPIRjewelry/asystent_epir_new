@@ -59,7 +59,7 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
         const txt = await res.text().catch(() => '<no body>');
         throw new Error(`MCP tool ${toolName} error ${res.status}: ${txt}`);
       }
-      const j = await res.json().catch(() => null);
+      const j = await res.json().catch(() => ({})) as any;
       if (j?.error) {
         throw new Error(`MCP tool call failed: ${j.error.message}`);
       }
@@ -78,34 +78,144 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
 
 /**
  * searchProductCatalogWithMCP
- * - używa bezpośredniego wywołania searchProductCatalog (internal call)
+ * - używa MCP jako PRIMARY source dla katalogu produktów
+ * - Vectorize jako fallback offline/błąd MCP
  */
 export async function searchProductCatalogWithMCP(
   query: string,
   shopDomain: string | undefined,
   env: any,
-  context?: string
+  context?: string,
+  vectorIndex?: VectorizeIndex,
+  aiBinding?: any
 ): Promise<string | undefined> {
   // Zwracamy string context (np. lista produktów w formie tekstowej) lub undefined
   if (!shopDomain) return '';
   
   try {
-    // Import MCP module to use mcpCatalogSearch
+    // PRIMARY: MCP search_shop_catalog
+    const mcpResult = await callMcpTool(env, 'search_shop_catalog', { query });
+    
+    if (mcpResult && mcpResult.content && Array.isArray(mcpResult.content)) {
+      const textContent = mcpResult.content
+        .filter((c: any) => c.type === 'text')
+        .map((c: any) => c.text)
+        .join('\n');
+      
+      if (textContent) {
+        console.log('[RAG] ✅ MCP catalog search successful');
+        return `Produkty z katalogu (MCP):\n${textContent}`;
+      }
+    }
+    
+    // FALLBACK: Legacy mcpCatalogSearch (internal)
+    console.log('[RAG] ⚠️ MCP primary failed, trying legacy search...');
     const mcp = await import('./mcp');
-    // Context is REQUIRED by MCP spec - use default if not provided
     const searchContext = context || 'luxury fair trade jewelry';
     const products = await mcp.mcpCatalogSearch(shopDomain, query, env, searchContext);
     
-    if (!products || products.length === 0) return '';
+    if (products && products.length > 0) {
+      const items = products.slice(0, 5).map((p) => {
+        const title = p.name || 'produkt';
+        const url = p.url || '';
+        return `- ${title}${url ? ` (${url})` : ''}${p.price ? ` - ${p.price}` : ''}`;
+      });
+      return items.length ? `Znalezione produkty (legacy):\n${items.join('\n')}` : '';
+    }
     
-    const items = products.slice(0, 5).map((p) => {
-      const title = p.name || 'produkt';
-      const url = p.url || '';
-      return `- ${title}${url ? ` (${url})` : ''}${p.price ? ` - ${p.price}` : ''}`;
-    });
-    return items.length ? `Znalezione produkty:\n${items.join('\n')}` : '';
+    // FALLBACK: Vectorize (offline/catalog indexed)
+    if (vectorIndex && aiBinding) {
+      console.log('[RAG] ⚠️ MCP unavailable, using Vectorize fallback...');
+      const embeddingResult = await aiBinding.run('@cf/baai/bge-large-en-v1.5', {
+        text: [query]
+      });
+      const queryVector = embeddingResult.data[0];
+      const vres = await vectorIndex.query(queryVector, { topK: 5 });
+      
+      const items = vres.matches
+        .filter((r: any) => r.metadata?.type === 'product')
+        .map((r: any) => {
+          const title = r.metadata?.title || r.metadata?.name || 'produkt';
+          const price = r.metadata?.price || '';
+          return `- ${title}${price ? ` - ${price}` : ''}`;
+        });
+      
+      if (items.length > 0) {
+        return `Produkty z Vectorize (offline):\n${items.join('\n')}`;
+      }
+    }
+    
+    return '';
   } catch (e) {
-    console.error('searchProductCatalogWithMCP error:', e);
+    console.error('[RAG] ❌ searchProductCatalogWithMCP complete failure:', e);
+    return '';
+  }
+}
+
+/**
+ * searchProductsAndCartWithMCP
+ * - PRIMARY: MCP tools dla produktów i koszyka (search_shop_catalog, update_cart, get_cart)
+ * - FALLBACK: Vectorize dla offline product search
+ * - Zwraca sformatowany kontekst dla promptu AI
+ */
+export async function searchProductsAndCartWithMCP(
+  query: string,
+  shopDomain: string | undefined,
+  env: any,
+  cartId?: string | null,
+  intent?: 'search' | 'cart' | 'order',
+  vectorIndex?: VectorizeIndex,
+  aiBinding?: any
+): Promise<string> {
+  let output = '';
+  
+  try {
+    // CART OPERATIONS (jeśli intent = 'cart')
+    if (intent === 'cart' && cartId) {
+      console.log('[RAG] 🛒 Fetching cart via MCP...');
+      const cartResult = await callMcpTool(env, 'get_cart', { cart_id: cartId });
+      
+      if (cartResult && cartResult.content) {
+        const cartText = Array.isArray(cartResult.content)
+          ? cartResult.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+          : cartResult.content;
+        output += `\n[KOSZYK (MCP)]\n${cartText}\n`;
+      }
+    }
+    
+    // ORDER OPERATIONS (jeśli intent = 'order')
+    if (intent === 'order') {
+      console.log('[RAG] 📦 Fetching recent order via MCP...');
+      const orderResult = await callMcpTool(env, 'get_most_recent_order_status', {});
+      
+      if (orderResult && orderResult.content) {
+        const orderText = Array.isArray(orderResult.content)
+          ? orderResult.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+          : orderResult.content;
+        output += `\n[OSTATNIE ZAMÓWIENIE (MCP)]\n${orderText}\n`;
+      }
+    }
+    
+    // PRODUCT SEARCH (zawsze dla intent = 'search')
+    if (intent === 'search' || !intent) {
+      console.log('[RAG] 🔍 Searching products via MCP...');
+      const productContext = await searchProductCatalogWithMCP(
+        query,
+        shopDomain,
+        env,
+        'luxury fair trade jewelry',
+        vectorIndex,
+        aiBinding
+      );
+      
+      if (productContext) {
+        output += `\n${productContext}\n`;
+      }
+    }
+    
+    return output.trim();
+  } catch (e) {
+    console.error('[RAG] ❌ searchProductsAndCartWithMCP error:', e);
     return '';
   }
 }

@@ -5,7 +5,7 @@ import { callMcpTool } from '../../src/rag';
 
 // Mock fetch for testing
 const mockFetch = vi.fn();
-global.fetch = mockFetch as any;
+globalThis.fetch = mockFetch as any;
 
 const env = {
   SHOP_DOMAIN: 'test-shop.myshopify.com',

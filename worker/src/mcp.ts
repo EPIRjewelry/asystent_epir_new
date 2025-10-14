@@ -65,7 +65,7 @@ export async function searchProductCatalog(params: SearchProductParams, env: Env
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_TOKEN,
+      'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_TOKEN!,
     },
     body: JSON.stringify(graphqlQuery),
   });
@@ -121,7 +121,7 @@ export async function getShopPolicies(params: PolicyParams, env: Env): Promise<{
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN,
+      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN!,
     },
     body: JSON.stringify(graphqlQuery),
   });

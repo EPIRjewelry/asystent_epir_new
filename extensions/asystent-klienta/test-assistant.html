@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EPIR Assistant Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .chat-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #000;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    #assistant-messages {
+      height: 400px;
+      overflow-y: auto;
+      padding: 20px;
+      background: #fafafa;
+    }
+    .msg {
+      margin-bottom: 15px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .msg-user {
+      background: #000;
+      color: white;
+      margin-left: auto;
+      text-align: right;
+    }
+    .msg-assistant {
+      background: white;
+      border: 1px solid #ddd;
+    }
+    .msg-typing {
+      opacity: 0.6;
+      font-style: italic;
+    }
+    .msg-error {
+      background: #fee;
+      border-color: #fcc;
+      color: #c00;
+    }
+    .chat-input-container {
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    #assistant-form {
+      display: flex;
+      gap: 10px;
+    }
+    #assistant-input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      padding: 12px 24px;
+      background: #000;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #333;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .epir-checkout-button {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #000;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .epir-checkout-button:hover {
+      background: #333;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 20px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      🔮 EPIR AI Assistant - Test
+    </div>
+    
+    <div class="status" id="status">
+      Status: Ready | Cart ID: <span id="cart-id-display">Loading...</span>
+    </div>
+    
+    <div id="assistant-messages"></div>
+    
+    <div class="chat-input-container">
+      <form id="assistant-form">
+        <input 
+          type="text" 
+          id="assistant-input" 
+          placeholder="Zapytaj o produkty, koszyk lub zamówienia..."
+          autocomplete="off"
+        >
+        <button type="submit" id="send-button">Wyślij</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    // Mock Shopify cart dla testu
+    window.mockShopifyCart = {
+      token: 'test-cart-token-12345',
+      items: [
+        { id: 123, title: 'Złoty pierścionek', quantity: 1, price: 250000 }
+      ],
+      total_price: 250000,
+      currency: 'PLN'
+    };
+
+    // Override fetch dla /cart.js
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+      if (url === '/cart.js') {
+        console.log('[Mock] Returning mock cart data');
+        return Promise.resolve(new Response(JSON.stringify(window.mockShopifyCart), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+      // For assistant endpoint, use real fetch to worker
+      if (url.includes('/apps/assistant/chat')) {
+        // Change to your worker URL
+        const workerUrl = 'https://assistant-worker.epir-art-jewellery.workers.dev/apps/assistant/chat';
+        return originalFetch(workerUrl, options);
+      }
+      return originalFetch(url, options);
+    };
+
+    // Import assistant functions
+    import {
+      createAssistantMessage,
+      updateAssistantMessage,
+      finalizeAssistantMessage,
+      createUserMessage,
+      sendMessageToWorker,
+      getShopifyCartId
+    } from './assets/assistant.js';
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      const form = document.getElementById('assistant-form');
+      const input = document.getElementById('assistant-input');
+      const messagesEl = document.getElementById('assistant-messages');
+      const sendButton = document.getElementById('send-button');
+      const cartIdDisplay = document.getElementById('cart-id-display');
+      
+      // Display cart ID
+      const cartId = await getShopifyCartId();
+      cartIdDisplay.textContent = cartId || 'None';
+      console.log('[Test] Cart ID:', cartId);
+      
+      let isLoading = false;
+      
+      const setLoading = (loading) => {
+        isLoading = loading;
+        sendButton.disabled = loading;
+        sendButton.textContent = loading ? 'Wysyłanie...' : 'Wyślij';
+      };
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text || isLoading) return;
+        
+        input.value = '';
+        const controller = new AbortController();
+        
+        try {
+          await sendMessageToWorker(
+            text,
+            '/apps/assistant/chat',
+            'epir-assistant-session-test',
+            messagesEl,
+            setLoading,
+            controller
+          );
+        } catch (err) {
+          console.error('Send error:', err);
+          setLoading(false);
+        }
+      });
+      
+      // Test messages
+      console.log('[Test] Try these commands:');
+      console.log('- "Pokaż mi pierścionki"');
+      console.log('- "Dodaj do koszyka złoty pierścionek"');
+      console.log('- "Co jest w moim koszyku?"');
+      console.log('- "Jaki jest status mojego zamówienia?"');
+    });
+  </script>
+</body>
+</html>

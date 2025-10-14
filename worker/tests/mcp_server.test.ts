@@ -10,7 +10,7 @@ const env = {
 describe('MCP Server', () => {
   beforeEach(() => {
     // Mock fetch for Shopify GraphQL
-    global.fetch = vi.fn(async (input: any, init?: any) => {
+    globalThis.fetch = vi.fn(async (input: any, init?: any) => {
       const url = typeof input === 'string' ? input : input.url;
       if (typeof url === 'string' && url.includes('/admin/api/')) {
         const body = init?.body ? JSON.parse(init.body as string) : {};
@@ -38,6 +38,82 @@ describe('MCP Server', () => {
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );
         }
+        // Mock cart queries
+        if (String(body?.query || '').includes('cartCreate')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                cartCreate: {
+                  cart: { id: 'gid://shopify/Cart/test-cart-123', lines: { edges: [] } }
+                }
+              }
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (String(body?.query || '').includes('cartLinesUpdate')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                cartLinesUpdate: {
+                  cart: { id: 'gid://shopify/Cart/test-cart-123', lines: { edges: [{ node: { quantity: 2 } }] } }
+                }
+              }
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (String(body?.query || '').includes('cart(id: $id)')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                cart: { 
+                  id: 'gid://shopify/Cart/test-cart-123', 
+                  lines: { edges: [{ node: { quantity: 1, merchandise: { product: { title: 'Ring' } } } }] },
+                  cost: { totalAmount: { amount: '1000.00', currencyCode: 'PLN' } }
+                }
+              }
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        // Mock order queries
+        if (String(body?.query || '').includes('order(id: $id)')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                order: { 
+                  id: 'gid://shopify/Order/12345', 
+                  name: '#1001',
+                  displayFulfillmentStatus: 'FULFILLED',
+                  totalPrice: { amount: '1000.00', currencyCode: 'PLN' }
+                }
+              }
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (String(body?.query || '').includes('orders(first: 1')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                orders: { 
+                  edges: [
+                    { 
+                      node: { 
+                        id: 'gid://shopify/Order/12345', 
+                        name: '#1001',
+                        displayFulfillmentStatus: 'FULFILLED',
+                        totalPrice: { amount: '1000.00', currencyCode: 'PLN' }
+                      }
+                    }
+                  ]
+                }
+              }
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
         return new Response(JSON.stringify({ data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
 
@@ -59,7 +135,7 @@ describe('MCP Server', () => {
     });
     const res = await handleMcpRequest(req, env);
     expect(res.status).toBe(200);
-    const json = await res.json();
+    const json: any = await res.json();
     // result may be array or object depending on implementation; assert existence
     expect(json).toHaveProperty('result');
     const result = json.result;
@@ -85,7 +161,7 @@ describe('MCP Server', () => {
     });
     const res = await handleMcpRequest(req, env);
     expect(res.status).toBe(200);
-    const json = await res.json();
+    const json: any = await res.json();
     expect(json).toHaveProperty('result');
     const result = json.result;
     expect(result).toBeTruthy();
@@ -106,8 +182,191 @@ describe('MCP Server', () => {
     });
     const res = await handleMcpRequest(req, env);
     expect(res.status).toBe(200);
-    const json = await res.json();
+    const json: any = await res.json();
     expect(json).toHaveProperty('error');
     expect(json.error.message).toContain('Unknown tool');
+  });
+
+  // Tests for cart operations
+  describe('Cart Operations', () => {
+    it('creates cart with update_cart (null cart_id)', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'update_cart', 
+            arguments: { 
+              cart_id: null,
+              lines: [{ merchandiseId: 'gid://shopify/ProductVariant/1', quantity: 2 }]
+            } 
+          },
+          id: 3
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('result');
+      expect(json.result.content[0].text).toContain('test-cart-123');
+    });
+
+    it('updates existing cart with update_cart', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'update_cart', 
+            arguments: { 
+              cart_id: 'gid://shopify/Cart/test-cart-123',
+              lines: [{ merchandiseId: 'gid://shopify/ProductVariant/1', quantity: 3 }]
+            } 
+          },
+          id: 4
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('result');
+      expect(json.result.content[0].text).toContain('quantity');
+    });
+
+    it('returns error for update_cart without lines', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'update_cart', 
+            arguments: { cart_id: null }
+          },
+          id: 5
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('error');
+      expect(json.error.message).toContain('lines');
+    });
+
+    it('retrieves cart with get_cart', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'get_cart', 
+            arguments: { cart_id: 'gid://shopify/Cart/test-cart-123' }
+          },
+          id: 6
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('result');
+      expect(json.result.content[0].text).toContain('Ring');
+      expect(json.result.content[0].text).toContain('1000.00');
+    });
+
+    it('returns error for get_cart without cart_id', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'get_cart', 
+            arguments: {}
+          },
+          id: 7
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('error');
+      expect(json.error.message).toContain('cart_id');
+    });
+  });
+
+  // Tests for order operations
+  describe('Order Operations', () => {
+    it('retrieves order status with get_order_status', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'get_order_status', 
+            arguments: { order_id: 'gid://shopify/Order/12345' }
+          },
+          id: 8
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('result');
+      expect(json.result.content[0].text).toContain('#1001');
+      expect(json.result.content[0].text).toContain('FULFILLED');
+    });
+
+    it('returns error for get_order_status without order_id', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'get_order_status', 
+            arguments: {}
+          },
+          id: 9
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('error');
+      expect(json.error.message).toContain('order_id');
+    });
+
+    it('retrieves most recent order with get_most_recent_order_status', async () => {
+      const req = new Request('https://example.com/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { 
+            name: 'get_most_recent_order_status', 
+            arguments: {}
+          },
+          id: 10
+        })
+      });
+      const res = await handleMcpRequest(req, env);
+      expect(res.status).toBe(200);
+      const json: any = await res.json();
+      expect(json).toHaveProperty('result');
+      expect(json.result.content[0].text).toContain('#1001');
+      expect(json.result.content[0].text).toContain('FULFILLED');
+    });
   });
 });

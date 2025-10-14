@@ -7,7 +7,12 @@ import {
   formatRagContextForPrompt,
   type VectorizeIndex
 } from './rag';
-import { streamGroqResponse, buildGroqMessages, getGroqResponse } from './groq';
+import {
+  streamResponse,
+  buildMessages,
+  getResponse,
+  fetchMcpContextIfNeeded
+} from './cloudflare-ai';
 import { handleMcpRequest } from './mcp_server';
 import { RateLimiterDO } from './rate-limiter';
 
@@ -28,6 +33,7 @@ interface AppendPayload {
 interface ChatRequestBody {
   message: string;
   session_id?: string;
+  cart_id?: string;
   stream?: boolean;
 }
 
@@ -90,11 +96,13 @@ function parseChatRequestBody(input: unknown): ChatRequestBody | null {
   const maybe = input as Record<string, unknown>;
   if (!isNonEmptyString(maybe.message)) return null;
   const sessionId = typeof maybe.session_id === 'string' && maybe.session_id.length > 0 ? maybe.session_id : undefined;
+  const cartId = typeof maybe.cart_id === 'string' && maybe.cart_id.length > 0 ? maybe.cart_id : undefined;
   // Uwaga: domy┼Ťlnie stream = false, aby nie w┼é─ůcza─ç SSE bez jawnego ┼╝─ůdania
   const stream = typeof maybe.stream === 'boolean' ? maybe.stream : false;
   return {
     message: String(maybe.message),
     session_id: sessionId,
+    cart_id: cartId,
     stream,
   };
 }
@@ -132,6 +140,8 @@ export class SessionDO {
   private readonly state: DurableObjectState;
   private readonly env: Env;
   private history: HistoryEntry[] = [];
+  private cartId: string | null = null;
+  private sessionId: string | null = null;
   private lastRequestTimestamp = 0;
   private requestsInWindow = 0;
 
@@ -141,7 +151,15 @@ export class SessionDO {
 
     this.state.blockConcurrencyWhile(async () => {
       const rawHistory = await this.state.storage.get<unknown>('history');
+      const storedCartId = await this.state.storage.get<string>('cart_id');
+      const storedSessionId = await this.state.storage.get<string>('session_id');
       this.history = ensureHistoryArray(rawHistory);
+      if (storedCartId) {
+        this.cartId = storedCartId;
+      }
+      if (storedSessionId) {
+        this.sessionId = storedSessionId;
+      }
     });
   }
 
@@ -166,6 +184,7 @@ export class SessionDO {
         return new Response('Bad Request', { status: 400 });
       }
       if (payload.session_id) {
+        this.sessionId = payload.session_id;
         await this.state.storage.put('session_id', payload.session_id);
       }
       await this.append(payload);
@@ -196,6 +215,40 @@ export class SessionDO {
       return new Response(JSON.stringify({ used: false }), { status: 200 });
     }
 
+    if (method === 'GET' && pathname.endsWith('/cart-id')) {
+      return new Response(JSON.stringify({ cart_id: this.cartId }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (method === 'POST' && pathname.endsWith('/set-cart-id')) {
+      const payload = await request.json().catch(() => null);
+      const p = payload as { cart_id?: string } | null;
+      if (!p || typeof p.cart_id !== 'string') {
+        return new Response('Bad Request', { status: 400 });
+      }
+      this.cartId = p.cart_id;
+      await this.state.storage.put('cart_id', p.cart_id);
+      return new Response('ok');
+    }
+
+    if (method === 'POST' && pathname.endsWith('/log-cart-action')) {
+      const payload = await request.json().catch(() => null);
+      const p = payload as { action?: string; details?: Record<string, any> } | null;
+      if (!p || typeof p.action !== 'string') {
+        return new Response('Bad Request: action required', { status: 400 });
+      }
+      await this.logCartAction(p.action, p.details || {});
+      return new Response('ok');
+    }
+
+    if (method === 'GET' && pathname.endsWith('/cart-logs')) {
+      const cartLogs = await this.state.storage.get<Array<any>>('cart_logs') || [];
+      return new Response(JSON.stringify({ logs: cartLogs }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response('Not Found', { status: 404 });
   }
 
@@ -214,6 +267,45 @@ export class SessionDO {
     this.history.push({ role: payload.role, content: payload.content, ts: now() });
     this.history = this.history.slice(-MAX_HISTORY);
     await this.state.storage.put('history', JSON.stringify(this.history));
+  }
+
+  private async logCartAction(action: string, details: Record<string, any>): Promise<void> {
+    // Logowanie akcji koszyka do Durable Object storage (opcjonalnie do D1)
+    const cartLog = {
+      action,
+      details,
+      timestamp: now(),
+      cart_id: this.cartId,
+      session_id: this.sessionId
+    };
+    
+    // Dodaj do lokalnego logu w DO
+    const cartLogs = await this.state.storage.get<Array<any>>('cart_logs') || [];
+    cartLogs.push(cartLog);
+    
+    // Zachowaj ostatnie 50 akcji
+    const trimmedLogs = cartLogs.slice(-50);
+    await this.state.storage.put('cart_logs', trimmedLogs);
+    
+    // Opcjonalnie: zapisz do D1 dla długoterminowej analityki
+    if (this.env.DB) {
+      try {
+        await this.env.DB.prepare(
+          'INSERT INTO cart_actions (session_id, cart_id, action, details, created_at) VALUES (?1, ?2, ?3, ?4, ?5)'
+        ).bind(
+          this.sessionId || 'unknown',
+          this.cartId || null,
+          action,
+          JSON.stringify(details),
+          now()
+        ).run();
+      } catch (e) {
+        console.error('[SessionDO] Failed to log cart action to D1:', e);
+        // Nie przerywaj flow jeśli logging się nie powiedzie
+      }
+    }
+    
+    console.log(`[SessionDO] 🛒 Cart action logged: ${action}`, details);
   }
 
   private async end(sessionId: string): Promise<void> {
@@ -242,8 +334,11 @@ export class SessionDO {
     }
 
     this.history = [];
+    this.cartId = null;
     await this.state.storage.delete('history');
     await this.state.storage.delete('session_id');
+    await this.state.storage.delete('cart_id');
+    await this.state.storage.delete('cart_logs'); // Wyczyść logi koszyka
   }
 }
 
@@ -351,6 +446,16 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return new Response('Internal Error: session append failed', { status: 500, headers: cors(env) });
   }
 
+  // Save cart_id to SessionDO if provided
+  if (payload.cart_id) {
+    console.log('[handleChat] Saving cart_id to session:', payload.cart_id);
+    await stub.fetch('https://session/set-cart-id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cart_id: payload.cart_id }),
+    });
+  }
+
   if (payload.stream) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   }
@@ -360,28 +465,51 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   const historyData = await historyResp.json().catch(() => []);
   const history = ensureHistoryArray(historyData);
   
+  // Get cart_id from SessionDO
+  const cartIdResp = await stub.fetch('https://session/cart-id');
+  const cartIdData = await cartIdResp.json().catch(() => ({ cart_id: null }));
+  const cartId = (cartIdData as { cart_id?: string | null }).cart_id;
+  
   let reply: string;
   
   // Perform RAG search with MCP integration
   let ragContext: string | undefined;
+  let mcpContext: string | undefined;
   
-  // Check if it's a product query - use MCP catalog search
+  // Detect intent (product, cart, order, or FAQ)
+  const lowerMsg = payload.message.toLowerCase();
+  const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
+  const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
+  const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry/.test(lowerMsg);
+  
+  // PRIMARY: MCP for products, cart, orders
   if (env.SHOP_DOMAIN) {
-    const mcpResult = await searchProductCatalogWithMCP(
+    const { searchProductsAndCartWithMCP } = await import('./rag');
+    
+    let intent: 'search' | 'cart' | 'order' | undefined;
+    if (isCartIntent) intent = 'cart';
+    else if (isOrderIntent) intent = 'order';
+    else if (isProductIntent) intent = 'search';
+    
+    const mcpResult = await searchProductsAndCartWithMCP(
       payload.message,
       env.SHOP_DOMAIN,
-      env
+      env,
+      cartId,
+      intent,
+      env.VECTOR_INDEX,
+      env.AI
     );
+    
     if (mcpResult) {
-      // mcpResult to string z formatowanymi produktami
       ragContext = mcpResult;
     }
   }
   
-  // If not a product query or no product results, try FAQs/policies
-  if (!ragContext) {
+  // FALLBACK: Vectorize for FAQ/policies (if no product/cart/order context found)
+  if (!ragContext || ragContext.trim().length === 0) {
     if (env.SHOP_DOMAIN) {
-      // Use MCP with Vectorize fallback
+      // Use MCP with Vectorize fallback for policies
       const ragResult = await searchShopPoliciesAndFaqsWithMCP(
         payload.message,
         env.SHOP_DOMAIN,
@@ -406,10 +534,15 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     }
   }
   
-  // Use Groq if available, otherwise fallback to Workers AI
-  if (env.GROQ_API_KEY) {
-    const messages = buildGroqMessages(history, payload.message, ragContext);
-    reply = await getGroqResponse(messages, env.GROQ_API_KEY);
+  // Fetch additional MCP context (for backward compatibility)
+  mcpContext = await fetchMcpContextIfNeeded(payload.message, cartId, env);
+  
+  // Use Cloudflare AI
+  const messages = buildMessages(history, payload.message, ragContext, mcpContext);
+  if (payload.stream && env.AI) {
+    return streamAssistantResponse(sessionId, payload.message, stub, env);
+  } else if (env.AI) {
+    reply = await getResponse(messages, env.AI);
   } else {
     reply = await generateAIResponse(history, payload.message, env, ragContext);
   }
@@ -432,131 +565,94 @@ function streamAssistantResponse(
   env: Env,
 ): Response {
   const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const encoder = new TextEncoder();
-
+  
   (async () => {
     try {
-      // 1. Fetch history
+      // 1. Fetch history and cartId
       const historyResp = await stub.fetch('https://session/history');
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
+      
+      const cartIdResp = await stub.fetch('https://session/cart-id');
+      const cartIdData = await cartIdResp.json().catch(() => ({ cart_id: null }));
+      const cartId = (cartIdData as { cart_id?: string | null }).cart_id;
 
       // 2. Perform RAG search with MCP integration
       let ragContext: string | undefined;
       
-      // Check if it's a product query - use MCP catalog search
+      // Detect intent
+      const lowerMsg = userMessage.toLowerCase();
+      const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
+      const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
+      const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry/.test(lowerMsg);
+      
+      // PRIMARY: MCP for products, cart, orders
       if (env.SHOP_DOMAIN) {
-        const mcpResult = await searchProductCatalogWithMCP(
+        const { searchProductsAndCartWithMCP } = await import('./rag');
+        
+        let intent: 'search' | 'cart' | 'order' | undefined;
+        if (isCartIntent) intent = 'cart';
+        else if (isOrderIntent) intent = 'order';
+        else if (isProductIntent) intent = 'search';
+        
+        const mcpResult = await searchProductsAndCartWithMCP(
           userMessage,
           env.SHOP_DOMAIN,
-          env
+          env,
+          cartId,
+          intent,
+          env.VECTOR_INDEX,
+          env.AI
         );
+        
         if (mcpResult) {
-          // mcpResult to string z formatowanymi produktami
           ragContext = mcpResult;
         }
       }
       
-      // If not a product query or no product results, try FAQs/policies
-      if (!ragContext) {
-        if (env.SHOP_DOMAIN) {
-          // Use MCP with Vectorize fallback
-          const ragResult = await searchShopPoliciesAndFaqsWithMCP(
-            userMessage,
-            env.SHOP_DOMAIN,
-            env.VECTOR_INDEX,
-            env.AI,
-            3
-          );
-          if (ragResult.results.length > 0) {
-            ragContext = formatRagContextForPrompt(ragResult);
-          }
-        } else if (env.VECTOR_INDEX && env.AI) {
-          // Vectorize-only fallback
-          const ragResult = await searchShopPoliciesAndFaqs(
-            userMessage, 
-            env.VECTOR_INDEX, 
-            env.AI,
-            3
-          );
+      // FALLBACK: Vectorize for FAQ/policies
+      if (!ragContext || ragContext.trim().length === 0) {
+        if (env.VECTOR_INDEX && env.AI) {
+          const ragResult = await searchShopPoliciesAndFaqs(userMessage, env.VECTOR_INDEX, env.AI, 3);
           if (ragResult.results.length > 0) {
             ragContext = formatRagContextForPrompt(ragResult);
           }
         }
       }
-
-      let fullReply = '';
       
-      // Send initial session_id event
-      await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
+      // 3. Fetch additional MCP context (for backward compatibility)
+      const mcpContext = await fetchMcpContextIfNeeded(userMessage, cartId, env);
 
-      // 3. Stream from Groq (if API key available) or fallback to Workers AI
-      if (env.GROQ_API_KEY) {
-        // Build messages with luxury prompt and RAG context
-        const messages = buildGroqMessages(history, userMessage, ragContext);
+      // 4. Stream from Cloudflare AI
+      if (env.AI) {
+        const messages = buildMessages(history, userMessage, ragContext, mcpContext);
+        const aiStream = await streamResponse(messages, env.AI);
+
+        // Pipe the AI stream directly to the response
+        // We can't easily save the full response to history here without a more complex teeing solution.
+        // For now, we'll skip saving the streamed response to DO history.
+        await aiStream.pipeTo(writable);
         
-        // Use Groq streaming
-        const stream = await streamGroqResponse(messages, env.GROQ_API_KEY);
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = typeof value === 'string' ? value : decoder.decode(value as any);
-          fullReply += chunk;
-          
-          const evt = JSON.stringify({ delta: chunk, session_id: sessionId, done: false });
-          await writer.write(encoder.encode(`data: ${evt}\n\n`));
-        }
       } else {
-        // Fallback: Try Workers AI streaming, else generate full reply
-        const stream = await generateAIResponseStream(history, userMessage, env, ragContext);
-        
-        if (stream) {
-          // Real streaming from Workers AI
-          const reader = stream.getReader();
-          const decoder = new TextDecoder();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunkStr = typeof value === 'string' ? value : decoder.decode(value as any);
-            fullReply += chunkStr;
-            const evt = JSON.stringify({ delta: chunkStr, session_id: sessionId, done: false });
-            await writer.write(encoder.encode(`data: ${evt}\n\n`));
-          }
-        } else {
-          // Full reply fallback with split for UX
-          fullReply = await generateAIResponse(history, userMessage, env);
-          const parts = fullReply.split(/(\s+)/);
-          for (const part of parts) {
-            const evt = JSON.stringify({ delta: part, session_id: sessionId, done: false });
-            await writer.write(encoder.encode(`data: ${evt}\n\n`));
-            await new Promise((resolve) => setTimeout(resolve, 30));
-          }
-        }
+        // Fallback for when AI is not available
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+        const fallbackReply = "Przepraszam, usługa AI jest tymczasowo niedostępna.";
+        await writer.write(encoder.encode(`data: ${JSON.stringify({ delta: fallbackReply, session_id: sessionId, done: true })}\n\n`));
+        await writer.close();
       }
-
-      // 4. Append final reply to session
-      await stub.fetch('https://session/append', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'assistant', content: fullReply, session_id: sessionId }),
-      });
-
-      // 5. Send done event
-      await writer.write(
-        encoder.encode(`data: ${JSON.stringify({ content: fullReply, session_id: sessionId, done: true })}\n\n`)
-      );
-      await writer.write(encoder.encode('data: [DONE]\n\n'));
-    } catch (error) {
-      console.error('Streaming error', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      await writer.write(encoder.encode(`data: ${JSON.stringify({ error: message, session_id: sessionId })}\n\n`));
-    } finally {
-      await writer.close();
+    } catch (e: any) {
+      console.error('Streaming error:', e);
+      const writer = writable.getWriter();
+      const encoder = new TextEncoder();
+      try {
+        // Try to send an error message to the client
+        await writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Błąd podczas generowania odpowiedzi.', details: e.message })}\n\n`));
+        await writer.close();
+      } catch (err) {
+        // If writing fails, just log it. The connection might be closed.
+        console.error('Failed to send error to client:', err);
+      }
     }
   })();
 
@@ -565,8 +661,7 @@ function streamAssistantResponse(
       ...cors(env),
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+      'Connection': 'keep-alive',
     },
   });
 }
@@ -641,7 +736,7 @@ export {
   streamAssistantResponse,
   verifyAppProxyHmac,
   handleMcpRequest,
-  getGroqResponse,
-  streamGroqResponse,
+  getResponse,
+  streamResponse,
   RateLimiterDO,
 };

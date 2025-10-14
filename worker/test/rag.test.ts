@@ -697,4 +697,109 @@ describe('RAG Module', () => {
     });
   });
   */
+
+  describe('searchProductsAndCartWithMCP', () => {
+    it('should use MCP as primary source for product queries', async () => {
+      const { searchProductsAndCartWithMCP } = await import('../src/rag');
+      const mockEnv = {
+        SHOP_DOMAIN: 'test-shop.myshopify.com',
+        SHOPIFY_ADMIN_TOKEN: 'test_token',
+        WORKER_ORIGIN: 'http://localhost:8787',
+      };
+
+      // Mock fetch for MCP call to return product results
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            result: {
+              content: [
+                { type: 'text', text: 'Znalezione produkty:\n- Luxury Ring - 299 PLN' }
+              ]
+            },
+            id: 1
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await searchProductsAndCartWithMCP('ring', mockEnv.SHOP_DOMAIN, mockEnv as any, null, 'search');
+
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
+      expect(result).toContain('Luxury Ring');
+    });
+
+    it('should handle cart intent with cart_id', async () => {
+      const { searchProductsAndCartWithMCP } = await import('../src/rag');
+      const mockEnv = {
+        SHOP_DOMAIN: 'test-shop.myshopify.com',
+        SHOPIFY_ADMIN_TOKEN: 'test_token',
+        WORKER_ORIGIN: 'http://localhost:8787',
+      };
+
+      // Mock fetch for get_cart MCP call
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            result: {
+              content: [
+                { type: 'text', text: 'Twój koszyk zawiera: Ring x1 - 299 PLN' }
+              ]
+            },
+            id: 1
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await searchProductsAndCartWithMCP(
+        'pokaż koszyk',
+        mockEnv.SHOP_DOMAIN,
+        mockEnv as any,
+        'cart123',
+        'cart'
+      );
+
+      expect(result).toBeTruthy();
+      expect(result).toContain('koszyk');
+    });
+
+    it('should handle order intent', async () => {
+      const { searchProductsAndCartWithMCP } = await import('../src/rag');
+      const mockEnv = {
+        SHOP_DOMAIN: 'test-shop.myshopify.com',
+        SHOPIFY_ADMIN_TOKEN: 'test_token',
+        WORKER_ORIGIN: 'http://localhost:8787',
+      };
+
+      // Mock fetch for get_most_recent_order_status MCP call
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            result: {
+              content: [
+                { type: 'text', text: 'Twoje ostatnie zamówienie: #1001, Status: Wysłane' }
+              ]
+            },
+            id: 1
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await searchProductsAndCartWithMCP(
+        'status zamówienia',
+        mockEnv.SHOP_DOMAIN,
+        mockEnv as any,
+        null,
+        'order'
+      );
+
+      expect(result).toBeTruthy();
+      expect(result).toContain('zamówienie');
+    });
+  });
 });
