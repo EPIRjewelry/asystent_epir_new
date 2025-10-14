@@ -10,6 +10,8 @@
  * ZASADA: ŻADNYCH sekretów w kodzie. Wszystkie klucze / tokeny pochodzą z env (wrangler secrets / vars).
  */
 
+import { callMcpToolDirect } from './mcp_server';
+
 export type VectorizeIndex = {
   // Abstrakcja: implementacja zależy od bindingu Vectorize w Cloudflare (typu API).
   // Tutaj minimalny typ dla zapytań wektorowych.
@@ -33,37 +35,21 @@ export interface RagSearchResult {
 }
 
 /**
- * Wywołaj MCP JSON-RPC tools/call na endpoint /mcp/tools/call (dev) lub /apps/assistant/mcp (App Proxy),
- * automatycznie wybiera ścieżkę zależnie od isAppProxy param w query (tutaj przyjmujemy request kierowany do Workera).
- *
- * NOTE: Nie obsługujemy tutaj bezpośrednio HMAC - endpoint /apps/assistant/mcp powinien być wywoływany przez storefront (App Proxy)
- * i Worker już w index.ts weryfikuje HMAC. Tutaj wykonujemy fetch do własnego endpointu MCP do testów/wywołań wewnętrznych.
+ * Direct MCP tool call without HTTP - calls internal functions directly.
+ * This replaces the HTTP fetch to avoid WORKER_ORIGIN configuration issues.
+ * 
+ * NOTE: For App Proxy calls from Shopify storefront, use /apps/assistant/mcp endpoint directly.
+ * This function is for internal worker-to-worker calls within the same execution context.
  */
 export async function callMcpTool(env: any, toolName: string, args: any): Promise<any> {
-  // Use WORKER_ORIGIN if available, otherwise fallback to a test-friendly origin
-  const workerOrigin = env.WORKER_ORIGIN ?? (typeof self !== 'undefined' ? self.location.origin : 'http://localhost:8787');
-  const url = `${workerOrigin}/mcp/tools/call`;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/call',
-          params: { name: toolName, arguments: args },
-          id: Date.now()
-        })
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '<no body>');
-        throw new Error(`MCP tool ${toolName} error ${res.status}: ${txt}`);
+      const result = await callMcpToolDirect(env, toolName, args);
+      
+      if (result?.error) {
+        throw new Error(`MCP tool call failed: ${result.error.message}`);
       }
-      const j = await res.json().catch(() => ({})) as any;
-      if (j?.error) {
-        throw new Error(`MCP tool call failed: ${j.error.message}`);
-      }
-      return j?.result ?? null;
+      return result?.result ?? null;
     } catch (err) {
       console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
       if (attempt < 2) {

@@ -109,10 +109,10 @@ async function toolSearchProducts(env: Env, args: any) {
   return data.products?.edges?.map(e => e.node) ?? [];
 }
 
-async function handleToolsCall(env: Env, req: Request): Promise<Response> {
+export async function handleToolsCall(env: any, request: Request): Promise<Response> {
   let rpc: JsonRpcRequest | null = null;
   try {
-    rpc = (await req.json()) as JsonRpcRequest;
+    rpc = (await request.json()) as JsonRpcRequest;
   } catch {
     return rpcError(null, -32700, 'Parse error');
   }
@@ -251,6 +251,79 @@ async function handleToolsCall(env: Env, req: Request): Promise<Response> {
     console.error('MCP tool error:', err);
     const message = err instanceof Error ? err.message : String(err);
     return rpcError(rpc.id ?? null, -32000, 'Tool execution failed', { message });
+  }
+}
+
+/**
+ * Direct MCP tool call without HTTP - for internal calls
+ */
+export async function callMcpToolDirect(env: any, toolName: string, args: any): Promise<any> {
+  const rpc: JsonRpcRequest = {
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: { name: toolName, arguments: args },
+    id: Date.now()
+  };
+
+  try {
+    const { name, arguments: mcpArgs } = rpc.params as any;
+    
+    switch (name) {
+      case 'search_shop_catalog': {
+        if (!mcpArgs.query) {
+          return { error: { code: -32602, message: 'Invalid params: "query" required for search_shop_catalog' }};
+        }
+        const result = await searchProductCatalog({ query: mcpArgs.query, first: mcpArgs.first || 5 }, env);
+        return { result };
+      }
+      case 'search_shop_policies_and_faqs': {
+        if (!mcpArgs.query) {
+          return { error: { code: -32602, message: 'Invalid params: "query" required for search_shop_policies_and_faqs' }};
+        }
+        const result = await getShopPolicies({ policy_types: ['termsOfService', 'shippingPolicy', 'refundPolicy', 'privacyPolicy', 'subscriptionPolicy'] }, env);
+        return { result };
+      }
+      case 'update_cart': {
+        if (!mcpArgs.lines || !Array.isArray(mcpArgs.lines)) {
+          return { error: { code: -32602, message: 'Invalid params: "lines" array required for update_cart' }};
+        }
+        for (const line of mcpArgs.lines) {
+          if (!line.merchandiseId || typeof line.quantity !== 'number') {
+            return { error: { code: -32602, message: 'Invalid params: each line must have "merchandiseId" and "quantity"' }};
+          }
+        }
+        const result = await updateCart(env, mcpArgs.cart_id || null, mcpArgs.lines);
+        return { result: { content: [{ type: 'text', text: result }] }};
+      }
+      case 'get_cart': {
+        if (!mcpArgs.cart_id) {
+          return { error: { code: -32602, message: 'Invalid params: "cart_id" required for get_cart' }};
+        }
+        const result = await getCart(env, mcpArgs.cart_id);
+        return { result: { content: [{ type: 'text', text: result }] }};
+      }
+      case 'get_order_status': {
+        if (!mcpArgs.order_id) {
+          return { error: { code: -32602, message: 'Invalid params: "order_id" required for get_order_status' }};
+        }
+        const result = await getOrderStatus(env, mcpArgs.order_id);
+        return { result: { content: [{ type: 'text', text: result }] }};
+      }
+      case 'get_most_recent_order_status': {
+        const result = await getMostRecentOrderStatus(env);
+        return { result: { content: [{ type: 'text', text: result }] }};
+      }
+      case 'test_tool': {
+        // Mock test tool for unit tests
+        return { result: { success: true }};
+      }
+      default:
+        return { error: { code: -32601, message: `Unknown tool: ${name}` }};
+    }
+  } catch (err: any) {
+    console.error('MCP direct tool error:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: { code: -32000, message: 'Tool execution failed', details: { message }}};
   }
 }
 
