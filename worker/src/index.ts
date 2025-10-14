@@ -571,6 +571,10 @@ function streamAssistantResponse(
   const { readable, writable } = new TransformStream();
   
   (async () => {
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+    let fullReply = '';
+    
     try {
       // 1. Fetch history and cartId
       const historyResp = await stub.fetch('https://session/history');
@@ -627,28 +631,49 @@ function streamAssistantResponse(
       // 3. Fetch additional MCP context (for backward compatibility)
       const mcpContext = await fetchMcpContextIfNeeded(userMessage, cartId, env);
 
-      // 4. Stream from Groq AI
+      // Send initial session_id event
+      await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
+
+      // 4. Stream from Groq AI (jak w oryginalnej wersji)
       if (env.GROQ_API_KEY) {
         const messages = buildGroqMessages(history, userMessage, ragContext);
-        const aiStream = await streamGroqResponse(messages, env.GROQ_API_KEY);
+        const stream = await streamGroqResponse(messages, env.GROQ_API_KEY);
+        const reader = stream.getReader();
 
-        // Pipe the AI stream directly to the response
-        // We can't easily save the full response to history without a more complex teeing solution.
-        // For now, we'll skip saving the streamed response to DO history.
-        await aiStream.pipeTo(writable);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = typeof value === 'string' ? value : String(value);
+          fullReply += chunk;
+
+          const evt = JSON.stringify({ delta: chunk, session_id: sessionId, done: false });
+          await writer.write(encoder.encode(`data: ${evt}\n\n`));
+        }
+
+        // 5. Append final reply to session
+        await stub.fetch('https://session/append', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'assistant', content: fullReply, session_id: sessionId }),
+        });
+
+        // 6. Send done event
+        await writer.write(
+          encoder.encode(`data: ${JSON.stringify({ content: fullReply, session_id: sessionId, done: true })}\n\n`)
+        );
+        await writer.write(encoder.encode('data: [DONE]\n\n'));
         
       } else {
         // Fallback for when Groq API key is not available
-        const writer = writable.getWriter();
-        const encoder = new TextEncoder();
         const fallbackReply = "Przepraszam, usługa AI jest tymczasowo niedostępna.";
         await writer.write(encoder.encode(`data: ${JSON.stringify({ delta: fallbackReply, session_id: sessionId, done: true })}\n\n`));
-        await writer.close();
+        await writer.write(encoder.encode('data: [DONE]\n\n'));
       }
+      
+      await writer.close();
     } catch (e: any) {
       console.error('Streaming error:', e);
-      const writer = writable.getWriter();
-      const encoder = new TextEncoder();
       try {
         // Try to send an error message to the client
         await writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Błąd podczas generowania odpowiedzi.', details: e.message })}\n\n`));
