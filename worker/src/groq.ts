@@ -125,7 +125,7 @@ export async function getGroqResponse(
     throw new Error(`Groq API error (${res.status}): ${txt}`);
   }
 
-  const json = await res.json().catch(() => null);
+  const json = (await res.json().catch(() => null)) as any;
   const content = json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.text;
   if (!content) throw new Error('Groq API returned empty response');
   return String(content);

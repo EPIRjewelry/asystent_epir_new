@@ -42,19 +42,22 @@ async function adminGraphql<T = any>(
   query: string,
   variables?: Record<string, any>
 ): Promise<T> {
-  if (!env.SHOP_DOMAIN) {
+  const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN;
+  const adminToken = env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_ACCESS_TOKEN;
+  
+  if (!shopDomain) {
     throw new Error('SHOP_DOMAIN not configured in wrangler.toml [vars]');
   }
-  if (!env.SHOPIFY_ADMIN_TOKEN) {
+  if (!adminToken) {
     throw new Error('SHOPIFY_ADMIN_TOKEN not set (use: wrangler secret put SHOPIFY_ADMIN_TOKEN)');
   }
 
-  const endpoint = `https://${env.SHOP_DOMAIN}/admin/api/2024-07/graphql.json`;
+  const endpoint = `https://${shopDomain}/admin/api/2024-07/graphql.json`;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN
+      'X-Shopify-Access-Token': adminToken
     },
     body: JSON.stringify({ query, variables })
   });
@@ -84,15 +87,18 @@ export async function callShopifyMcpTool(
   args: Record<string, any>,
   env: Env
 ): Promise<string> {
-  if (!env.SHOP_DOMAIN) {
+  const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN;
+  const storefrontToken = env.SHOPIFY_STOREFRONT_TOKEN || process.env.SHOPIFY_STOREFRONT_TOKEN;
+  
+  if (!shopDomain) {
     throw new Error('SHOP_DOMAIN not configured in wrangler.toml [vars]');
   }
 
-  if (!env.SHOPIFY_STOREFRONT_TOKEN) {
+  if (!storefrontToken) {
     throw new Error('SHOPIFY_STOREFRONT_TOKEN not set (use: wrangler secret put SHOPIFY_STOREFRONT_TOKEN)');
   }
 
-  const mcpEndpoint = `https://${env.SHOP_DOMAIN}/api/mcp`;
+  const mcpEndpoint = `https://${shopDomain}/api/mcp`;
   
   const request: McpRequest = {
     jsonrpc: '2.0',
@@ -110,7 +116,7 @@ export async function callShopifyMcpTool(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_TOKEN
+      'X-Shopify-Storefront-Access-Token': storefrontToken
     },
     body: JSON.stringify(request)
   });

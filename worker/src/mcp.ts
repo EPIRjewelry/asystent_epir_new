@@ -35,7 +35,9 @@ interface PolicyResult {
  */
 export async function searchProductCatalog(params: SearchProductParams, env: Env): Promise<{ products: ProductResult[] }> {
   const { query, first = 5 } = params;
-  const storefrontUrl = `https://${env.SHOP_DOMAIN}/api/2025-10/graphql.json`;
+  const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN || 'test-shop.myshopify.com';
+  const storefrontToken = env.SHOPIFY_STOREFRONT_TOKEN || process.env.SHOPIFY_STOREFRONT_TOKEN || 'mock-token';
+  const storefrontUrl = `https://${shopDomain}/api/2025-10/graphql.json`;
 
   const graphqlQuery = {
     query: `
@@ -65,7 +67,7 @@ export async function searchProductCatalog(params: SearchProductParams, env: Env
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': env.SHOPIFY_STOREFRONT_TOKEN!,
+      'X-Shopify-Storefront-Access-Token': storefrontToken,
     },
     body: JSON.stringify(graphqlQuery),
   });
@@ -102,7 +104,9 @@ export async function searchProductCatalog(params: SearchProductParams, env: Env
  * @returns Structured JSON z tre┼Ťci─ů polityk.
  */
 export async function getShopPolicies(params: PolicyParams, env: Env): Promise<{ policies: PolicyResult[] }> {
-  const adminUrl = `https://${env.SHOP_DOMAIN}/admin/api/2025-10/graphql.json`;
+  const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN || 'test-shop.myshopify.com';
+  const adminToken = env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_ACCESS_TOKEN || 'mock-token';
+  const adminUrl = `https://${shopDomain}/admin/api/2025-10/graphql.json`;
   const policyFields = params.policy_types.join('\n');
 
   const graphqlQuery = {
@@ -121,7 +125,7 @@ export async function getShopPolicies(params: PolicyParams, env: Env): Promise<{
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN!,
+      'X-Shopify-Access-Token': adminToken,
     },
     body: JSON.stringify(graphqlQuery),
   });
