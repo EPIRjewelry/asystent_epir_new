@@ -62,29 +62,64 @@ export async function streamGroqResponse(
     .pipeThrough(new TextDecoderStream())
     .pipeThrough(
       new TransformStream<string, string>({
+        start() {
+          this.buffer = '';
+        },
         transform(chunk, controller) {
-          // chunk moze zawierac wiele linii SSE; przetwarzamy linia po linii
-          const lines = chunk.split(/\r?\n/);
+          // Dodaj chunk do buffera (obsługa niepełnych linii)
+          this.buffer += chunk;
+          
+          // Podziel na linie, ale zachowaj ostatnią niepełną linię w bufferze
+          const lines = this.buffer.split(/\r?\n/);
+          this.buffer = lines.pop() || ''; // Ostatnia linia może być niepełna
+          
           for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed) continue;
-            // standardowy format Groq SSE: "data: { ... }" lub "data: [DONE]"
+            
+            // Standardowy format Groq SSE: "data: { ... }" lub "data: [DONE]"
             if (trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
-              // ignoruj lub zakoncz
               continue;
             }
-            const prefix = trimmed.indexOf('data:') === 0 ? trimmed.slice(5).trim() : trimmed;
+            
+            // Usuń prefix "data: " jeśli istnieje
+            const prefix = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+            
             try {
               const parsed = JSON.parse(prefix);
-              // wybieramy delta content (OpenAI-like structure)
+              // Wybieramy delta content (OpenAI-like structure)
               const content = parsed?.choices?.[0]?.delta?.content;
-              const messageContent = parsed?.choices?.[0]?.message?.content; // alternate shape
-              if (typeof content === 'string') controller.enqueue(content);
-              else if (typeof messageContent === 'string') controller.enqueue(messageContent);
+              const messageContent = parsed?.choices?.[0]?.message?.content;
+              
+              if (typeof content === 'string' && content) {
+                controller.enqueue(content);
+              } else if (typeof messageContent === 'string' && messageContent) {
+                controller.enqueue(messageContent);
+              }
             } catch (e) {
-              // nieparsowalny fragment - push surowy tekst (bezpieczenstwo)
-              // tylko jesli wyglada na wartosciowy
-              if (prefix && prefix.length < 1000) controller.enqueue(prefix);
+              // Ignoruj nieparsowalne fragmenty (nie wysyłaj surowych JSONów)
+              // Log tylko dla debugowania w development
+              if (prefix.length > 0 && prefix.length < 200) {
+                console.warn('[Groq SSE] Failed to parse chunk:', prefix.slice(0, 100));
+              }
+            }
+          }
+        },
+        flush(controller) {
+          // Przetwórz pozostałą niepełną linię z buffera
+          if (this.buffer.trim()) {
+            const trimmed = this.buffer.trim();
+            if (trimmed !== 'data: [DONE]' && trimmed !== '[DONE]') {
+              const prefix = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+              try {
+                const parsed = JSON.parse(prefix);
+                const content = parsed?.choices?.[0]?.delta?.content || parsed?.choices?.[0]?.message?.content;
+                if (typeof content === 'string' && content) {
+                  controller.enqueue(content);
+                }
+              } catch (e) {
+                // Ignoruj błędy przy finalnym flushowaniu
+              }
             }
           }
         }
