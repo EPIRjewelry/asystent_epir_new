@@ -4,10 +4,8 @@
  * Integracja z Cloudflare AI Gateway.
  * - streamResponse: wykonuje request stream=true i zwraca ReadableStream<string> z tekstowymi chunkami
  * - getResponse: non-streaming request, zwraca pełną odpowiedź tekstową
- * - buildMessages: buduje tablicę wiadomości (system,user,assistant) z opcjonalnym RAG context
+ * buildMessages: buduje tablicę wiadomości (system,user,assistant) z opcjonalnym RAG context
  */
-
-import { Ai } from '@cloudflare/ai';
 
 export type AiMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -69,46 +67,117 @@ AKCJE KOSZYKA I ZAMÓWIENIA:
 
 JĘZYK: Zawsze odpowiadaj po polsku.`;
 
-/**
- * Wykonuje streamingowy request do Cloudflare AI i zwraca surowy ReadableStream.
- */
-export async function streamResponse(
-  messages: AiMessage[],
-  ai: Ai,
-  model: string = '@cf/openai/gpt-oss-120b'
-): Promise<ReadableStream<Uint8Array>> {
-  if (!ai) throw new Error('Cloudflare AI binding is missing');
-
-  const stream = await ai.run(model, {
-    messages,
-    stream: true
-  });
-
-  // Zwracamy surowy stream bezpośrednio, bez parsowania go w workerze.
-  // Przeglądarka klienta sama obsłuży poprawnie format Server-Sent Events (SSE).
-  return stream;
+interface GroqStreamChunk {
+  choices?: Array<{
+    delta?: {
+      content?: string;
+    };
+    finish_reason?: string | null;
+  }>;
 }
 
 /**
- * Wykonuje non-streaming request do Cloudflare AI i zwraca pełną odpowiedź tekstową.
+ * Wykonuje streamingowy request do Groq API i zwraca ReadableStream z parsowanymi chunkami.
+ */
+export async function streamResponse(
+  messages: AiMessage[],
+  env: any,
+  model: string = 'llama-3.3-70b-versatile'
+): Promise<ReadableStream<Uint8Array>> {
+  if (!env.GROQ_API_KEY) throw new Error('Groq API key is missing');
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 512,
+      top_p: 0.9,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Groq API error (${response.status}): ${errorText}`);
+  }
+
+  if (!response.body) {
+    throw new Error('Groq API response has no body');
+  }
+
+  // Transform SSE stream to text chunks (jak w oryginalnym groq.ts)
+  return response.body.pipeThrough(new TextDecoderStream()).pipeThrough(
+    new TransformStream<string, string>({
+      transform(chunk, controller) {
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (!trimmed.startsWith('data: ')) continue;
+
+          const jsonStr = trimmed.slice(6);
+          try {
+            const parsed = JSON.parse(jsonStr) as GroqStreamChunk;
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              controller.enqueue(content);
+            }
+          } catch (e) {
+            console.warn('Groq SSE parse error:', e, jsonStr);
+          }
+        }
+      },
+    })
+  ).pipeThrough(new TextEncoderStream());
+}
+
+/**
+ * Wykonuje non-streaming request do Groq API i zwraca pełną odpowiedź tekstową.
  */
 export async function getResponse(
   messages: AiMessage[],
-  ai: Ai,
-  model: string = '@cf/openai/gpt-oss-120b'
+  env: any,
+  model: string = 'llama-3.3-70b-versatile'
 ): Promise<string> {
-  if (!ai) throw new Error('Cloudflare AI binding is missing');
+  if (!env.GROQ_API_KEY) throw new Error('Groq API key is missing');
 
-  const response = await ai.run(model, {
-    messages,
-    stream: false
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: false,
+      temperature: 0.7,
+      max_tokens: 512,
+      top_p: 0.9,
+    }),
   });
 
-  if (typeof response.response === 'string') {
-    return response.response;
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Groq API error (${response.status}): ${errorText}`);
   }
 
-  throw new Error('Cloudflare AI returned an empty or invalid response');
+  const data = await response.json() as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('Groq API returned empty response');
+  }
+
+  return content;
 }
 
 

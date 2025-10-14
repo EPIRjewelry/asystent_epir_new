@@ -8,9 +8,12 @@ import {
   type VectorizeIndex
 } from './rag';
 import {
-  streamResponse,
-  buildMessages,
-  getResponse,
+  streamGroqResponse,
+  buildGroqMessages,
+  getGroqResponse,
+  LUXURY_SYSTEM_PROMPT
+} from './groq';
+import {
   fetchMcpContextIfNeeded
 } from './cloudflare-ai';
 import { handleMcpRequest } from './mcp_server';
@@ -537,12 +540,13 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   // Fetch additional MCP context (for backward compatibility)
   mcpContext = await fetchMcpContextIfNeeded(payload.message, cartId, env);
   
-  // Use Cloudflare AI
-  const messages = buildMessages(history, payload.message, ragContext, mcpContext);
-  if (payload.stream && env.AI) {
+  // Use Groq AI
+    // Use Groq AI
+  const messages = buildGroqMessages(history, payload.message, ragContext);
+  if (payload.stream && env.GROQ_API_KEY) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
-  } else if (env.AI) {
-    reply = await getResponse(messages, env.AI);
+  } else if (env.GROQ_API_KEY) {
+    reply = await getGroqResponse(messages, env.GROQ_API_KEY);
   } else {
     reply = await generateAIResponse(history, payload.message, env, ragContext);
   }
@@ -623,18 +627,18 @@ function streamAssistantResponse(
       // 3. Fetch additional MCP context (for backward compatibility)
       const mcpContext = await fetchMcpContextIfNeeded(userMessage, cartId, env);
 
-      // 4. Stream from Cloudflare AI
-      if (env.AI) {
-        const messages = buildMessages(history, userMessage, ragContext, mcpContext);
-        const aiStream = await streamResponse(messages, env.AI);
+      // 4. Stream from Groq AI
+      if (env.GROQ_API_KEY) {
+        const messages = buildGroqMessages(history, userMessage, ragContext);
+        const aiStream = await streamGroqResponse(messages, env.GROQ_API_KEY);
 
         // Pipe the AI stream directly to the response
-        // We can't easily save the full response to history here without a more complex teeing solution.
+        // We can't easily save the full response to history without a more complex teeing solution.
         // For now, we'll skip saving the streamed response to DO history.
         await aiStream.pipeTo(writable);
         
       } else {
-        // Fallback for when AI is not available
+        // Fallback for when Groq API key is not available
         const writer = writable.getWriter();
         const encoder = new TextEncoder();
         const fallbackReply = "Przepraszam, usługa AI jest tymczasowo niedostępna.";
@@ -736,7 +740,7 @@ export {
   streamAssistantResponse,
   verifyAppProxyHmac,
   handleMcpRequest,
-  getResponse,
-  streamResponse,
+  streamGroqResponse,
+  getGroqResponse,
   RateLimiterDO,
 };
