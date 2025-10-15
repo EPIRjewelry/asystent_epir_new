@@ -88,14 +88,9 @@ export async function callShopifyMcpTool(
   env: Env
 ): Promise<string> {
   const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN;
-  const storefrontToken = env.SHOPIFY_STOREFRONT_TOKEN || process.env.SHOPIFY_STOREFRONT_TOKEN;
   
   if (!shopDomain) {
     throw new Error('SHOP_DOMAIN not configured in wrangler.toml [vars]');
-  }
-
-  if (!storefrontToken) {
-    throw new Error('SHOPIFY_STOREFRONT_TOKEN not set (use: wrangler secret put SHOPIFY_STOREFRONT_TOKEN)');
   }
 
   const mcpEndpoint = `https://${shopDomain}/api/mcp`;
@@ -115,8 +110,8 @@ export async function callShopifyMcpTool(
   const response = await fetch(mcpEndpoint, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': storefrontToken
+      'Content-Type': 'application/json'
+      // NO TOKEN REQUIRED for Storefront MCP!
     },
     body: JSON.stringify(request)
   });

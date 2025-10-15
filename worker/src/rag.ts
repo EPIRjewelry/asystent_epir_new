@@ -35,6 +35,27 @@ export interface RagSearchResult {
 }
 
 /**
+ * Extract keywords from user query for Shopify search
+ * Removes filler words and extracts product-related terms
+ */
+function extractKeywords(query: string): string {
+  const lowerQuery = query.toLowerCase();
+  
+  // Remove common Polish filler words
+  const fillerWords = ['wymien', 'pokaż', 'pokaz', 'mi', 'masz', 'czy', 'jest', 'jakies', 'jakie', 'szukam', 'poszukuje', 'poszukuję', 'chce', 'chcę'];
+  
+  let keywords = lowerQuery;
+  fillerWords.forEach(word => {
+    keywords = keywords.replace(new RegExp(`\\b${word}\\b`, 'gi'), '');
+  });
+  
+  // Clean up extra spaces
+  keywords = keywords.replace(/\s+/g, ' ').trim();
+  
+  return keywords || lowerQuery; // fallback to original if empty
+}
+
+/**
  * Direct MCP tool call without HTTP - calls internal functions directly.
  * This replaces the HTTP fetch to avoid WORKER_ORIGIN configuration issues.
  * 
@@ -79,19 +100,27 @@ export async function searchProductCatalogWithMCP(
   if (!shopDomain) return '';
   
   try {
-    // PRIMARY: MCP search_shop_catalog
-    const mcpResult = await callMcpTool(env, 'search_shop_catalog', { query });
+    // PRIMARY: Shopify natywny endpoint /api/mcp
+    console.log('[RAG] 🔍 Calling Shopify native MCP endpoint...');
+    console.log('[RAG] 🔑 Token check:', {
+      hasToken: !!env.SHOPIFY_STOREFRONT_TOKEN,
+      shopDomain: env.SHOP_DOMAIN,
+      tokenPrefix: env.SHOPIFY_STOREFRONT_TOKEN?.substring(0, 10)
+    });
     
-    if (mcpResult && mcpResult.content && Array.isArray(mcpResult.content)) {
-      const textContent = mcpResult.content
-        .filter((c: any) => c.type === 'text')
-        .map((c: any) => c.text)
-        .join('\n');
-      
-      if (textContent) {
-        console.log('[RAG] ✅ MCP catalog search successful');
-        return `Produkty z katalogu (MCP):\n${textContent}`;
-      }
+    // Extract keywords from user query for better search results
+    const searchQuery = extractKeywords(query);
+    console.log('[RAG] 🔍 Original query:', query);
+    console.log('[RAG] 🔍 Search keywords:', searchQuery);
+    
+    const { callShopifyMcpTool } = await import('./shopify-mcp-client');
+    const mcpResult = await callShopifyMcpTool('search_shop_catalog', { query: searchQuery, context: context || 'jewelry' }, env);
+    
+    console.log('[RAG] 📦 MCP Result:', mcpResult?.substring(0, 500)); // First 500 chars
+    
+    if (mcpResult && mcpResult.trim().length > 0) {
+      console.log('[RAG] ✅ MCP catalog search successful');
+      return `Produkty z katalogu (MCP):\n${mcpResult}`;
     }
     
     // FALLBACK: Legacy mcpCatalogSearch (internal)

@@ -38,6 +38,10 @@ export async function searchProductCatalog(params: SearchProductParams, env: Env
   const shopDomain = env.SHOP_DOMAIN || process.env.SHOP_DOMAIN || 'test-shop.myshopify.com';
   const storefrontToken = env.SHOPIFY_STOREFRONT_TOKEN || process.env.SHOPIFY_STOREFRONT_TOKEN || 'mock-token';
   const storefrontUrl = `https://${shopDomain}/api/2025-10/graphql.json`;
+  
+  console.log('[searchProductCatalog] Shop:', shopDomain);
+  console.log('[searchProductCatalog] Token exists:', !!storefrontToken);
+  console.log('[searchProductCatalog] Token prefix:', storefrontToken?.substring(0, 10));
 
   const graphqlQuery = {
     query: `

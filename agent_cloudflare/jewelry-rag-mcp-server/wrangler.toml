@@ -1,0 +1,64 @@
+name = "jewelry-rag-mcp-server"
+main = "src/index.ts"
+compatibility_date = "2025-10-02"
+account_id = "73283c24dc79f92edef30dcdbc98f230"
+
+# Development environment
+workers_dev = true
+
+# WSPÓLNE BAZY DANYCH Z GŁÓWNYM WORKEREM
+# D1 Database binding - używa tej samej bazy co główny Worker
+[[d1_databases]]
+binding = "DB"
+database_name = "jewelry-analytics-db"
+database_id = "6a4f7cbb-3c1c-42c7-9d79-4ef74d421f23"
+
+# KV Store binding - używa oddzielnej przestrzeni nazw dla konfiguracji MCP
+[[kv_namespaces]]
+binding = "CONFIG_KV"
+id = "61bccce88f8d4df3a3369d5da8563b51"
+
+# KV Store binding - możemy też używać sesji z głównego workera (jeśli potrzeba)
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "08f16276a9b14ca7b3c00404e8e8d0d9"
+
+# Vectorize binding - używa istniejącego indeksu
+[[vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "autorag-epir-chatbot-rag"
+
+# AI binding for embeddings
+[ai]
+binding = "AI"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"
+
+# Production environment
+[env.production]
+name = "jewelry-rag-mcp-server"
+workers_dev = false
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "jewelry-analytics-db-prod"
+database_id = "your-prod-d1-database-id"
+
+[[env.production.kv_namespaces]]
+binding = "CONFIG_KV"
+id = "your-prod-config-kv-namespace-id"
+
+[[env.production.kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "your-prod-sessions-kv-namespace-id"
+
+[[env.production.vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "autorag-epir-chatbot-rag-prod"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+SHOP_DOMAIN = "epir-art-silver-jewellery.myshopify.com"

@@ -592,16 +592,16 @@ function streamAssistantResponse(
       const lowerMsg = userMessage.toLowerCase();
       const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
       const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
-      const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry/.test(lowerMsg);
+      const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry|opal|tanzanit|motyw|wzór|styl/.test(lowerMsg);
       
-      // PRIMARY: MCP for products, cart, orders
+      // PRIMARY: ZAWSZE wywołuj MCP dla każdego zapytania użytkownika
       if (env.SHOP_DOMAIN) {
         const { searchProductsAndCartWithMCP } = await import('./rag');
         
         let intent: 'search' | 'cart' | 'order' | undefined;
         if (isCartIntent) intent = 'cart';
         else if (isOrderIntent) intent = 'order';
-        else if (isProductIntent) intent = 'search';
+        else intent = 'search'; // DEFAULT: zawsze szukaj produktów
         
         const mcpResult = await searchProductsAndCartWithMCP(
           userMessage,

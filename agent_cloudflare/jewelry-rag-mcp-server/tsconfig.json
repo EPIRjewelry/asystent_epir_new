@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": false,
+    "strict": true,
+    "alwaysStrict": true,
+    "preserveConstEnums": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "@cloudflare/workers-types"
+    ]
+  },
+  "include": ["src/index.ts"],
+  "exclude": ["node_modules", "dist", "src/mcp", "src/models", "src/services", "src/utils", "src/config"]
+}
