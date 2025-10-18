@@ -1,0 +1,24 @@
+name = "epir-art-jewellery-worker"
+main = "src/index.ts"
+compatibility_date = "2025-09-30"
+
+# Bindings
+kv_namespaces = [
+  { binding = "SESSIONS_KV", id = "__to_set__" }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "epir_art_jewellery"
+id = "__to_set__"
+
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[secrets]
+PIXEL_SECRET
+
+[vars]
+ALLOWED_ORIGIN = "*"
+
