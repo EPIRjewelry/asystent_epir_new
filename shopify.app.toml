@@ -2,7 +2,7 @@
 # Ten plik zawiera produkcyjne ustawienia aplikacji Agent EPIR.
 client_id = "abbb8988e6c96ba5ca0c3545de0d3491"
 name = "Agent EPIR Art Jewellery"
-application_url = "https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev"
+application_url = "https://asystent.epirbizuteria.pl"
 embedded = true
 
 [build]
@@ -17,7 +17,7 @@ scopes = "customer_read_customers,customer_read_orders,customer_read_store_credi
 
 [auth]
 redirect_urls = [
-  "https://epir-art-jewellery-worker.krzysztofdzugaj.workers.dev/api/auth"
+  "https://asystent.epirbizuteria.pl/api/auth"
 ]
 
 # App Proxy – ustawione tak, by Shopify kierował żądania z /apps/assistant/* do Twojego workera
