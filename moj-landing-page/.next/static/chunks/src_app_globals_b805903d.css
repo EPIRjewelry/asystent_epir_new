@@ -1,0 +1,60 @@
+/* [project]/src/app/globals.css [app-client] (css) */
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 96.1%;
+    --foreground: 257 30% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 257 30% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 257 30% 20%;
+    --primary: 256 52% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 257 30% 20%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 240 10% 3.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 256 52% 50%;
+    --radius: .75rem;
+  }
+
+  .dark {
+    --background: 257 30% 10%;
+    --foreground: 0 0% 98%;
+    --card: 257 30% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 257 30% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 256 52% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 257 30% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 257 30% 15%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 240 10% 3.9%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 257 30% 20%;
+    --input: 257 30% 20%;
+    --ring: 256 52% 60%;
+  }
+
+  @apply border-border;
+
+  @apply bg-background text-foreground;
+}
+
+
+/*# sourceMappingURL=src_app_globals_b805903d.css.map*/
