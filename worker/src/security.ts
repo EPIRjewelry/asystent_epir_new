@@ -48,21 +48,54 @@ export async function verifyAppProxyHmac(request: Request, secret: string): Prom
       encoder.encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['verify']
+      ['verify', 'sign']
     );
 
+    // The signature can be either hex or base64 depending on sender
+    let sigRaw: Uint8Array;
     // hex -> Uint8Array
-    if (!/^[0-9a-fA-F]+$/.test(signatureBase64) || signatureBase64.length % 2 !== 0) {
-      return { ok: false, reason: 'invalid_hex_signature' };
-    }
-    const sigRaw = new Uint8Array(signatureBase64.length / 2);
-    for (let i = 0; i < signatureBase64.length; i += 2) {
-      sigRaw[i / 2] = parseInt(signatureBase64.substr(i, 2), 16);
+    if (/^[0-9a-fA-F]+$/.test(signatureBase64) && signatureBase64.length % 2 === 0) {
+      sigRaw = new Uint8Array(signatureBase64.length / 2);
+      for (let i = 0; i < signatureBase64.length; i += 2) {
+        sigRaw[i / 2] = parseInt(signatureBase64.substr(i, 2), 16);
+      }
+    } else {
+      // Try base64 decode (Shopify webhooks use base64)
+      try {
+        // atob is available in Cloudflare Workers
+        const binary = atob(signatureBase64);
+        sigRaw = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          sigRaw[i] = binary.charCodeAt(i);
+        }
+      } catch {
+        return { ok: false, reason: 'invalid_signature_encoding' };
+      }
     }
 
     // 7) Verify HMAC (crypto.subtle.verify zwraca boolean)
-    const verified = await crypto.subtle.verify('HMAC', key, sigRaw.buffer, combined.buffer);
-    if (!verified) return { ok: false, reason: 'hmac_mismatch' };
+    // First attempt: canonical params concatenated without separator (legacy in this codebase)
+    let verified = await crypto.subtle.verify('HMAC', key, sigRaw.buffer as ArrayBuffer, combined.buffer as ArrayBuffer);
+    if (!verified) {
+      // Fallback: try canonicalization with '&' separators (Shopify App Proxy canonicalization)
+      const canonicalParamsWithAmp = params.map(([k, v]) => `${k}=${v}`).join('&');
+      const paramsBytes2 = encoder.encode(canonicalParamsWithAmp);
+      const combined2 = new Uint8Array(paramsBytes2.length + bodyBytes.length);
+      combined2.set(paramsBytes2, 0);
+      combined2.set(bodyBytes, paramsBytes2.length);
+      verified = await crypto.subtle.verify('HMAC', key, sigRaw.buffer as ArrayBuffer, combined2.buffer as ArrayBuffer);
+    }
+    if (!verified) {
+      try {
+        const computedSig = await crypto.subtle.sign('HMAC', key, combined.buffer);
+        const computedHex = Array.from(new Uint8Array(computedSig)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const receivedHex = Array.from(sigRaw).map(b => b.toString(16).padStart(2, '0')).join('');
+        console.warn('HMAC mismatch: expected %s received %s', computedHex, receivedHex);
+      } catch (e) {
+        console.warn('HMAC mismatch: unable to compute expected signature for debug');
+      }
+      return { ok: false, reason: 'hmac_mismatch' };
+    }
 
     // 8) (Opcjonalnie) Replay protection: odnotuj signature/timestamp w Durable Object (nie tutaj).
     return { ok: true };
