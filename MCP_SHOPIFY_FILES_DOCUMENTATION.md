@@ -175,32 +175,41 @@ query Search($query: String!) {
 
 ## Pliki definiujące reguły systemu
 
-### 1. `prompts/groq_system_prompt.txt`
-**Opis**: Główny prompt systemowy dla modelu LLM (Groq)
+### 1. `worker/src/groq.ts`
+**Opis**: Moduł integracji z Groq LLM zawierający definicję systemowego promptu
+- Eksportuje `LUXURY_SYSTEM_PROMPT` - główny prompt systemowy używany w aplikacji
+- Implementuje funkcje streamowania i wysyłania zapytań do Groq API
 
-**Zawartość reguł**:
+**Stała `LUXURY_SYSTEM_PROMPT`** - Reguły systemowe:
 - Rola: Elegancki, wyrafinowany doradca marki EPIR-ART-JEWELLERY
 - Ton: Luksusowy, kulturalny i zwięzły
-- Zasady odpowiedzi:
-  - Używać tylko materiałów z systemu retrieval (retrieved_docs)
-  - Nie halucynować faktów
-  - Cytować źródła: [doc_id] lub krótki fragment
-  - Jeśli brak informacji - powiedzieć "Nie mam wystarczających informacji" + 2 dalsze kroki
-  - Dla rekomendacji produktów: uzasadnienie + GID/link/cena
-  - Maksymalna długość: 2-4 zdania + opcjonalnie 1-2 punkty z opcjami
+- Język: Zawsze po polsku
 
-**Instrukcja RAG**:
+**Zasady odpowiedzi**:
+- **PRIORYTET**: Jeśli w kontekście widzisz sekcję "Produkty z katalogu (MCP)" - MUSISZ wymienić te produkty z nazwą i ceną
+- NIGDY nie mów "nie mam informacji" jeśli produkty są w kontekście - po prostu je wymień
+- Używać tylko materiałów dostarczonych przez system retrieval - nie halucynować
+- Cytować źródło przy istotnych faktach: [doc_id] lub krótki fragment
+- Jeśli NAPRAWDĘ brak produktów w kontekście - powiedz krótko "Nie mam wystarczających informacji" + zaproponuj 2 dalsze kroki
+- Dla rekomendacji produktów: podawaj krótkie uzasadnienie, nazwę produktu, cenę
+- Maksymalna długość odpowiedzi: 2-4 zdania + lista produktów (jeśli są)
+- Ton: profesjonalny, ciepły, luksusowy - jakbyś był osobistym doradcą w butiku jubilerskim
+
+**Funkcje w module**:
+- `streamGroqResponse(messages, apiKey, model)` - Streamowanie odpowiedzi z Groq API
+- `getGroqResponse(messages, apiKey, model)` - Pobranie pełnej odpowiedzi bez streamingu
+- `buildGroqMessages(systemPrompt, history, userMessage, ragContext)` - Budowanie tablicy wiadomości z kontekstem RAG
+
+### 2. `prompts/groq_system_prompt.txt`
+**Opis**: Alternatywny/archiwalny prompt systemowy (tekstowy plik)
+- Zawiera wcześniejszą wersję reguł systemowych
+- Format tekstowy z instrukcjami RAG
+- Może być używany jako szablon lub backup
+
+**Instrukcja RAG w pliku tekstowym**:
 1. Jeśli retrieved_docs zawiera dobre dopasowania - załączyć jako kontekst
 2. Struktura: krótkie podsumowanie → rekomendacja → źródła
 3. Format odpowiedzi JSON-like: `{ reply: string, sources: [{id, score?}], actions?: [{ type, payload }] }`
-
-**Przykładowy template użytkownika**:
-```
-Użytkownik: "{user_query}"
-Context (retrieved_docs): [{id, text, meta:{url, gid}} ... ]
-
-Zadanie: Odpowiedz zgodnie z zasadami powyżej.
-```
 
 ## Konfiguracja środowiskowa
 
