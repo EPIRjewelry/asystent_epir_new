@@ -10,6 +10,11 @@ import {
 } from '../src/rag';
 import * as mcp from '../src/mcp';
 
+// Mock shopify-mcp-client module for native MCP calls
+vi.mock('../src/shopify-mcp-client', () => ({
+  callShopifyMcpTool: vi.fn(),
+}));
+
 // Mock MCP module
 vi.mock('../src/mcp', async () => {
   const actual = await vi.importActual('../src/mcp');
@@ -377,31 +382,17 @@ describe('RAG Module', () => {
 
   describe('searchProductCatalogWithMCP', () => {
     it('should return formatted products when shop domain available', async () => {
-      const mockProducts = [
-        {
-          name: 'Ring',
-          price: '1000 PLN',
-          url: 'https://shop.com/ring',
-          description: 'Beautiful ring',
-          id: 'prod-1',
-          image: '',
-        },
-      ];
+      const { callShopifyMcpTool } = await import('../src/shopify-mcp-client');
+      const mockMcpResult = 'Ring - 1000 PLN\nhttps://shop.com/ring\nBeautiful ring';
+      
+      vi.mocked(callShopifyMcpTool).mockResolvedValue(mockMcpResult);
 
-      vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue(mockProducts);
-
-      const mockEnv = {}; // env parameter now required
+      const mockEnv = {}; 
       const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv, 'fair trade luxury');
 
       expect(result).toContain('Ring');
       expect(result).toContain('1000 PLN');
       expect(result).toContain('https://shop.com/ring');
-      expect(mcp.mcpCatalogSearch).toHaveBeenCalledWith(
-        'test.myshopify.com',
-        'ring',
-        mockEnv,
-        'fair trade luxury'
-      );
     });
 
     it('should return empty string when no shop domain', async () => {
@@ -409,11 +400,11 @@ describe('RAG Module', () => {
       const result = await searchProductCatalogWithMCP('ring', undefined, mockEnv);
 
       expect(result).toBe('');
-      // mcpCatalogSearch should not be called when shopDomain is undefined
     });
 
     it('should return empty string when MCP fails', async () => {
-      vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue(null);
+      const { callShopifyMcpTool } = await import('../src/shopify-mcp-client');
+      vi.mocked(callShopifyMcpTool).mockResolvedValue('');
 
       const mockEnv = {};
       const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv);
@@ -422,7 +413,8 @@ describe('RAG Module', () => {
     });
 
     it('should return empty string when no products found', async () => {
-      vi.mocked(mcp.mcpCatalogSearch).mockResolvedValue([]);
+      const { callShopifyMcpTool } = await import('../src/shopify-mcp-client');
+      vi.mocked(callShopifyMcpTool).mockResolvedValue('');
 
       const mockEnv = {};
       const result = await searchProductCatalogWithMCP('ring', 'test.myshopify.com', mockEnv);
