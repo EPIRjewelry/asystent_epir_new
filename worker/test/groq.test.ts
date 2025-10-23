@@ -10,19 +10,58 @@ describe('Groq Module', () => {
       expect(LUXURY_SYSTEM_PROMPT).toContain('luksusowym');
     });
 
+    it('should include haute-couture tone guidelines', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('haute-couture');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Elegancja z nutą ciepła');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Dyskretny humor wysokiej klasy');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Kontekst kulturalny');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Filozofia luksusu');
+    });
+
+    it('should include concrete examples of good and bad tone', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('PRZYKŁADY TONU');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('❌ ZŁY');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('✅ DOBRY');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('minimalizm japoński');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('jak dobre wino');
+    });
+
     it('should include RAG instructions', () => {
       expect(LUXURY_SYSTEM_PROMPT).toContain('retrieved_docs');
       expect(LUXURY_SYSTEM_PROMPT).toContain('Nie halucynuj');
       expect(LUXURY_SYSTEM_PROMPT).toContain('Cytuj źródło');
     });
 
-    it('should specify response constraints', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('2-4 zdania');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Maksymalna długość odpowiedzi');
+    it('should specify response structure', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('STRUKTURA ODPOWIEDZI');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Krótkie powitanie/podsumowanie');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Rekomendacja produktów');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Lista produktów');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Cytowanie źródeł');
     });
 
-    it('should mandate Polish language', () => {
+    it('should specify response constraints', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('3-5 zdań');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Maksymalna długość');
+    });
+
+    it('should mandate Polish language and formal address', () => {
       expect(LUXURY_SYSTEM_PROMPT).toContain('po polsku');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Polecam Pani/Panu');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('unikaj slangu');
+    });
+
+    it('should include MCP cart and order instructions', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('AKCJE KOSZYKA I ZAMÓWIENIA');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('update_cart');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('get_order_status');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('get_cart');
+    });
+
+    it('should prioritize MCP products in responses', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('PRIORYTET #1');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Produkty z katalogu (MCP)');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('MUSISZ wymienić te produkty');
     });
   });
 

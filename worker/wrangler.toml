@@ -1,4 +1,4 @@
-﻿name = "epir-art-jewellery-worker"
+﻿  name = "epir-art-jewellery-worker"
 main = "src/index.ts"
 compatibility_date = "2025-09-30"
 compatibility_flags = ["nodejs_compat"]
@@ -44,6 +44,13 @@ binding = "AI"
 [[routes]]
 pattern = "asystent.epirbizuteria.pl/*"
 zone_name = "epirbizuteria.pl"
+
+[observability]
+enabled = true
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
 
 [vars]
 ALLOWED_ORIGIN = "https://epir-art-silver-jewellery.myshopify.com"

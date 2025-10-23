@@ -88,7 +88,7 @@ export function renderCheckoutButton(checkoutUrl, messageEl) {
   const btn = document.createElement('a');
   btn.href = checkoutUrl;
   btn.className = 'epir-checkout-button';
-  btn.textContent = 'PrzejdĹş do kasy â†'';
+  btn.textContent = 'Przejdź do kasy →';
   btn.setAttribute('target', '_blank');
   btn.setAttribute('rel', 'noopener noreferrer');
   btn.style.cssText = 'display:inline-block;margin-top:10px;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;';

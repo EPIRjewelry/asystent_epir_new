@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { verifyAppProxyHmac, replayCheck } from '../src/security';
+import { computeHmac, canonicalizeParams, verifyTimestamp, parseSignature } from '../src/hmac';
 
 describe('verifyAppProxyHmac', () => {
   const SECRET = 'test-secret-key-123';
@@ -454,4 +455,83 @@ describe('replayCheck', () => {
     expect(result.ok).toBe(true);
   });
   */
+
+  // ============================================================================
+  // NOWE TESTY BRZEGOWE (Priority 1 - copilot-instructions.md)
+  // Wykorzystują funkcje z worker/src/hmac.ts
+  // ============================================================================
+
+  it('handles multi-value query params canonicalization', () => {
+    const params = new URLSearchParams();
+    params.append('a', '1');
+    params.append('a', '2');
+    params.append('b', '3');
+    params.append('signature', 'dummy'); // excluded
+
+    const canonical = canonicalizeParams(params);
+    expect(canonical).toBe('a=1a=2b=3'); // Sorted, multi-values preserved, signature excluded
+  });
+
+  it('accepts hex and base64 signature encodings', async () => {
+    const secret = SECRET;
+    const message = 'test-message';
+
+    // Generate HMAC signature
+    const hexSignature = await computeHmac(secret, message);
+    
+    // Convert hex to base64 for alternative encoding
+    const bytes = new Uint8Array(hexSignature.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Signature = btoa(binary);
+
+    // Test hex parsing
+    const parsedHex = parseSignature(hexSignature);
+    expect(parsedHex).toBe(hexSignature.toLowerCase());
+
+    // Test base64 parsing
+    const parsedBase64 = parseSignature(base64Signature);
+    expect(parsedBase64).toBe(hexSignature.toLowerCase());
+  });
+
+  it('rejects replay via timestamp outside 5min window', () => {
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Valid: within 5 minutes
+    expect(verifyTimestamp(now, 300)).toBe(true);
+    expect(verifyTimestamp(now - 299, 300)).toBe(true); // 4:59 ago
+
+    // Invalid: outside 5 minute window
+    expect(verifyTimestamp(now - 301, 300)).toBe(false); // Too old
+    expect(verifyTimestamp(now + 301, 300)).toBe(false); // Too far in future
+    
+    // Invalid: future beyond window
+    expect(verifyTimestamp(now + 400, 300)).toBe(false);
+    
+    // Edge cases
+    expect(verifyTimestamp(0, 300)).toBe(false); // Invalid timestamp
+    expect(verifyTimestamp(-100, 300)).toBe(false); // Negative timestamp
+  });
+
+  it('verifies empty body vs non-empty body behavior', async () => {
+    const secret = SECRET;
+    const params = new URLSearchParams({ foo: 'bar', shop: 'test.myshopify.com' });
+    const canonical = canonicalizeParams(params);
+
+    // Empty body case
+    const emptyBodySignature = await computeHmac(secret, canonical + '');
+    
+    // Non-empty body case
+    const bodyStr = JSON.stringify({ message: 'test' });
+    const nonEmptyBodySignature = await computeHmac(secret, canonical + bodyStr);
+
+    // Signatures should be different
+    expect(emptyBodySignature).not.toBe(nonEmptyBodySignature);
+
+    // Both should be valid hex strings (64 chars for SHA-256)
+    expect(emptyBodySignature).toMatch(/^[0-9a-f]{64}$/);
+    expect(nonEmptyBodySignature).toMatch(/^[0-9a-f]{64}$/);
+  });
 });
