@@ -82,20 +82,21 @@ export async function streamGroqResponse(
   if (!res.body) throw new Error('Groq response has no body');
 
   // Transform SSE text -> enqueue only meaningful content chunks
+  let buffer = '';
   const textStream = res.body
     .pipeThrough(new TextDecoderStream())
     .pipeThrough(
       new TransformStream<string, string>({
         start() {
-          this.buffer = '';
+          buffer = '';
         },
         transform(chunk, controller) {
           // Dodaj chunk do buffera (obsługa niepełnych linii)
-          this.buffer += chunk;
+          buffer += chunk;
           
           // Podziel na linie, ale zachowaj ostatnią niepełną linię w bufferze
-          const lines = this.buffer.split(/\r?\n/);
-          this.buffer = lines.pop() || ''; // Ostatnia linia może być niepełna
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || ''; // Ostatnia linia może być niepełna
           
           for (const line of lines) {
             const trimmed = line.trim();
@@ -131,8 +132,8 @@ export async function streamGroqResponse(
         },
         flush(controller) {
           // Przetwórz pozostałą niepełną linię z buffera
-          if (this.buffer.trim()) {
-            const trimmed = this.buffer.trim();
+          if (buffer.trim()) {
+            const trimmed = buffer.trim();
             if (trimmed !== 'data: [DONE]' && trimmed !== '[DONE]') {
               const prefix = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
               try {

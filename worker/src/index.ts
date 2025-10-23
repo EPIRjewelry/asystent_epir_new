@@ -118,6 +118,16 @@ function parseEndPayload(input: unknown): EndPayload | null {
 }
 
 function ensureHistoryArray(input: unknown): HistoryEntry[] {
+  // Handle string JSON (legacy storage format)
+  if (typeof input === 'string' && input.trim().startsWith('[')) {
+    try {
+      input = JSON.parse(input);
+    } catch (e) {
+      console.warn('Failed to parse history string:', e);
+      return [];
+    }
+  }
+  
   if (!Array.isArray(input)) return [];
   const out: HistoryEntry[] = [];
   for (const candidate of input) {
@@ -269,7 +279,8 @@ export class SessionDO {
   private async append(payload: AppendPayload): Promise<void> {
     this.history.push({ role: payload.role, content: payload.content, ts: now() });
     this.history = this.history.slice(-MAX_HISTORY);
-    await this.state.storage.put('history', JSON.stringify(this.history));
+    // Store as array directly (not stringified) for proper DO storage serialization
+    await this.state.storage.put('history', this.history);
   }
 
   private async logCartAction(action: string, details: Record<string, any>): Promise<void> {
@@ -436,6 +447,37 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return new Response('Bad Request: message required', { status: 400, headers: cors(env) });
   }
 
+  // Greeting prefilter: detect short greetings and return fast response without RAG/MCP
+  const greetingCheck = payload.message.toLowerCase().trim();
+  const greetingPattern = /^(cześć|czesc|hej|witaj|witam|dzień dobry|dzien dobry|dobry wieczór|dobry wieczor|hi|hello|hey)$/i;
+  const isShortGreeting = greetingCheck.length < 15 && greetingPattern.test(greetingCheck);
+  
+  if (isShortGreeting) {
+    const sessionId = payload.session_id ?? crypto.randomUUID();
+    const doId = env.SESSION_DO.idFromName(sessionId);
+    const stub = env.SESSION_DO.get(doId);
+    
+    // Append user message
+    await stub.fetch('https://session/append', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'user', content: payload.message, session_id: sessionId }),
+    });
+    
+    // Return fast greeting response without AI
+    const greetingReply = 'Witaj! Jestem asystentem EPIR. Jak mogę Ci dzisiaj pomóc? 🌟';
+    
+    await stub.fetch('https://session/append', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'assistant', content: greetingReply, session_id: sessionId }),
+    });
+    
+    return new Response(JSON.stringify({ reply: greetingReply, session_id: sessionId }), {
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  }
+
   const sessionId = payload.session_id ?? crypto.randomUUID();
   const doId = env.SESSION_DO.idFromName(sessionId);
   const stub = env.SESSION_DO.get(doId);
@@ -479,23 +521,46 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   let ragContext: string | undefined;
   let mcpContext: string | undefined;
   
-  // Detect intent (product, cart, order, or FAQ)
+  // Smart intent detection - skip MCP for conversational/follow-up queries
   const lowerMsg = payload.message.toLowerCase();
+  
+  // Conversational queries (no product search needed)
+  const isConversational = /^(jak|co|kiedy|dlaczego|czy|pamietasz|pamiętasz|jak mam na imię|kim jestem|znasz mnie|przypomnij|co ostatnio|czego szukałem|co mówiłem|co pytałem)/i.test(lowerMsg) 
+    || /(jak się masz|jak tam|co słychać|co u ciebie|jak leci|jak minął dzień|dobrze się czujesz)/i.test(lowerMsg);
+  const isFollowUp = /^(ten|ta|to|go|je|ją|chciałbym|chce|możesz|pokaz|pokaż mi|wyślij|link)/i.test(lowerMsg.trim());
+  
+  // Extract entity from history for follow-up queries
+  let entityFromHistory: string | undefined;
+  if (isFollowUp && history.length > 0) {
+    // Look for product mentions in last assistant message
+    const lastAssistant = [...history].reverse().find(h => h.role === 'assistant');
+    if (lastAssistant) {
+      const productMatch = lastAssistant.content.match(/"([^"]+)"|„([^"]+)"|'([^']+)'/);
+      if (productMatch) {
+        entityFromHistory = productMatch[1] || productMatch[2] || productMatch[3];
+      }
+    }
+  }
+  
+  // Detect intent (product, cart, order, or FAQ)
   const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
   const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
   const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry/.test(lowerMsg);
   
-  // PRIMARY: MCP for products, cart, orders
-  if (env.SHOP_DOMAIN) {
+  // PRIMARY: MCP for products, cart, orders (skip for conversational queries)
+  if (env.SHOP_DOMAIN && !isConversational) {
     const { searchProductsAndCartWithMCP } = await import('./rag');
     
     let intent: 'search' | 'cart' | 'order' | undefined;
     if (isCartIntent) intent = 'cart';
     else if (isOrderIntent) intent = 'order';
-    else if (isProductIntent) intent = 'search';
+    else if (isProductIntent || isFollowUp) intent = 'search';
+    
+    // Use entity from history for follow-up queries
+    const searchQuery = entityFromHistory || payload.message;
     
     const mcpResult = await searchProductsAndCartWithMCP(
-      payload.message,
+      searchQuery,
       env.SHOP_DOMAIN,
       env,
       cartId,
@@ -588,23 +653,44 @@ function streamAssistantResponse(
       // 2. Perform RAG search with MCP integration
       let ragContext: string | undefined;
       
-      // Detect intent
+      // Smart intent detection - skip MCP for conversational/follow-up queries
       const lowerMsg = userMessage.toLowerCase();
+      
+      // Conversational queries (no product search needed)
+      const isConversational = /^(jak|co|kiedy|dlaczego|czy|pamietasz|pamiętasz|jak mam na imię|kim jestem|znasz mnie|przypomnij|co ostatnio|czego szukałem|co mówiłem|co pytałem)/i.test(lowerMsg)
+        || /(jak się masz|jak tam|co słychać|co u ciebie|jak leci|jak minął dzień|dobrze się czujesz)/i.test(lowerMsg);
+      const isFollowUp = /^(ten|ta|to|go|je|ją|chciałbym|chce|możesz|pokaz|pokaż mi|wyślij|link)/i.test(lowerMsg.trim());
+      
+      // Extract entity from history for follow-up queries
+      let entityFromHistory: string | undefined;
+      if (isFollowUp && history.length > 0) {
+        const lastAssistant = [...history].reverse().find(h => h.role === 'assistant');
+        if (lastAssistant) {
+          const productMatch = lastAssistant.content.match(/"([^"]+)"|„([^"]+)"|'([^']+)'/);
+          if (productMatch) {
+            entityFromHistory = productMatch[1] || productMatch[2] || productMatch[3];
+          }
+        }
+      }
+      
       const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
       const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
       const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry|opal|tanzanit|motyw|wzór|styl/.test(lowerMsg);
       
-      // PRIMARY: ZAWSZE wywołuj MCP dla każdego zapytania użytkownika
-      if (env.SHOP_DOMAIN) {
+      // PRIMARY: MCP for products, cart, orders (skip for conversational queries)
+      if (env.SHOP_DOMAIN && !isConversational) {
         const { searchProductsAndCartWithMCP } = await import('./rag');
         
         let intent: 'search' | 'cart' | 'order' | undefined;
         if (isCartIntent) intent = 'cart';
         else if (isOrderIntent) intent = 'order';
-        else intent = 'search'; // DEFAULT: zawsze szukaj produktów
+        else if (isProductIntent || isFollowUp) intent = 'search';
+        
+        // Use entity from history for follow-up queries
+        const searchQuery = entityFromHistory || userMessage;
         
         const mcpResult = await searchProductsAndCartWithMCP(
-          userMessage,
+          searchQuery,
           env.SHOP_DOMAIN,
           env,
           cartId,
@@ -719,7 +805,7 @@ export default {
         return new Response('Unauthorized: Invalid HMAC signature', { status: 401, headers: cors(env) });
       }
 
-      // [NOWE] Replay protection: sprawd┼║ czy signature nie by┼éa ju┼╝ u┼╝yta
+      // [NOWE] Replay protection: sprawdź czy signature nie by┼éa ju┼╝ u┼╝yta
       const signature = url.searchParams.get('signature') ?? request.headers.get('x-shopify-hmac-sha256') ?? '';
       const timestamp = url.searchParams.get('timestamp') ?? '';
       if (signature && timestamp) {

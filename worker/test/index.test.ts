@@ -58,6 +58,7 @@ const mockEnv: Env = {
   DB: { prepare: vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })), first: vi.fn() })) } as any,
   SESSIONS_KV: {} as any,
   SESSION_DO: { idFromName: vi.fn(() => 'mock-id'), get: vi.fn(() => ({ fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify([]))) })) } as any,
+  RATE_LIMITER_DO: {} as any,
   VECTOR_INDEX: {} as any,
   SHOPIFY_APP_SECRET: 'secret',
   ALLOWED_ORIGIN: 'http://example.com',
@@ -175,7 +176,10 @@ describe('SessionDO Class', () => {
     });
     const response = await sessionDO.fetch(request);
     expect(response.status).toBe(200);
-    expect(mockStorage.put).toHaveBeenCalledWith('history', expect.stringContaining('test'));
+    // Now history is stored as array, not stringified
+    expect(mockStorage.put).toHaveBeenCalledWith('history', expect.arrayContaining([
+      expect.objectContaining({ role: 'user', content: 'test' })
+    ]));
   });
 
   it('fetch: POST /append invalid', async () => {
