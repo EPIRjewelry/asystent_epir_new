@@ -5,11 +5,17 @@
  * - streamGroqResponse: wykonuje request stream=true i zwraca ReadableStream<string> z tekstowymi chunkami
  * - getGroqResponse: non-streaming request, zwraca pelna odpowiedz tekstowa
  * - buildGroqMessages: buduje tablice wiadomosci (system,user,assistant) z opcjonalnym RAG context
+ * - buildGroqMessagesFromData: nowa funkcja z groq/engineer_prompt.ts (ustrukturyzowany input)
  *
  * Uwaga: NIE wrzucaj sekretow do kodu. Przekaz GROQ API key przez Cloudflare Secrets (wrangler secret put GROQ_API_KEY)
  */
 
+import { buildGroqMessagesFromData, type GroqPromptData } from './groq/engineer_prompt';
+
 export type GroqMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+// Re-export dla wygody
+export { buildGroqMessagesFromData, type GroqPromptData };
 
 export const LUXURY_SYSTEM_PROMPT = `Jesteś eleganckim, wyrafinowanym doradcą marki EPIR-ART-JEWELLERY. Twoim zadaniem jest udzielać precyzyjnych, rzeczowych rekomendacji produktowych i odpowiedzi obsługi klienta, zawsze w tonie luksusowym, kulturalnym i zwięzłym.
 
