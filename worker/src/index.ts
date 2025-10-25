@@ -1,4 +1,79 @@
 /// <reference types="@cloudflare/workers-types" />
+
+/**
+ * Przeniesione z cloudflare-ai.ts: Wykrywa intencję użytkownika (koszyk, zamówienie lub null).
+ */
+export function detectMcpIntent(userMessage: string): 'cart' | 'order' | null {
+  const msg = userMessage.toLowerCase();
+
+  const cartKeywords = [
+    'koszyk', 'dodaj do koszyka', 'w koszyku', 'zawartość koszyka', 
+    'co mam w koszyku', 'usuń z koszyka', 'aktualizuj koszyk', 'pokaż koszyk',
+    'cart', 'add to cart', 'show cart', 'my cart', 'what is in my cart', 'update cart'
+  ];
+
+  const orderKeywords = [
+    'zamówienie', 'mojego zamówienia', 'status zamówienia', 'moje zamówienie', 'śledzenie', 'śledzenie przesyłki',
+    'gdzie jest', 'kiedy dotrze', 'ostatnie zamówienie',
+    'order status', 'order', 'track my order', 'recent order', 'where is my package' // Dodano brakujące angielskie keywordy
+  ];
+
+  if (cartKeywords.some(keyword => msg.includes(keyword))) {
+    return 'cart';
+  }
+  if (orderKeywords.some(keyword => msg.includes(keyword))) {
+    return 'order';
+  }
+  return null;
+}
+
+/**
+ * Przeniesione z cloudflare-ai.ts: Dynamicznie pobiera kontekst MCP (koszyk/zamówienie).
+ * UWAGA: Musisz dostosować wywołania 'getCart' i 'getMostRecentOrderStatus' 
+ * do rzeczywistych funkcji narzędziowych MCP (jeśli ich nazwy są inne).
+ */
+export async function fetchMcpContextIfNeeded(
+  intent: 'cart' | 'order' | null,
+  cartId: string | null | undefined, // Zakładamy, że masz cartId z sesji DO
+  env: any,
+  // Prawdopodobnie będziesz musiał przekazać tu implementacje narzędzi:
+  getCart: (id: string, e: any) => Promise<string>, 
+  getMostRecentOrderStatus: (e: any) => Promise<string>
+): Promise<string | null> {
+
+  try {
+    if (intent === 'cart' && cartId) {
+      const cartDataRaw = await getCart(cartId, env);
+      // Uproszczone parsowanie (wersja z cloudflare-ai.ts)
+      try {
+        const cart = JSON.parse(cartDataRaw);
+        const items = cart.lines?.edges?.map((edge: any) => `${edge.node.merchandise?.product?.title || 'Produkt'} x${edge.node.quantity || 1}`).join(', ') || 'brak produktów';
+        const total = cart.cost?.totalAmount ? `${cart.cost.totalAmount.amount} ${cart.cost.totalAmount.currencyCode}` : 'brak ceny';
+        return `Kontekst Koszyka: ${items}. Łącznie: ${total}`;
+      } catch {
+        return `Kontekst Koszyka (surowy): ${cartDataRaw}`;
+      }
+    }
+
+    if (intent === 'order') {
+      const orderData = await getMostRecentOrderStatus(env);
+      try {
+        const order = JSON.parse(orderData);
+        const orderName = order.name || order.id || 'nieznane';
+        const status = order.displayFulfillmentStatus || order.fulfillmentStatus || 'nieznany';
+        return `Kontekst Zamówienia: Ostatnie zamówienie ${orderName}, status: ${status}`;
+      } catch {
+        return `Kontekst Zamówienia (surowy): ${orderData}`;
+      }
+    }
+
+    return null; // Brak intencji
+  } catch (err: any) {
+    console.error('Błąd podczas fetchMcpContextIfNeeded:', err.message);
+    return `Błąd pobierania kontekstu: ${err.message}`;
+  }
+}
+
 import { verifyAppProxyHmac, replayCheck } from './security';
 import {
   searchShopPoliciesAndFaqs,
@@ -7,24 +82,28 @@ import {
   formatRagContextForPrompt,
   type VectorizeIndex
 } from './rag';
-import {
-  streamGroqResponse,
-  buildGroqMessages,
-  getGroqResponse,
-  LUXURY_SYSTEM_PROMPT
-} from './groq';
-import {
-  fetchMcpContextIfNeeded
-} from './cloudflare-ai';
-import { handleMcpRequest } from './mcp_server';
+import { LUXURY_SYSTEM_PROMPT } from './prompts/luxury-system-prompt';
+import { streamGroqResponse, getGroqResponse } from './ai-client';
+import { buildGroqMessagesFromData } from './groq/engineer_prompt';
+import { generateMcpToolSchema } from './mcp/tool_schema';
+import { getCart, getMostRecentOrderStatus } from './shopify-mcp-client';
+import { handleMcpRequest, callMcpToolDirect } from './mcp_server';
 import { RateLimiterDO } from './rate-limiter';
 
-type ChatRole = 'user' | 'assistant';
+// Aliasy funkcji MCP zgodne z konwencją nazewnictwa narzędzi
+const get_cart = (id: string, env: any) => getCart(env, id);
+const get_most_recent_order_status = (env: any) => getMostRecentOrderStatus(env);
+
+type ChatRole = 'user' | 'assistant' | 'tool';
 
 interface HistoryEntry {
   role: ChatRole;
   content: string;
   ts: number;
+  // Opcjonalne pola dla tool calling (zapisywane przez SessionDO, ale usuwane przed wysłaniem do Groq)
+  tool_calls?: any;
+  tool_call_id?: string;
+  name?: string;
 }
 
 interface AppendPayload {
@@ -135,7 +214,18 @@ function ensureHistoryArray(input: unknown): HistoryEntry[] {
     const raw = candidate as Record<string, unknown>;
     if (!isChatRole(raw.role) || !isNonEmptyString(raw.content)) continue;
     const ts = typeof raw.ts === 'number' ? raw.ts : now();
-    out.push({ role: raw.role, content: String(raw.content), ts });
+    
+    // Zachowaj tool calling fields jeśli istnieją
+    const entry: HistoryEntry = { 
+      role: raw.role, 
+      content: String(raw.content), 
+      ts 
+    };
+    if (raw.tool_calls) entry.tool_calls = raw.tool_calls;
+    if (typeof raw.tool_call_id === 'string') entry.tool_call_id = raw.tool_call_id;
+    if (typeof raw.name === 'string') entry.name = raw.name;
+    
+    out.push(entry);
   }
   return out.slice(-MAX_HISTORY);
 }
@@ -519,7 +609,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   
   // Perform RAG search with MCP integration
   let ragContext: string | undefined;
-  let mcpContext: string | undefined;
+  let mcpContext: string | null | undefined;
   
   // Smart intent detection - skip MCP for conversational/follow-up queries
   const lowerMsg = payload.message.toLowerCase();
@@ -602,16 +692,238 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     }
   }
   
-  // Fetch additional MCP context (for backward compatibility)
-  mcpContext = await fetchMcpContextIfNeeded(payload.message, cartId, env);
+  // Fetch additional MCP context (wykryj intencję i przekaż funkcje MCP)
+  const intent = detectMcpIntent(payload.message);
+  mcpContext = await fetchMcpContextIfNeeded(
+    intent,
+    cartId,
+    env,
+    get_cart,
+    get_most_recent_order_status
+  );
   
   // Use Groq AI
     // Use Groq AI
-  const messages = buildGroqMessages(history, payload.message, ragContext);
+  const promptData = {
+    systemPersona: LUXURY_SYSTEM_PROMPT,
+    chatHistory: history,
+    ragContext: Array.isArray(ragContext) ? ragContext : [],
+    userQuery: payload.message
+  };
+  const messages = buildGroqMessagesFromData(promptData);
   if (payload.stream && env.GROQ_API_KEY) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   } else if (env.GROQ_API_KEY) {
-    reply = await getGroqResponse(messages, env.GROQ_API_KEY);
+    const modelResponse = await getGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+    
+    // === BLOK WALIDACJI (KROK 3.c) ===
+    // Zakładamy, że 'modelResponse' to string z odpowiedzią JSON od Groq
+    // oraz że 'generateMcpToolSchema' jest zaimportowany.
+    
+    let responseJson: any;
+    try {
+      responseJson = JSON.parse(modelResponse);
+    } catch (e: any) {
+      // Błąd krytyczny: Model nie zwrócił JSON.
+      console.error('BŁĄD KRYTYCZNY: Model nie zwrócił JSON.', e.message);
+      // Zwróć błąd do klienta lub poproś model o ponowne sformatowanie
+      // return new Response('Błąd formatowania odpowiedzi AI.', { status: 500 });
+      // (Na razie kontynuujemy, zakładając, że błąd jest w logice poniżej)
+    }
+    
+    // Sprawdź, czy model chce wywołać narzędzie
+    if (responseJson && responseJson.tool_call) {
+      const { name, arguments: args } = responseJson.tool_call;
+    
+      // 1. Pobierz schemat (parsuj JSON string do tablicy)
+      const schemaString = generateMcpToolSchema();
+      const schema = JSON.parse(schemaString);
+      
+      // 2. Znajdź definicję dla tego konkretnego narzędzia
+      const toolDefinition = schema.find((t: any) => t.function.name === name);
+    
+      if (!toolDefinition) {
+        console.error(`Błąd walidacji: Model próbował wywołać nieznane narzędzie: ${name}`);
+        
+        // Zwróć błąd do LLM, aby mógł się poprawić
+        const errorResponse = {
+          role: 'tool',
+          tool_call_id: responseJson.tool_call.id || 'unknown',
+          name: name,
+          content: `Błąd walidacji: Nieznane narzędzie "${name}". Dostępne narzędzia: ${schema.map((t: any) => t.function.name).join(', ')}`
+        };
+        
+        // Zwracamy błąd do klienta (w przyszłości: ponowne wywołanie LLM z tym błędem)
+        return new Response(JSON.stringify(errorResponse), { 
+          status: 400, 
+          headers: { ...cors(env), 'Content-Type': 'application/json' }
+        });
+      } else {
+        // 3. Waliduj argumenty
+        // UWAGA: Pełna walidacja z AJV zostanie dodana w kolejnym kroku
+        // Na razie wykonujemy podstawową walidację istnienia wymaganych pól
+        const requiredParams = toolDefinition.function.parameters?.required || [];
+        const missingParams = requiredParams.filter((param: string) => !(param in args));
+        
+        if (missingParams.length > 0) {
+          console.error(`Błąd walidacji: Brakujące argumenty dla ${name}:`, missingParams);
+          
+          // Zwróć błąd do LLM, aby mógł się poprawić
+          const errorResponse = {
+            role: 'tool',
+            tool_call_id: responseJson.tool_call.id || 'unknown',
+            name: name,
+            content: `Błąd walidacji argumentów: Brakujące parametry: ${missingParams.join(', ')}. Wymagane: ${requiredParams.join(', ')}`
+          };
+          
+          // TODO: Dodać logikę ponownego wywołania LLM z tym błędem (retry loop)
+          // Na razie zwracamy błąd do klienta
+          return new Response(JSON.stringify(errorResponse), { 
+            status: 400, 
+            headers: { ...cors(env), 'Content-Type': 'application/json' }
+          });
+        } else {
+          console.log(`✅ Walidacja OK dla ${name}. Przystępuję do wykonania narzędzia...`);
+          
+          // === WYKONANIE NARZĘDZIA MCP (KROK 3.d) ===
+          try {
+            console.log(`🔧 Wywołuję narzędzie MCP: ${name} z argumentami:`, JSON.stringify(args, null, 2));
+            
+            // Wywołaj narzędzie MCP
+            const mcpResult = await callMcpToolDirect(env, name, args);
+            
+            // Sprawdź, czy wywołanie zakończyło się sukcesem
+            if (mcpResult.error) {
+              console.error(`❌ Błąd wykonania narzędzia ${name}:`, mcpResult.error);
+              
+              // Zwróć błąd wykonania do LLM
+              const toolErrorResponse = {
+                role: 'tool',
+                tool_call_id: responseJson.tool_call.id || 'unknown',
+                name: name,
+                content: `Błąd wykonania narzędzia: ${mcpResult.error.message || JSON.stringify(mcpResult.error)}`
+              };
+              
+              return new Response(JSON.stringify(toolErrorResponse), { 
+                status: 500, 
+                headers: { ...cors(env), 'Content-Type': 'application/json' }
+              });
+            }
+            
+            // Wynik sukcesu - wyciągnij treść z odpowiedzi MCP
+            let toolResultText = '';
+            if (mcpResult.result?.content) {
+              // Format MCP: { result: { content: [{ type: 'text', text: '...' }] }}
+              const contentArray = Array.isArray(mcpResult.result.content) 
+                ? mcpResult.result.content 
+                : [mcpResult.result.content];
+              toolResultText = contentArray
+                .map((item: any) => item.text || JSON.stringify(item))
+                .join('\n');
+            } else if (mcpResult.result) {
+              // Bezpośredni wynik (np. dla search_shop_catalog)
+              toolResultText = typeof mcpResult.result === 'string' 
+                ? mcpResult.result 
+                : JSON.stringify(mcpResult.result);
+            }
+            
+            console.log(`✅ Narzędzie ${name} wykonane. Wynik:`, toolResultText.substring(0, 200) + '...');
+            
+            // === PRZEKAZANIE WYNIKU DO LLM (KROK 3.e) ===
+            // Zamiast zwracać wynik bezpośrednio do klienta, przekaż go do LLM
+            const toolSuccessResponse = {
+              role: 'tool' as const,
+              tool_call_id: responseJson.tool_call.id || 'unknown',
+              name: name,
+              content: toolResultText
+            };
+            
+            console.log(`🔄 Przekazuję wynik narzędzia z powrotem do LLM...`);
+            
+            // Dodaj wynik narzędzia do historii wiadomości
+            messages.push(toolSuccessResponse);
+            
+            // Wywołaj LLM ponownie z wynikiem narzędzia, aby uzyskał finalną odpowiedź
+            // LLM otrzyma: [system, history..., user_query, tool_call, tool_response]
+            // i wygeneruje naturalną odpowiedź dla użytkownika
+            
+            if (payload.stream) {
+              // Dla streaming: zwróć strumień z LLM
+              console.log(`📡 Streamuję finalną odpowiedź LLM po wykonaniu narzędzia...`);
+              const stream = await streamGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+              
+              return new Response(stream, {
+                headers: {
+                  ...cors(env),
+                  'Content-Type': 'text/event-stream',
+                  'Cache-Control': 'no-cache',
+                  'Connection': 'keep-alive',
+                },
+              });
+            } else {
+              // Dla non-streaming: pobierz pełną odpowiedź
+              console.log(`📝 Pobieram finalną odpowiedź LLM po wykonaniu narzędzia...`);
+              const finalResponse = await getGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+              
+              // Parsuj finalną odpowiedź (powinna być JSON lub czysty tekst)
+              let finalReply = finalResponse;
+              try {
+                const finalJson = JSON.parse(finalResponse);
+                finalReply = finalJson.reply || finalResponse;
+              } catch {
+                // Jeśli nie jest JSON, użyj surowej odpowiedzi
+                finalReply = finalResponse;
+              }
+              
+              // Zapisz finalną odpowiedź do historii w SessionDO
+              await stub.fetch('https://session/append', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  role: 'assistant', 
+                  content: finalReply, 
+                  session_id: sessionId 
+                }),
+              });
+              
+              console.log(`✅ Finalna odpowiedź LLM zapisana do sesji.`);
+              
+              return new Response(JSON.stringify({ 
+                reply: finalReply, 
+                session_id: sessionId,
+                _debug: {
+                  tool_executed: name,
+                  tool_result_length: toolResultText.length,
+                  llm_called_again: true
+                }
+              }), { 
+                status: 200, 
+                headers: { ...cors(env), 'Content-Type': 'application/json' }
+              });
+            }
+            
+          } catch (executionError: any) {
+            console.error(`💥 Wyjątek podczas wykonania narzędzia ${name}:`, executionError.message);
+            
+            const toolExceptionResponse = {
+              role: 'tool',
+              tool_call_id: responseJson.tool_call.id || 'unknown',
+              name: name,
+              content: `Wyjątek podczas wykonania: ${executionError.message}`
+            };
+            
+            return new Response(JSON.stringify(toolExceptionResponse), { 
+              status: 500, 
+              headers: { ...cors(env), 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      }
+    }
+    // === KONIEC BLOKU WALIDACJI ===
+    
+    // Jeśli model zwrócił odpowiedź konwersacyjną (reply), użyj jej
+    reply = responseJson?.reply || modelResponse;
   } else {
     reply = await generateAIResponse(history, payload.message, env, ragContext);
   }
@@ -714,16 +1026,29 @@ function streamAssistantResponse(
         }
       }
       
-      // 3. Fetch additional MCP context (for backward compatibility)
-      const mcpContext = await fetchMcpContextIfNeeded(userMessage, cartId, env);
+      // 3. Fetch additional MCP context (wykryj intencję i przekaż funkcje MCP)
+      const intent = detectMcpIntent(userMessage);
+      const mcpContext = await fetchMcpContextIfNeeded(
+        intent,
+        cartId,
+        env,
+        get_cart,
+        get_most_recent_order_status
+      );
 
       // Send initial session_id event
       await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
 
       // 4. Stream from Groq AI (jak w oryginalnej wersji)
       if (env.GROQ_API_KEY) {
-        const messages = buildGroqMessages(history, userMessage, ragContext);
-        const stream = await streamGroqResponse(messages, env.GROQ_API_KEY);
+        const promptData = {
+          systemPersona: LUXURY_SYSTEM_PROMPT,
+          chatHistory: history,
+          ragContext: Array.isArray(ragContext) ? ragContext : [],
+          userQuery: userMessage
+        };
+        const messages = buildGroqMessagesFromData(promptData);
+        const stream = await streamGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
         const reader = stream.getReader();
 
         while (true) {
@@ -737,11 +1062,23 @@ function streamAssistantResponse(
           await writer.write(encoder.encode(`data: ${evt}\n\n`));
         }
 
+        // 5. Parse final JSON and extract reply
+        let finalText = fullReply;
+        try {
+          const parsed = JSON.parse(fullReply);
+          if (parsed.reply) {
+            finalText = parsed.reply;
+          }
+        } catch (e) {
+          // If not JSON, use raw text
+          console.warn('Stream response not JSON, using raw text');
+        }
+
         // 5. Append final reply to session
         await stub.fetch('https://session/append', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'assistant', content: fullReply, session_id: sessionId }),
+          body: JSON.stringify({ role: 'assistant', content: finalText, session_id: sessionId }),
         });
 
         // 6. Send done event

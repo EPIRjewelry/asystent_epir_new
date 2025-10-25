@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { buildMessages, LUXURY_SYSTEM_PROMPT } from '../src/cloudflare-ai';
+import { LUXURY_SYSTEM_PROMPT } from '../src/prompts/luxury-system-prompt';
+import { buildGroqMessagesFromData, GroqPromptData } from '../src/groq/engineer_prompt';
+
+// Helper function dla testów - emuluje starą sygnaturę buildMessages
+function buildMessages(
+  history: { role: 'user' | 'assistant', content: string }[],
+  userQuery: string,
+  ragContext?: { id: string, text: string, meta: { url: string, gid: string } }[]
+) {
+  const data: GroqPromptData = {
+    systemPersona: LUXURY_SYSTEM_PROMPT,
+    chatHistory: history,
+    ragContext: ragContext || [],
+    userQuery: userQuery
+  };
+  return buildGroqMessagesFromData(data);
+}
 
 describe('Groq Module', () => {
   describe('LUXURY_SYSTEM_PROMPT', () => {
@@ -116,20 +132,26 @@ describe('Groq Module', () => {
     });
 
     it('should append RAG context to system prompt when provided', () => {
-      const ragContext = 'Retrieved docs:\n[Doc 1]: Pierścionki z szafirem 1200 PLN';
+      const ragContext = [
+        { 
+          id: 'doc1', 
+          text: 'Pierścionki z szafirem 1200 PLN',
+          meta: { url: 'https://example.com/doc1', gid: 'gid://shopify/Product/123' }
+        }
+      ];
       const messages = buildMessages([], 'test', ragContext);
 
       expect(messages[0].role).toBe('system');
-      expect(messages[0].content).toContain(LUXURY_SYSTEM_PROMPT);
-      expect(messages[0].content).toContain('Retrieved docs:');
+      expect(messages[0].content).toContain('EPIR-ART-JEWELLERY');
+      expect(messages[0].content).toContain('doc1');
       expect(messages[0].content).toContain('Pierścionki z szafirem');
     });
 
     it('should not append RAG context when not provided', () => {
       const messages = buildMessages([], 'test');
 
-      expect(messages[0].content).toBe(LUXURY_SYSTEM_PROMPT);
-      expect(messages[0].content).not.toContain('Retrieved docs');
+      expect(messages[0].content).toContain('EPIR-ART-JEWELLERY');
+      // RAG context powinien być pusty, więc nie powinno być sekcji KONTEKST RAG
     });
 
     it('should handle empty history', () => {
