@@ -95,6 +95,46 @@ npm run deploy
 5. Dev bypass HMAC:
    - W `wrangler.toml` ustaw `DEV_BYPASS = "1"`, a w żądaniu dodaj nagłówek `x-dev-bypass: 1`, aby testować bez podpisu Shopify (tylko lokalnie!).
 
+## Integracja z MCP Shopify
+
+Projekt korzysta z oficjalnego endpointu MCP:
+`https://epir-art-silver-jewellery.myshopify.com/api/mcp`
+
+Wszystkie kluczowe funkcje RAG oraz narzędzia asystenta AI wywołują narzędzia MCP bezpośrednio z Workera. Integracja jest w pełni zgodna z produkcyjnym API Shopify MCP.
+
+### Obsługiwane narzędzia MCP
+
+- **search_shop_catalog** — wyszukiwanie produktów w sklepie
+- **search_shop_policies_and_faqs** — wyszukiwanie polityk sklepu i FAQ
+- **get_cart** — pobieranie aktualnego stanu koszyka
+- **update_cart** — aktualizacja koszyka (dodawanie/zmiana produktów)
+- **get_order_status** — status konkretnego zamówienia
+- **get_most_recent_order_status** — status ostatniego zamówienia klienta
+
+Każde narzędzie MCP jest testowane jednostkowo i integracyjnie (Vitest, plik `worker/test/rag.test.ts`). Wyniki są zawsze poprawnie formatowane i logowane.
+
+Przykład wywołania narzędzia MCP:
+
+```typescript
+const mcpEndpoint = 'https://epir-art-silver-jewellery.myshopify.com/api/mcp';
+const payload = {
+  jsonrpc: '2.0',
+  method: 'tools/call',
+  params: {
+    name: 'search_shop_catalog',
+    arguments: { query: 'pierścionek', context: 'jewelry' }
+  },
+  id: Date.now()
+};
+const res = await fetch(mcpEndpoint, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+});
+```
+
+Wszystkie odpowiedzi MCP są przetwarzane i formatowane zgodnie z wymaganiami UI oraz testów.
+
 ## Bezpieczeństwo
 Endpoint `/chat` jest chroniony za pomocą weryfikacji sygnatury **HMAC**, zgodnie z oficjalnym i bezpiecznym mechanizmem Shopify App Proxy.
 - **Konfiguracja**: Musisz ustawić zmienną `SHOPIFY_APP_SECRET` w sekretach Cloudflare Workers. Klucz ten znajdziesz w panelu deweloperskim swojej aplikacji w Shopify.

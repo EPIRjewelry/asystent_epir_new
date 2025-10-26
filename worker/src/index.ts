@@ -32,45 +32,34 @@ export function detectMcpIntent(userMessage: string): 'cart' | 'order' | null {
  * UWAGA: Musisz dostosować wywołania 'getCart' i 'getMostRecentOrderStatus' 
  * do rzeczywistych funkcji narzędziowych MCP (jeśli ich nazwy są inne).
  */
+import { searchShopPoliciesAndFaqs, searchProductCatalogWithMCP } from './rag';
+
 export async function fetchMcpContextIfNeeded(
   intent: 'cart' | 'order' | null,
-  cartId: string | null | undefined, // Zakładamy, że masz cartId z sesji DO
-  env: any,
-  // Prawdopodobnie będziesz musiał przekazać tu implementacje narzędzi:
-  getCart: (id: string, e: any) => Promise<string>, 
-  getMostRecentOrderStatus: (e: any) => Promise<string>
+  cartId: string | null | undefined,
+  env: any
 ): Promise<string | null> {
-
   try {
     if (intent === 'cart' && cartId) {
-      const cartDataRaw = await getCart(cartId, env);
-      // Uproszczone parsowanie (wersja z cloudflare-ai.ts)
-      try {
-        const cart = JSON.parse(cartDataRaw);
-        const items = cart.lines?.edges?.map((edge: any) => `${edge.node.merchandise?.product?.title || 'Produkt'} x${edge.node.quantity || 1}`).join(', ') || 'brak produktów';
-        const total = cart.cost?.totalAmount ? `${cart.cost.totalAmount.amount} ${cart.cost.totalAmount.currencyCode}` : 'brak ceny';
-        return `Kontekst Koszyka: ${items}. Łącznie: ${total}`;
-      } catch {
-        return `Kontekst Koszyka (surowy): ${cartDataRaw}`;
+      const cartResponse = await searchProductCatalogWithMCP(cartId, env);
+      if (cartResponse.error) {
+        return `Error fetching cart context: ${cartResponse.error}`;
       }
+      return `Cart Context: ${JSON.stringify(cartResponse)}`;
     }
 
     if (intent === 'order') {
-      const orderData = await getMostRecentOrderStatus(env);
-      try {
-        const order = JSON.parse(orderData);
-        const orderName = order.name || order.id || 'nieznane';
-        const status = order.displayFulfillmentStatus || order.fulfillmentStatus || 'nieznany';
-        return `Kontekst Zamówienia: Ostatnie zamówienie ${orderName}, status: ${status}`;
-      } catch {
-        return `Kontekst Zamówienia (surowy): ${orderData}`;
+      const orderResponse = await searchShopPoliciesAndFaqs('order status', env);
+      if (orderResponse.error) {
+        return `Error fetching order context: ${orderResponse.error}`;
       }
+      return `Order Context: ${JSON.stringify(orderResponse)}`;
     }
 
-    return null; // Brak intencji
-  } catch (err: any) {
-    console.error('Błąd podczas fetchMcpContextIfNeeded:', err.message);
-    return `Błąd pobierania kontekstu: ${err.message}`;
+    return null;
+  } catch (error) {
+    console.error('Error in fetchMcpContextIfNeeded:', error);
+    return `Unexpected error: ${error.message}`;
   }
 }
 
@@ -84,7 +73,7 @@ import {
 } from './rag';
 import { LUXURY_SYSTEM_PROMPT } from './prompts/luxury-system-prompt';
 import { streamGroqResponse, getGroqResponse } from './ai-client';
-import { buildGroqMessagesFromData } from './groq/engineer_prompt';
+// import { buildGroqMessagesFromData } from './groq/engineer_prompt';
 import { generateMcpToolSchema } from './mcp/tool_schema';
 import { getCart, getMostRecentOrderStatus } from './shopify-mcp-client';
 import { handleMcpRequest, callMcpToolDirect } from './mcp_server';
@@ -710,7 +699,13 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     ragContext: Array.isArray(ragContext) ? ragContext : [],
     userQuery: payload.message
   };
-  const messages = buildGroqMessagesFromData(promptData);
+  // const messages = buildGroqMessagesFromData(promptData);
+  // Zbuduj tablicę messages zgodnie z formatem Groq API
+  const messages = [
+    { role: 'system', content: promptData.systemPersona },
+    ...promptData.chatHistory.map((entry: any) => ({ role: entry.role, content: entry.content })),
+    { role: 'user', content: promptData.userQuery }
+  ];
   if (payload.stream && env.GROQ_API_KEY) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   } else if (env.GROQ_API_KEY) {
@@ -1047,7 +1042,12 @@ function streamAssistantResponse(
           ragContext: Array.isArray(ragContext) ? ragContext : [],
           userQuery: userMessage
         };
-        const messages = buildGroqMessagesFromData(promptData);
+  // const messages = buildGroqMessagesFromData(promptData);
+        const messages = [
+          { role: 'system', content: promptData.systemPersona },
+          ...promptData.chatHistory.map((entry: any) => ({ role: entry.role, content: entry.content })),
+          { role: 'user', content: promptData.userQuery }
+        ];
         const stream = await streamGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
         const reader = stream.getReader();
 

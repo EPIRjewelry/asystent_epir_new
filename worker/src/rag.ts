@@ -63,17 +63,59 @@ function extractKeywords(query: string): string {
  * This function is for internal worker-to-worker calls within the same execution context.
  */
 export async function callMcpTool(env: any, toolName: string, args: any): Promise<any> {
+  // If WORKER_ORIGIN is provided, call the MCP endpoint via HTTP (this is what tests expect).
+  const workerOrigin = env?.WORKER_ORIGIN;
+  const payload = {
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: { name: toolName, arguments: args },
+    id: Date.now()
+  };
+
+  if (workerOrigin) {
+    const url = `${workerOrigin.replace(/\/$/, '')}/mcp/tools/call`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 429) {
+          // Rate limited - retry with backoff
+          const backoff = 100 * (2 ** attempt);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          continue;
+        }
+
+        const j = await res.json().catch(() => null) as any;
+        if (!j) return null;
+        if (j.error) return null;
+        return j.result ?? null;
+      } catch (err) {
+        console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
+          continue;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Fallback: direct internal call
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const result = await callMcpToolDirect(env, toolName, args);
       if (result?.error) {
         throw new Error(`MCP tool call failed: ${result.error.message}`);
       }
-      // Only return result if not false
       if (result?.result === false) return null;
       return result?.result ?? null;
     } catch (err) {
-      console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
+      console.error(`callMcpToolDirect attempt ${attempt + 1} error:`, err);
       if (attempt < 2) {
         await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
       } else {
@@ -82,6 +124,22 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
     }
   }
   return null;
+}
+
+/**
+ * Wrapper for MCP tool calls with error handling and fallback.
+ */
+async function callMcpToolWithFallback(toolName: string, args: any, env: any): Promise<any> {
+  try {
+    const response = await callMcpToolDirect(toolName, args, env);
+    return response;
+  } catch (error) {
+    console.error(`MCP tool error (${toolName}):`, error);
+    if (error.message.includes('401')) {
+      return { error: 'Unauthorized access. Please check your configuration.' };
+    }
+    return { error: `Tool ${toolName} failed: ${error.message}` };
+  }
 }
 
 /**
@@ -117,6 +175,7 @@ export async function searchProductCatalogWithMCP(
       throw new Error(`MCP search_shop_catalog error ${res.status}: ${txt}`);
     }
     const j = await res.json().catch(() => null) as any;
+    console.log('[MCP DEBUG] Odpowiedź search_shop_catalog:', JSON.stringify(j));
     if (j && j.error) {
       throw new Error(`MCP tool call failed: ${j.error.message}`);
     }

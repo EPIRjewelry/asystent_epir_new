@@ -119,9 +119,33 @@
           </button>
         </form>
         <div id="assistant-status" class="assistant-status" role="status" aria-live="polite"></div>
+        <div id="assistant-loader" class="assistant-loader" style="display:none" aria-live="polite" aria-label="Oczekiwanie na odpowiedź">
+          <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+        </div>
     </div>
   </div>
 </section>
 
 <script src="{{ 'assistant.js' | asset_url }}" defer="defer" type="module"></script>
 <link href="{{ 'assistant.css' | asset_url }}" rel="stylesheet" type="text/css"/>
+<style>
+  .assistant-loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 32px;
+    font-size: 2em;
+    color: {{ section.settings.accent_color | default: '#8B7D6A' }};
+    margin-top: 8px;
+  }
+  .assistant-loader .dot {
+    animation: blink 1.4s infinite both;
+    margin: 0 2px;
+  }
+  .assistant-loader .dot:nth-child(2) { animation-delay: 0.2s; }
+  .assistant-loader .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+</style>

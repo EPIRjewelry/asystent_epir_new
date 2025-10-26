@@ -716,7 +716,6 @@ describe('RAG Module', () => {
       expect(mockEnv.AI.run).toHaveBeenCalledTimes(150);
     });
   });
-  */
 
   describe('searchProductsAndCartWithMCP', () => {
     it('should handle empty cart intent', async () => {
@@ -811,5 +810,22 @@ describe('RAG Module', () => {
       expect(result).toContain('Luxury Ring');
     });
 
+  });
+
+  describe('MCP Tools with Error Handling', () => {
+    it('should fetch shop policies and FAQs', async () => {
+      const result = await searchShopPoliciesAndFaqs('return policy', {});
+      expect(result).toEqual({ result: 'Policies for query: return policy' });
+    });
+
+    it('should fetch product catalog', async () => {
+      const result = await searchProductCatalogWithMCP('jewelry', {});
+      expect(result).toEqual({ result: 'Products for query: jewelry' });
+    });
+
+    it('should handle MCP tool errors gracefully', async () => {
+      const result = await searchShopPoliciesAndFaqs('error', {});
+      expect(result).toEqual({ error: 'Tool search_shop_policies_and_faqs failed: Mocked MCP error' });
+    });
   });
 });
