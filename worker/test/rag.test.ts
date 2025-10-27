@@ -453,8 +453,8 @@ describe('RAG Module', () => {
 
   // COMMENTED OUT: embedText, search, upsertDocuments functions don't exist in current implementation
   // These are legacy tests for functionality that was removed or not yet implemented
-  /*
-  describe('embedText', () => {
+  // /* legacy tests commented out (was an unclosed block comment which broke test transform)
+  describe.skip('embedText', () => {
     it('should generate embeddings using Workers AI', async () => {
       const { embedText } = await import('../src/rag');
       
@@ -519,7 +519,7 @@ describe('RAG Module', () => {
     });
   });
 
-  describe('search', () => {
+  describe.skip('search', () => {
     it('should perform semantic search and return ranked results', async () => {
       const { search } = await import('../src/rag');
       
@@ -602,7 +602,7 @@ describe('RAG Module', () => {
     });
   });
 
-  describe('upsertDocuments', () => {
+  describe.skip('upsertDocuments', () => {
     it('should upsert documents with embeddings to vector index', async () => {
       const { upsertDocuments } = await import('../src/rag');
       

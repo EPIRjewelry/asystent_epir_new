@@ -32,34 +32,85 @@ export function detectMcpIntent(userMessage: string): 'cart' | 'order' | null {
  * UWAGA: Musisz dostosować wywołania 'getCart' i 'getMostRecentOrderStatus' 
  * do rzeczywistych funkcji narzędziowych MCP (jeśli ich nazwy są inne).
  */
-import { searchShopPoliciesAndFaqs, searchProductCatalogWithMCP } from './rag';
 
 export async function fetchMcpContextIfNeeded(
   intent: 'cart' | 'order' | null,
   cartId: string | null | undefined,
-  env: any
+  env: any,
+  // optional injectable functions for tests
+  getCartFn?: (id: string, env: any) => Promise<any>,
+  getMostRecentOrderStatusFn?: (env: any) => Promise<any>
 ): Promise<string | null> {
   try {
+    const getCartImpl = getCartFn ?? ((id: string, e: any) => getCart(e, id));
+    const getOrderImpl = getMostRecentOrderStatusFn ?? ((e: any) => getMostRecentOrderStatus(e));
+
     if (intent === 'cart' && cartId) {
-      const cartResponse = await searchProductCatalogWithMCP(cartId, env);
-      if (cartResponse.error) {
-        return `Error fetching cart context: ${cartResponse.error}`;
+      try {
+        const raw = await getCartImpl(cartId, env);
+        // raw may be JSON string or already-parsed object
+        let parsed: any = raw;
+        if (typeof raw === 'string') {
+          try {
+            parsed = JSON.parse(raw);
+          } catch (e) {
+            return `Kontekst Koszyka (surowy): ${String(raw)}`;
+          }
+        }
+
+        // Build simple cart summary
+        const lines = parsed?.lines?.edges || [];
+        const items = lines
+          .map((edge: any) => {
+            const qty = edge?.node?.quantity ?? '';
+            const title = edge?.node?.merchandise?.product?.title ?? edge?.node?.merchandise?.title ?? '';
+            return `${title}${qty ? ` x${qty}` : ''}`.trim();
+          })
+          .filter(Boolean)
+          .join(', ');
+
+        const amount = parsed?.cost?.totalAmount?.amount;
+        const currency = parsed?.cost?.totalAmount?.currencyCode;
+
+        let out = `Kontekst Koszyka`;
+        if (items) out += `: ${items}`;
+        if (amount && currency) out += ` — ${amount} ${currency}`;
+        return out;
+      } catch (err) {
+        console.error('fetchMcpContextIfNeeded cart error:', err);
+        return 'Błąd pobierania kontekstu';
       }
-      return `Cart Context: ${JSON.stringify(cartResponse)}`;
     }
 
     if (intent === 'order') {
-      const orderResponse = await searchShopPoliciesAndFaqs('order status', env);
-      if (orderResponse.error) {
-        return `Error fetching order context: ${orderResponse.error}`;
+      try {
+        const raw = await getOrderImpl(env);
+        let parsed: any = raw;
+        if (typeof raw === 'string') {
+          try {
+            parsed = JSON.parse(raw);
+          } catch (e) {
+            return `Kontekst Zamówienia (surowy): ${String(raw)}`;
+          }
+        }
+
+        let out = `Kontekst Zamówienia`;
+        if (parsed?.name) out += `: ${parsed.name}`;
+        if (parsed?.displayFulfillmentStatus) out += ` — ${parsed.displayFulfillmentStatus}`;
+        if (parsed?.totalPriceSet?.shopMoney?.amount && parsed?.totalPriceSet?.shopMoney?.currencyCode) {
+          out += ` — ${parsed.totalPriceSet.shopMoney.amount} ${parsed.totalPriceSet.shopMoney.currencyCode}`;
+        }
+        return out;
+      } catch (err) {
+        console.error('fetchMcpContextIfNeeded order error:', err);
+        return 'Błąd pobierania kontekstu';
       }
-      return `Order Context: ${JSON.stringify(orderResponse)}`;
     }
 
     return null;
   } catch (error) {
     console.error('Error in fetchMcpContextIfNeeded:', error);
-    return `Unexpected error: ${error.message}`;
+    return `Unexpected error: ${error?.message ?? String(error)}`;
   }
 }
 
@@ -1062,16 +1113,26 @@ function streamAssistantResponse(
           await writer.write(encoder.encode(`data: ${evt}\n\n`));
         }
 
-        // 5. Parse final JSON and extract reply
-        let finalText = fullReply;
+        // 5. Parse final JSON and extract reply (robust with fallback)
+        let finalText: any = fullReply;
         try {
           const parsed = JSON.parse(fullReply);
           if (parsed.reply) {
             finalText = parsed.reply;
+          } else if (parsed.tool_call) {
+            // If model requested a tool call, keep the parsed object so frontend can handle it
+            finalText = parsed;
+          } else {
+            // If parsed but unexpected shape, keep raw parsed object
+            finalText = parsed;
           }
         } catch (e) {
-          // If not JSON, use raw text
-          console.warn('Stream response not JSON, using raw text');
+          // If not JSON, use a safe fallback object and log raw response for debugging
+          console.warn('Stream response not JSON, using fallback object. Raw response:', fullReply);
+          const fallback = { error: 'Błąd odpowiedzi modelu: niepoprawny format. Spróbuj sformułować pytanie inaczej.' };
+          finalText = fallback;
+          // Replace fullReply with stringified fallback so done event contains useful info
+          fullReply = JSON.stringify(fallback);
         }
 
         // 5. Append final reply to session
@@ -1081,9 +1142,9 @@ function streamAssistantResponse(
           body: JSON.stringify({ role: 'assistant', content: finalText, session_id: sessionId }),
         });
 
-        // 6. Send done event
+        // 6. Send done event (include parsed final content or fallback for debugging)
         await writer.write(
-          encoder.encode(`data: ${JSON.stringify({ content: fullReply, session_id: sessionId, done: true })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ content: finalText, session_id: sessionId, done: true })}\n\n`)
         );
         await writer.write(encoder.encode('data: [DONE]\n\n'));
         
@@ -1117,6 +1178,23 @@ function streamAssistantResponse(
     },
   });
 }
+
+// Konfiguracja AI do integracji z Dev MCP Server i automatycznego pobierania dokumentacji Shopify
+export const AI_CONFIG = {
+  mcpServerUrl: process.env.MCP_SERVER_URL || 'https://prod-mcp-server.epir-art-jewellery.local',
+  shopifyDocsEndpoint: '/shopify/docs',
+  shopifyApiSchemaEndpoint: '/shopify/api-schema',
+  shopifyGuidesEndpoint: '/shopify/guides',
+  autoFetchDocs: false, // AI automatycznie pobiera dokumentację i schematy
+  autoSearchGuides: false, // AI automatycznie przeszukuje wskazówki programistyczne
+};
+
+// Przykład użycia w kodzie AI:
+// import { AI_CONFIG } from './index';
+// async function fetchShopifyDocs() {
+//   const res = await fetch(`${AI_CONFIG.mcpServerUrl}${AI_CONFIG.shopifyDocsEndpoint}`);
+//   return await res.json();
+// }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
