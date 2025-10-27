@@ -1,8 +1,10 @@
 ﻿// Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
+// Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
 (function(){
   const elForm = document.getElementById('assistant-form');
   const elInput = document.getElementById('assistant-input');
   const elMsgs = document.getElementById('assistant-messages');
+  const elLoader = document.getElementById('assistant-loader');
 
   function addMsg(role, text){
     const div = document.createElement('div');
@@ -12,12 +14,20 @@
     elMsgs.scrollTop = elMsgs.scrollHeight;
   }
 
+  function showLoader(){
+    if(elLoader) elLoader.style.display = 'flex';
+  }
+  function hideLoader(){
+    if(elLoader) elLoader.style.display = 'none';
+  }
+
   elForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const text = elInput.value.trim();
     if(!text) return;
     addMsg('user', text);
     elInput.value = '';
+    showLoader();
 
     try {
       const res = await fetch('/apps/assistant/chat', {
@@ -26,9 +36,11 @@
         body: JSON.stringify({ message: text, session_id: localStorage.getItem('epir_session') || null })
       });
       const data = await res.json();
+      hideLoader();
       if(data && data.reply){ addMsg('assistant', data.reply); }
       if(data && data.session_id){ localStorage.setItem('epir_session', data.session_id); }
     } catch(err){
+      hideLoader();
       addMsg('assistant', 'Przepraszam, wystąpił błąd.');
     }
   });

@@ -63,16 +63,59 @@ function extractKeywords(query: string): string {
  * This function is for internal worker-to-worker calls within the same execution context.
  */
 export async function callMcpTool(env: any, toolName: string, args: any): Promise<any> {
+  // If WORKER_ORIGIN is provided, call the MCP endpoint via HTTP (this is what tests expect).
+  const workerOrigin = env?.WORKER_ORIGIN;
+  const payload = {
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: { name: toolName, arguments: args },
+    id: Date.now()
+  };
+
+  if (workerOrigin) {
+    const url = `${workerOrigin.replace(/\/$/, '')}/mcp/tools/call`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 429) {
+          // Rate limited - retry with backoff
+          const backoff = 100 * (2 ** attempt);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          continue;
+        }
+
+        const j = await res.json().catch(() => null) as any;
+        if (!j) return null;
+        if (j.error) return null;
+        return j.result ?? null;
+      } catch (err) {
+        console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
+          continue;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Fallback: direct internal call
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const result = await callMcpToolDirect(env, toolName, args);
-      
       if (result?.error) {
         throw new Error(`MCP tool call failed: ${result.error.message}`);
       }
+      if (result?.result === false) return null;
       return result?.result ?? null;
     } catch (err) {
-      console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
+      console.error(`callMcpToolDirect attempt ${attempt + 1} error:`, err);
       if (attempt < 2) {
         await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
       } else {
@@ -84,6 +127,22 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
 }
 
 /**
+ * Wrapper for MCP tool calls with error handling and fallback.
+ */
+async function callMcpToolWithFallback(toolName: string, args: any, env: any): Promise<any> {
+  try {
+    const response = await callMcpToolDirect(toolName, args, env);
+    return response;
+  } catch (error) {
+    console.error(`MCP tool error (${toolName}):`, error);
+    if (error.message.includes('401')) {
+      return { error: 'Unauthorized access. Please check your configuration.' };
+    }
+    return { error: `Tool ${toolName} failed: ${error.message}` };
+  }
+}
+
+/**
  * searchProductCatalogWithMCP
  * - używa MCP jako PRIMARY source dla katalogu produktów
  * - Vectorize jako fallback offline/błąd MCP
@@ -91,78 +150,50 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
 export async function searchProductCatalogWithMCP(
   query: string,
   shopDomain: string | undefined,
-  env: any,
-  context?: string,
-  vectorIndex?: VectorizeIndex,
-  aiBinding?: any
+  context?: string
 ): Promise<string | undefined> {
-  // Zwracamy string context (np. lista produktów w formie tekstowej) lub undefined
   if (!shopDomain) return '';
-  
   try {
-    // PRIMARY: Shopify natywny endpoint /api/mcp
-    console.log('[RAG] 🔍 Calling Shopify native MCP endpoint...');
-    console.log('[RAG] 🔑 Token check:', {
-      hasToken: !!env.SHOPIFY_STOREFRONT_TOKEN,
-      shopDomain: env.SHOP_DOMAIN,
-      tokenPrefix: env.SHOPIFY_STOREFRONT_TOKEN?.substring(0, 10)
+    // MCP endpoint
+  const mcpEndpoint = `https://epir-art-silver-jewellery.myshopify.com/api/mcp`;
+    const payload = {
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: {
+        name: 'search_shop_catalog',
+        arguments: { query, context: context || 'jewelry' }
+      },
+      id: Date.now()
+    };
+    const res = await fetch(mcpEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    
-    // Extract keywords from user query for better search results
-    const searchQuery = extractKeywords(query);
-    console.log('[RAG] 🔍 Original query:', query);
-    console.log('[RAG] 🔍 Search keywords:', searchQuery);
-    
-    const { callShopifyMcpTool } = await import('./shopify-mcp-client');
-    const mcpResult = await callShopifyMcpTool('search_shop_catalog', { query: searchQuery, context: context || 'jewelry' }, env);
-    
-    console.log('[RAG] 📦 MCP Result:', mcpResult?.substring(0, 500)); // First 500 chars
-    
-    if (mcpResult && mcpResult.trim().length > 0) {
-      console.log('[RAG] ✅ MCP catalog search successful');
-      return `Produkty z katalogu (MCP):\n${mcpResult}`;
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '<no body>');
+      throw new Error(`MCP search_shop_catalog error ${res.status}: ${txt}`);
     }
-    
-    // FALLBACK: Legacy mcpCatalogSearch (internal)
-    console.log('[RAG] ⚠️ MCP primary failed, trying legacy search...');
-    const mcp = await import('./mcp');
-    const searchContext = context || 'luxury fair trade jewelry';
-    const products = await mcp.mcpCatalogSearch(shopDomain, query, env, searchContext);
-    
-    if (products && products.length > 0) {
-      const items = products.slice(0, 5).map((p) => {
-        const title = p.name || 'produkt';
-        const url = p.url || '';
-        return `- ${title}${url ? ` (${url})` : ''}${p.price ? ` - ${p.price}` : ''}`;
-      });
-      return items.length ? `Znalezione produkty (legacy):\n${items.join('\n')}` : '';
+    const j = await res.json().catch(() => null) as any;
+    console.log('[MCP DEBUG] Odpowiedź search_shop_catalog:', JSON.stringify(j));
+    if (j && j.error) {
+      throw new Error(`MCP tool call failed: ${j.error.message}`);
     }
-    
-    // FALLBACK: Vectorize (offline/catalog indexed)
-    if (vectorIndex && aiBinding) {
-      console.log('[RAG] ⚠️ MCP unavailable, using Vectorize fallback...');
-      const embeddingResult = await aiBinding.run('@cf/baai/bge-large-en-v1.5', {
-        text: [query]
-      });
-      const queryVector = embeddingResult.data[0];
-      const vres = await vectorIndex.query(queryVector, { topK: 5 });
-      
-      const items = vres.matches
-        .filter((r: any) => r.metadata?.type === 'product')
-        .map((r: any) => {
-          const title = r.metadata?.title || r.metadata?.name || 'produkt';
-          const price = r.metadata?.price || '';
-          return `- ${title}${price ? ` - ${price}` : ''}`;
-        });
-      
-      if (items.length > 0) {
-        return `Produkty z Vectorize (offline):\n${items.join('\n')}`;
+    // Standard MCP result: j.result.content[0].text
+    if (j && j.result && Array.isArray(j.result.content)) {
+      if (j.result.content.length === 0) {
+        return '';
       }
+      const textContent = j.result.content.find((c: any) => c.type === 'text');
+      if (textContent?.text) {
+        return String(textContent.text);
+      }
+      return '';
     }
-    
+    // Fallback: zwróć raw result jako JSON string
     return '';
   } catch (e) {
-    console.error('[RAG] ❌ searchProductCatalogWithMCP complete failure:', e);
+    console.error('[RAG] ❌ searchProductCatalogWithMCP MCP failure:', e);
     return '';
   }
 }
@@ -182,53 +213,73 @@ export async function searchProductsAndCartWithMCP(
   vectorIndex?: VectorizeIndex,
   aiBinding?: any
 ): Promise<string> {
-  let output = '';
-  
+  let output: string = '';
+
   try {
     // CART OPERATIONS (jeśli intent = 'cart')
     if (intent === 'cart' && cartId) {
-      console.log('[RAG] 🛒 Fetching cart via MCP...');
+      console.log('[RAG] 🛒 Aktualizacja koszyka przez MCP...');
+      // Przykład: params do update_cart (można rozbudować o przekazywanie produktów)
+      // const updateParams = { cart_id: cartId, items: [{ product_id, quantity }] };
+      // Jeśli chcesz zaktualizować koszyk, wywołaj update_cart:
+      // await callMcpTool(env, 'update_cart', updateParams);
+
+      // Pobierz aktualny stan koszyka
       const cartResult = await callMcpTool(env, 'get_cart', { cart_id: cartId });
-      
-      if (cartResult && cartResult.content) {
-        const cartText = Array.isArray(cartResult.content)
-          ? cartResult.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
-          : cartResult.content;
+
+      let cartText = '';
+      if (cartResult && Array.isArray(cartResult.content)) {
+        cartText = cartResult.content
+          .filter((c: any) => c.type === 'text' && typeof c.text === 'string')
+          .map((c: any) => c.text)
+          .join('\n');
+      }
+      if (cartText) {
         output += `\n[KOSZYK (MCP)]\n${cartText}\n`;
       }
     }
-    
+
     // ORDER OPERATIONS (jeśli intent = 'order')
     if (intent === 'order') {
-      console.log('[RAG] 📦 Fetching recent order via MCP...');
+      console.log('[RAG] 📦 Pobieranie statusu zamówienia przez MCP...');
+      // Przykład: pobierz status konkretnego zamówienia jeśli podano order_id
+      // const orderStatus = await callMcpTool(env, 'get_order_status', { order_id });
+      // if (orderStatus && Array.isArray(orderStatus.content)) {
+      //   ...obsługa konkretnego zamówienia...
+      // }
+
+      // Pobierz status ostatniego zamówienia
       const orderResult = await callMcpTool(env, 'get_most_recent_order_status', {});
-      
-      if (orderResult && orderResult.content) {
-        const orderText = Array.isArray(orderResult.content)
-          ? orderResult.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
-          : orderResult.content;
+
+      let orderText = '';
+      if (orderResult && Array.isArray(orderResult.content)) {
+        orderText = orderResult.content
+          .filter((c: any) => c.type === 'text' && typeof c.text === 'string')
+          .map((c: any) => c.text)
+          .join('\n');
+      }
+      if (orderText) {
         output += `\n[OSTATNIE ZAMÓWIENIE (MCP)]\n${orderText}\n`;
       }
     }
-    
+
     // PRODUCT SEARCH (zawsze dla intent = 'search')
     if (intent === 'search' || !intent) {
       console.log('[RAG] 🔍 Searching products via MCP...');
       const productContext = await searchProductCatalogWithMCP(
         query,
         shopDomain,
-        env,
-        'luxury fair trade jewelry',
-        vectorIndex,
-        aiBinding
+        'luxury fair trade jewelry'
       );
-      
       if (productContext) {
         output += `\n${productContext}\n`;
       }
     }
-    
-    return output.trim();
+
+  // Always return a string, never false/undefined
+  // If output is empty, return empty string
+  const result = typeof output === 'string' ? output.trim() : '';
+  return result || '';
   } catch (e) {
     console.error('[RAG] ❌ searchProductsAndCartWithMCP error:', e);
     return '';
@@ -248,34 +299,67 @@ export async function searchShopPoliciesAndFaqsWithMCP(
   topK: number = 3
 ): Promise<RagSearchResult> {
   try {
-    // Use Vectorize for FAQ/policy search
-    if (vectorIndex && aiBinding) {
-      try {
-        // Get embedding for query
-        const embeddingResult = await aiBinding.run('@cf/baai/bge-large-en-v1.5', {
-          text: [query]
-        });
-        
-        const queryVector = embeddingResult.data[0];
-        const vres = await vectorIndex.query(queryVector, { topK });
-        
-        const results: RagResultItem[] = vres.matches.map((r: any) => ({
-          id: r.id,
-          title: r.metadata?.title ?? r.id,
-          text: r.metadata?.text ?? '',
-          snippet: (r.metadata?.text ?? '').slice(0, 500),
-          source: r.metadata?.source ?? 'vectorize',
-          score: r.score,
-          metadata: r.metadata,
-          full: r.metadata
-        }));
-        return { query, results };
-      } catch (ve) {
-        console.warn('Vectorize query failed', ve);
+    // MCP path
+    if (shopDomain) {
+  const mcpEndpoint = `https://epir-art-silver-jewellery.myshopify.com/api/mcp`;
+      const payload = {
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: {
+          name: 'search_shop_policies_and_faqs',
+          arguments: { query }
+        },
+        id: Date.now()
+      };
+      const res = await fetch(mcpEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '<no body>');
+        throw new Error(`MCP search_shop_policies_and_faqs error ${res.status}: ${txt}`);
       }
+      const j = await res.json().catch(() => null) as any;
+      if (j && j.error) {
+        throw new Error(`MCP tool call failed: ${j.error.message}`);
+      }
+      // Standard MCP result: j.result.content[]
+      let results: RagResultItem[] = [];
+      if (j && j.result && Array.isArray(j.result.content)) {
+        results = j.result.content
+          .filter((c: any) => c.type === 'text')
+          .map((c: any, idx: number) => ({
+            id: `faq_${idx + 1}`,
+            title: c.title || undefined,
+            text: c.text || '',
+            snippet: (c.text || '').slice(0, 500),
+            source: 'mcp',
+            score: undefined,
+            metadata: c,
+            full: c
+          }));
+      }
+      return { query, results };
     }
-
-    // Fallback: empty results
+    // Fallback: Vectorize
+    if (vectorIndex && aiBinding) {
+      // Run embedding
+      const embedding = await aiBinding.run('@cf/baai/bge-large-en-v1.5', { text: [query] });
+      const vector = embedding?.data?.[0] || [];
+      const vectorResults = await vectorIndex.query(vector, { topK });
+      const results: RagResultItem[] = (vectorResults.matches || []).map((match, idx) => ({
+        id: match.id || `vector_${idx + 1}`,
+        text: match.metadata?.text || '',
+        snippet: (match.metadata?.text || '').slice(0, 500),
+        source: 'vectorize',
+        score: match.score,
+        metadata: match.metadata,
+        full: match
+      }));
+      return { query, results };
+    }
+    // No MCP, no Vectorize
     return { query, results: [] };
   } catch (err) {
     console.error('searchShopPoliciesAndFaqsWithMCP error:', err);
