@@ -110,7 +110,21 @@ export async function fetchMcpContextIfNeeded(
     return null;
   } catch (error) {
     console.error('Error in fetchMcpContextIfNeeded:', error);
-    return `Unexpected error: ${error?.message ?? String(error)}`;
+    return `Unexpected error: ${toErrorMessage(error)}`;
+  }
+}
+
+// Bezpieczne pozyskanie komunikatu błędu z unknown
+function toErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const msg = (error as any).message;
+    return typeof msg === 'string' ? msg : JSON.stringify(msg);
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
   }
 }
 
@@ -123,7 +137,10 @@ import {
   type VectorizeIndex
 } from './rag';
 import { LUXURY_SYSTEM_PROMPT } from './prompts/luxury-system-prompt';
-import { streamGroqResponse, getGroqResponse } from './ai-client';
+import { streamGroqHarmonyEvents, getGroqResponse, streamGroqResponse } from './ai-client';
+import { getAdminExecutionQueue } from './admin-queue';
+import { validateFunctionSignature } from './mcp_tools';
+import { buildHarmonyMessages, classifyQueryComplexity, DeveloperConstraints } from './groq/engineer_prompt';
 // import { buildGroqMessagesFromData } from './groq/engineer_prompt';
 import { generateMcpToolSchema } from './mcp/tool_schema';
 import { getCart, getMostRecentOrderStatus } from './shopify-mcp-client';
@@ -184,6 +201,7 @@ export interface Env {
   SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
   GROQ_API_KEY?: string;
+  GROQ_MODEL?: string; // Optional: override for Groq model (e.g., 'mixtral-8x7b-32768')
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
   WORKER_ORIGIN?: string;
 }
@@ -760,7 +778,11 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   if (payload.stream && env.GROQ_API_KEY) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   } else if (env.GROQ_API_KEY) {
-    const modelResponse = await getGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+    const modelResponse = await getGroqResponse(
+  messages,
+  (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
+  env as { GROQ_API_KEY: string }
+    );
     
     // === BLOK WALIDACJI (KROK 3.c) ===
     // Zakładamy, że 'modelResponse' to string z odpowiedzią JSON od Groq
@@ -896,7 +918,11 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
             if (payload.stream) {
               // Dla streaming: zwróć strumień z LLM
               console.log(`📡 Streamuję finalną odpowiedź LLM po wykonaniu narzędzia...`);
-              const stream = await streamGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+              const stream = await streamGroqResponse(
+                messages,
+                (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
+                env as { GROQ_API_KEY: string }
+              );
               
               return new Response(stream, {
                 headers: {
@@ -909,7 +935,11 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
             } else {
               // Dla non-streaming: pobierz pełną odpowiedź
               console.log(`📝 Pobieram finalną odpowiedź LLM po wykonaniu narzędzia...`);
-              const finalResponse = await getGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
+              const finalResponse = await getGroqResponse(
+                messages,
+                (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
+                env as { GROQ_API_KEY: string }
+              );
               
               // Parsuj finalną odpowiedź (powinna być JSON lub czysty tekst)
               let finalReply = finalResponse;
@@ -992,34 +1022,24 @@ function streamAssistantResponse(
   env: Env,
 ): Response {
   const { readable, writable } = new TransformStream();
-  
   (async () => {
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
-    let fullReply = '';
-    
     try {
       // 1. Fetch history and cartId
       const historyResp = await stub.fetch('https://session/history');
       const historyRaw = await historyResp.json().catch(() => []);
       const history = ensureHistoryArray(historyRaw);
-      
       const cartIdResp = await stub.fetch('https://session/cart-id');
       const cartIdData = await cartIdResp.json().catch(() => ({ cart_id: null }));
       const cartId = (cartIdData as { cart_id?: string | null }).cart_id;
 
-      // 2. Perform RAG search with MCP integration
+      // 2. RAG/MCP context (unchanged)
       let ragContext: string | undefined;
-      
-      // Smart intent detection - skip MCP for conversational/follow-up queries
       const lowerMsg = userMessage.toLowerCase();
-      
-      // Conversational queries (no product search needed)
       const isConversational = /^(jak|co|kiedy|dlaczego|czy|pamietasz|pamiętasz|jak mam na imię|kim jestem|znasz mnie|przypomnij|co ostatnio|czego szukałem|co mówiłem|co pytałem)/i.test(lowerMsg)
         || /(jak się masz|jak tam|co słychać|co u ciebie|jak leci|jak minął dzień|dobrze się czujesz)/i.test(lowerMsg);
       const isFollowUp = /^(ten|ta|to|go|je|ją|chciałbym|chce|możesz|pokaz|pokaż mi|wyślij|link)/i.test(lowerMsg.trim());
-      
-      // Extract entity from history for follow-up queries
       let entityFromHistory: string | undefined;
       if (isFollowUp && history.length > 0) {
         const lastAssistant = [...history].reverse().find(h => h.role === 'assistant');
@@ -1030,23 +1050,16 @@ function streamAssistantResponse(
           }
         }
       }
-      
       const isCartIntent = /koszyk|dodaj do koszyka|usuń z koszyka|cart|add to cart/.test(lowerMsg);
       const isOrderIntent = /zamówienie|status zamówienia|order|tracking/.test(lowerMsg);
       const isProductIntent = /produkt|pierścionek|naszyjnik|kolczyki|bransoletka|biżuteria|szukam|pokaż|product|ring|necklace|earring|bracelet|jewelry|opal|tanzanit|motyw|wzór|styl/.test(lowerMsg);
-      
-      // PRIMARY: MCP for products, cart, orders (skip for conversational queries)
       if (env.SHOP_DOMAIN && !isConversational) {
         const { searchProductsAndCartWithMCP } = await import('./rag');
-        
         let intent: 'search' | 'cart' | 'order' | undefined;
         if (isCartIntent) intent = 'cart';
         else if (isOrderIntent) intent = 'order';
         else if (isProductIntent || isFollowUp) intent = 'search';
-        
-        // Use entity from history for follow-up queries
         const searchQuery = entityFromHistory || userMessage;
-        
         const mcpResult = await searchProductsAndCartWithMCP(
           searchQuery,
           env.SHOP_DOMAIN,
@@ -1056,23 +1069,14 @@ function streamAssistantResponse(
           env.VECTOR_INDEX,
           env.AI
         );
-        
-        if (mcpResult) {
-          ragContext = mcpResult;
-        }
+        if (mcpResult) ragContext = mcpResult;
       }
-      
-      // FALLBACK: Vectorize for FAQ/policies
       if (!ragContext || ragContext.trim().length === 0) {
         if (env.VECTOR_INDEX && env.AI) {
           const ragResult = await searchShopPoliciesAndFaqs(userMessage, env.VECTOR_INDEX, env.AI, 3);
-          if (ragResult.results.length > 0) {
-            ragContext = formatRagContextForPrompt(ragResult);
-          }
+          if (ragResult.results.length > 0) ragContext = formatRagContextForPrompt(ragResult);
         }
       }
-      
-      // 3. Fetch additional MCP context (wykryj intencję i przekaż funkcje MCP)
       const intent = detectMcpIntent(userMessage);
       const mcpContext = await fetchMcpContextIfNeeded(
         intent,
@@ -1082,104 +1086,47 @@ function streamAssistantResponse(
         get_most_recent_order_status
       );
 
-      // Send initial session_id event
-      await writer.write(encoder.encode(`data: ${JSON.stringify({ session_id: sessionId, done: false })}\n\n`));
+      // 3. MoE complexity classifier for prompt
+      const complexity = classifyQueryComplexity(userMessage);
+      const devConstraints: DeveloperConstraints = {
+        reasoning_mode: complexity,
+        max_cot_tokens: complexity === 'high' ? 256 : 64,
+      };
+      // 4. Build Harmony messages
+      const promptData = {
+        systemPersona: LUXURY_SYSTEM_PROMPT,
+        chatHistory: history.filter(h => h.role === 'user' || h.role === 'assistant').map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+        ragContext: Array.isArray(ragContext) ? ragContext : [],
+        userQuery: userMessage
+      };
+      const harmonyMessages = buildHarmonyMessages(promptData, devConstraints);
 
-      // 4. Stream from Groq AI (jak w oryginalnej wersji)
+      // 5. Harmony streaming loop
       if (env.GROQ_API_KEY) {
-        const promptData = {
-          systemPersona: LUXURY_SYSTEM_PROMPT,
-          chatHistory: history,
-          ragContext: Array.isArray(ragContext) ? ragContext : [],
-          userQuery: userMessage
-        };
-  // const messages = buildGroqMessagesFromData(promptData);
-        const messages = [
-          { role: 'system', content: promptData.systemPersona },
-          ...promptData.chatHistory.map((entry: any) => ({ role: entry.role, content: entry.content })),
-          { role: 'user', content: promptData.userQuery }
-        ];
-        const stream = await streamGroqResponse(messages, 'llama-3.3-70b-versatile', env as { GROQ_API_KEY: string });
-        const reader = stream.getReader();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = typeof value === 'string' ? value : String(value);
-          fullReply += chunk;
-
-          const evt = JSON.stringify({ delta: chunk, session_id: sessionId, done: false });
-          await writer.write(encoder.encode(`data: ${evt}\n\n`));
-        }
-
-        // 5. Parse final JSON and extract reply (robust with fallback)
-        let finalText: any = fullReply;
-        try {
-          const parsed = JSON.parse(fullReply);
-          if (parsed.reply) {
-            finalText = parsed.reply;
-          } else if (parsed.tool_call) {
-            // If model requested a tool call, keep the parsed object so frontend can handle it
-            finalText = parsed;
-          } else {
-            // If parsed but unexpected shape, keep raw parsed object
-            finalText = parsed;
-          }
-        } catch (e) {
-          // If not JSON, use a safe fallback object and log raw response for debugging
-          console.warn('Stream response not JSON, using fallback object. Raw response:', fullReply);
-          const fallback = { error: 'Błąd odpowiedzi modelu: niepoprawny format. Spróbuj sformułować pytanie inaczej.' };
-          finalText = fallback;
-          // Replace fullReply with stringified fallback so done event contains useful info
-          fullReply = JSON.stringify(fallback);
-        }
-
-        // 5. Append final reply to session
-        await stub.fetch('https://session/append', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'assistant', content: finalText, session_id: sessionId }),
-        });
-
-        // 6. Send done event (include parsed final content or fallback for debugging)
-        await writer.write(
-          encoder.encode(`data: ${JSON.stringify({ content: finalText, session_id: sessionId, done: true })}\n\n`)
+        const groqMessages = harmonyMessages
+          .filter(m => m.role !== 'developer')
+          .map(m => ({ role: m.role as 'system' | 'user' | 'assistant' | 'tool', content: m.content, tool_call_id: m.tool_call_id, name: m.name }));
+        const eventStream = await streamGroqHarmonyEvents(
+          groqMessages,
+          (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
+          env as { GROQ_API_KEY: string }
         );
-        await writer.write(encoder.encode('data: [DONE]\n\n'));
-        
-      } else {
-        // Fallback for when Groq API key is not available
-        const fallbackReply = "Przepraszam, usługa AI jest tymczasowo niedostępna.";
-        await writer.write(encoder.encode(`data: ${JSON.stringify({ delta: fallbackReply, session_id: sessionId, done: true })}\n\n`));
-        await writer.write(encoder.encode('data: [DONE]\n\n'));
+        // TODO: Write eventStream to writer as needed
       }
-      
-      await writer.close();
-    } catch (e: any) {
-      console.error('Streaming error:', e);
-      try {
-        // Try to send an error message to the client
-        await writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Błąd podczas generowania odpowiedzi.', details: e.message })}\n\n`));
-        await writer.close();
-      } catch (err) {
-        // If writing fails, just log it. The connection might be closed.
-        console.error('Failed to send error to client:', err);
-      }
+    } catch (err) {
+      console.error('Error in streamAssistantResponse:', err);
+    } finally {
+      writer.close();
     }
   })();
-
   return new Response(readable, {
     headers: {
-      ...cors(env),
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     },
   });
 }
-
-// Konfiguracja AI do integracji z Dev MCP Server i automatycznego pobierania dokumentacji Shopify
 export const AI_CONFIG = {
   mcpServerUrl: process.env.MCP_SERVER_URL || 'https://prod-mcp-server.epir-art-jewellery.local',
   shopifyDocsEndpoint: '/shopify/docs',
@@ -1266,7 +1213,19 @@ export {
   streamAssistantResponse,
   verifyAppProxyHmac,
   handleMcpRequest,
-  streamGroqResponse,
   getGroqResponse,
   RateLimiterDO,
 };
+// Logging utility functions
+export function logInfo(message: string, data?: any) {
+  console.log(`[INFO] ${message}`, data || '');
+}
+
+export function logDebug(message: string, data?: any) {
+  console.debug(`[DEBUG] ${message}`, data || '');
+}
+
+export function logError(message: string, data?: any) {
+  console.error(`[ERROR] ${message}`, data || '');
+}
+
