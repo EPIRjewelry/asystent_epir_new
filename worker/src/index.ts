@@ -602,20 +602,32 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   const customerId = url.searchParams.get('logged_in_customer_id') || null;
   const shopId = url.searchParams.get('shop') || env.SHOP_DOMAIN;
 
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('[handleChat] 🔍 INCOMING REQUEST');
+  console.log('[handleChat] 📝 Message:', payload.message);
+  console.log('[handleChat] 🆔 Session ID:', payload.session_id || 'NEW');
+  console.log('[handleChat] 👤 Customer ID (raw):', customerId || 'NOT LOGGED IN');
+  console.log('[handleChat] 🏪 Shop ID:', shopId);
+  console.log('[handleChat] 🛒 Cart ID:', payload.cart_id || 'NONE');
+  console.log('[handleChat] 📡 Stream:', payload.stream || false);
+
   // [TOKEN VAULT] Get or create anonymized token (RODO-compliant)
   let customerToken: string | undefined;
   if (customerId && shopId) {
     try {
+      console.log('[handleChat] 🔐 TokenVault: Generating token...');
       const tokenVaultId = env.TOKEN_VAULT_DO.idFromName('global');
       const tokenVaultStub = env.TOKEN_VAULT_DO.get(tokenVaultId);
       const { TokenVault } = await import('./token-vault');
       const vault = new TokenVault(tokenVaultStub);
       customerToken = await vault.getOrCreateToken(customerId, shopId);
-      console.log('[handleChat] Customer token generated:', customerToken.substring(0, 16) + '...');
+      console.log('[handleChat] ✅ TokenVault: Token generated:', customerToken.substring(0, 16) + '...');
     } catch (error) {
-      console.error('[handleChat] TokenVault error:', error);
+      console.error('[handleChat] ❌ TokenVault error:', error);
       // Continue without token if vault fails
     }
+  } else {
+    console.log('[handleChat] ⚠️ TokenVault: SKIPPED (customer not logged in or missing shop)');
   }
 
   // Greeting prefilter: detect short greetings and return fast response without RAG/MCP
@@ -720,6 +732,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   
   // PRIMARY: MCP for products, cart, orders (skip for conversational queries)
   if (env.SHOP_DOMAIN && !isConversational) {
+    console.log('[handleChat] 🔍 MCP: Detected intent - searching products/cart/orders...');
     const { searchProductsAndCartWithMCP } = await import('./rag');
     
     let intent: 'search' | 'cart' | 'order' | undefined;
@@ -727,8 +740,11 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     else if (isOrderIntent) intent = 'order';
     else if (isProductIntent || isFollowUp) intent = 'search';
     
+    console.log('[handleChat] 🎯 MCP Intent:', intent || 'NONE');
+    
     // Use entity from history for follow-up queries
     const searchQuery = entityFromHistory || payload.message;
+    console.log('[handleChat] 🔎 MCP Search Query:', searchQuery);
     
     const mcpResult = await searchProductsAndCartWithMCP(
       searchQuery,
@@ -742,11 +758,17 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     
     if (mcpResult) {
       ragContext = mcpResult;
+      console.log('[handleChat] ✅ MCP: Got context, length:', mcpResult.length, 'chars');
+    } else {
+      console.log('[handleChat] ⚠️ MCP: No context returned');
     }
+  } else {
+    console.log('[handleChat] ⏭️ MCP: Skipped (conversational query or no shop domain)');
   }
   
   // FALLBACK: Vectorize for FAQ/policies (if no product/cart/order context found)
   if (!ragContext || ragContext.trim().length === 0) {
+    console.log('[handleChat] 📚 RAG: Searching Vectorize for FAQ/policies...');
     if (env.SHOP_DOMAIN) {
       // Use MCP with Vectorize fallback for policies
       const ragResult = await searchShopPoliciesAndFaqsWithMCP(
@@ -758,6 +780,9 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       );
       if (ragResult.results.length > 0) {
         ragContext = formatRagContextForPrompt(ragResult);
+        console.log('[handleChat] ✅ RAG: Found', ragResult.results.length, 'policy documents');
+      } else {
+        console.log('[handleChat] ⚠️ RAG: No policies found');
       }
     } else if (env.VECTOR_INDEX && env.AI) {
       // Vectorize-only fallback
@@ -769,6 +794,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       );
       if (ragResult.results.length > 0) {
         ragContext = formatRagContextForPrompt(ragResult);
+        console.log('[handleChat] ✅ RAG: Found', ragResult.results.length, 'documents (Vectorize only)');
       }
     }
   }
@@ -798,14 +824,28 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     ...promptData.chatHistory.map((entry: any) => ({ role: entry.role, content: entry.content })),
     { role: 'user', content: promptData.userQuery }
   ];
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('[handleChat] 🤖 GROQ PROMPT CONSTRUCTION');
+  console.log('[handleChat] 📜 System Prompt length:', promptData.systemPersona.length, 'chars');
+  console.log('[handleChat] 📚 History entries:', promptData.chatHistory.length);
+  console.log('[handleChat] 🔍 RAG Context:', ragContext ? `${ragContext.length} chars` : 'NONE');
+  console.log('[handleChat] 💬 User Query:', promptData.userQuery);
+  console.log('[handleChat] 📨 Total messages:', messages.length);
+  console.log('[handleChat] 🔐 Customer Token in context:', customerToken ? 'YES (' + customerToken.substring(0,16) + '...)' : 'NO');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
   if (payload.stream && env.GROQ_API_KEY) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
   } else if (env.GROQ_API_KEY) {
+    console.log('[handleChat] 🚀 Calling Groq API...');
     const modelResponse = await getGroqResponse(
   messages,
   (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
   env as { GROQ_API_KEY: string }
     );
+    console.log('[handleChat] ✅ Groq Response received, length:', modelResponse?.length || 0, 'chars');
+    console.log('[handleChat] 📝 Groq Response preview:', modelResponse?.substring(0, 200) || 'EMPTY');
     
     // === BLOK WALIDACJI (KROK 3.c) ===
     // Zakładamy, że 'modelResponse' to string z odpowiedzią JSON od Groq
@@ -1041,7 +1081,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 function streamAssistantResponse(
   sessionId: string,
   userMessage: string,
-  stub: DurableObjectStub,
+  stub: any, // DurableObjectStub
   env: Env,
 ): Response {
   const { readable, writable } = new TransformStream();
