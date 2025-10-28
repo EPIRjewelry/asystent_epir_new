@@ -160,6 +160,28 @@ document.addEventListener('DOMContentLoaded', () => {
       // update ARIA
       toggle.setAttribute('aria-expanded', isClosed ? 'false' : 'true');
     });
+
+    // --- Powitanie klienta imieniem z localStorage/sessionStorage ---
+    const messagesEl = document.getElementById('assistant-messages');
+    let localName = null;
+    try {
+      localName = localStorage.getItem('epir_customer_name') || sessionStorage.getItem('epir_customer_name');
+    } catch {}
+    const loggedInCustomerId = section.dataset.loggedInCustomerId || '';
+    if (localName && !loggedInCustomerId && messagesEl) {
+      // Dodaj powitanie z imieniem tylko dla lokalnie rozpoznanego klienta
+      const welcomeDiv = document.createElement('div');
+      welcomeDiv.className = 'msg msg-assistant welcome-message';
+      welcomeDiv.setAttribute('role', 'status');
+      welcomeDiv.textContent = `Witaj ponownie, ${localName}! Miło Cię widzieć.`;
+      messagesEl.insertBefore(welcomeDiv, messagesEl.firstChild);
+    }
+
+    // --- Banner informacyjny dla klientów rozpoznanych lokalnie, ale nie zalogowanych ---
+    const banner = document.getElementById('local-memory-banner');
+    if (banner && !loggedInCustomerId && localName) {
+      banner.style.display = 'block';
+    }
   } catch (e) {
     console.warn('Assistant init error', e);
   }

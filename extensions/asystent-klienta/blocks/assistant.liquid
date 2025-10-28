@@ -89,6 +89,12 @@
 
   <div class="assistant-container">
     <div class="assistant-header" role="heading" aria-level="3">
+  <!-- Banner informacyjny dla klientów rozpoznanych lokalnie, ale nie zalogowanych -->
+  <div id="local-memory-banner" style="display:none; background:#f8f4f0; color:#222; padding:16px; border-radius:8px; margin-bottom:16px; font-size:1rem;">
+    <strong>Personalizacja na tym urządzeniu</strong><br>
+    Czy chcesz, abym korzystał z informacji zapisanych na tym urządzeniu, by spersonalizować odpowiedzi?<br>
+    <span style="font-size:0.95em; color:#555;">Zapamiętuję to wyłącznie na tym urządzeniu (dopóki nie wyczyścisz cache). Aby rozpoznać Cię na innych urządzeniach, zaloguj się.</span>
+  </div>
       <h3>{{ section.settings.title | default: default_title }}</h3>
       <button id="assistant-toggle-button" aria-expanded="{% if section.settings.start_closed %}false{% else %}true{% endif %}" aria-controls="assistant-content">
         <span aria-hidden="true">{% if section.settings.start_closed %}Otwórz{% else %}Zamknij{% endif %}</span>
