@@ -146,6 +146,7 @@ import { generateMcpToolSchema } from './mcp/tool_schema';
 import { getCart, getMostRecentOrderStatus } from './shopify-mcp-client';
 import { handleMcpRequest, callMcpToolDirect } from './mcp_server';
 import { RateLimiterDO } from './rate-limiter';
+import { TokenVaultDO } from './token-vault';
 
 // Aliasy funkcji MCP zgodne z konwencją nazewnictwa narzędzi
 const get_cart = (id: string, env: any) => getCart(env, id);
@@ -193,6 +194,7 @@ export interface Env {
   SESSIONS_KV: KVNamespace;
   SESSION_DO: DurableObjectNamespace;
   RATE_LIMITER_DO: DurableObjectNamespace;
+  TOKEN_VAULT_DO: DurableObjectNamespace;
   VECTOR_INDEX?: VectorizeIndex;
   SHOPIFY_APP_SECRET: string;
   ALLOWED_ORIGIN?: string;
@@ -593,6 +595,27 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   const payload = parseChatRequestBody(await request.json().catch(() => null));
   if (!payload) {
     return new Response('Bad Request: message required', { status: 400, headers: cors(env) });
+  }
+
+  // [TOKEN VAULT] Extract customer_id and shop_id from request
+  const url = new URL(request.url);
+  const customerId = url.searchParams.get('logged_in_customer_id') || null;
+  const shopId = url.searchParams.get('shop') || env.SHOP_DOMAIN;
+
+  // [TOKEN VAULT] Get or create anonymized token (RODO-compliant)
+  let customerToken: string | undefined;
+  if (customerId && shopId) {
+    try {
+      const tokenVaultId = env.TOKEN_VAULT_DO.idFromName('global');
+      const tokenVaultStub = env.TOKEN_VAULT_DO.get(tokenVaultId);
+      const { TokenVault } = await import('./token-vault');
+      const vault = new TokenVault(tokenVaultStub);
+      customerToken = await vault.getOrCreateToken(customerId, shopId);
+      console.log('[handleChat] Customer token generated:', customerToken.substring(0, 16) + '...');
+    } catch (error) {
+      console.error('[handleChat] TokenVault error:', error);
+      // Continue without token if vault fails
+    }
   }
 
   // Greeting prefilter: detect short greetings and return fast response without RAG/MCP
@@ -1215,6 +1238,7 @@ export {
   handleMcpRequest,
   getGroqResponse,
   RateLimiterDO,
+  TokenVaultDO,
 };
 // Logging utility functions
 export function logInfo(message: string, data?: any) {

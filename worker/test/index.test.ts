@@ -59,6 +59,7 @@ const mockEnv: Env = {
   SESSIONS_KV: {} as any,
   SESSION_DO: { idFromName: vi.fn(() => 'mock-id'), get: vi.fn(() => ({ fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify([]))) })) } as any,
   RATE_LIMITER_DO: {} as any,
+  TOKEN_VAULT_DO: {} as any,
   VECTOR_INDEX: {} as any,
   SHOPIFY_APP_SECRET: 'secret',
   ALLOWED_ORIGIN: 'http://example.com',

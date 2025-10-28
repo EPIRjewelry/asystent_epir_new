@@ -21,63 +21,58 @@ describe('Groq Module', () => {
   describe('LUXURY_SYSTEM_PROMPT', () => {
     it('should contain luxury branding for EPIR-ART-JEWELLERY', () => {
       expect(LUXURY_SYSTEM_PROMPT).toContain('EPIR-ART-JEWELLERY');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('eleganckim');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('wyrafinowanym');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('luksusowym');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('elegancki');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('luksusowy');
     });
 
     it('should include haute-couture tone guidelines', () => {
       expect(LUXURY_SYSTEM_PROMPT).toContain('haute-couture');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Elegancja z nutą ciepła');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Dyskretny humor wysokiej klasy');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Kontekst kulturalny');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Filozofia luksusu');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('ciepły, elegancki');
     });
 
-    it('should include concrete examples of good and bad tone', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('PRZYKŁADY TONU');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('❌ ZŁY');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('✅ DOBRY');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('minimalizm japoński');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('jak dobre wino');
+    it('should include concrete examples with scenarios', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('PRZYKŁAD PRZEPŁYWU');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('klient zalogowany');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('nowy klient');
     });
 
-    it('should include RAG instructions', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('retrieved_docs');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Nie halucynuj');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Cytuj źródło');
+    it('should include RAG and security instructions', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('RAG');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Nie generuj fałszywych informacji');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('Cytuj źródła RAG');
     });
 
-    it('should specify response structure', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('STRUKTURA ODPOWIEDZI');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Krótkie powitanie/podsumowanie');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Rekomendacja produktów');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Lista produktów');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Cytowanie źródeł');
+    it('should specify response structure with Chain-of-Thought', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('ETAP 1: ANALIZA I PLANOWANIE');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('ETAP 2: WYKONANIE I ODPOWIEDŹ');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('"thinking"');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('"reply"');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('"tool_call"');
     });
 
     it('should specify response constraints', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('3-5 zdań');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Maksymalna długość');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('3-5 zdań maksymalnie');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('elegancko i na temat');
     });
 
     it('should mandate Polish language and formal address', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('po polsku');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('języku polskim');
       expect(LUXURY_SYSTEM_PROMPT).toContain('Polecam Pani/Panu');
       expect(LUXURY_SYSTEM_PROMPT).toContain('unikaj slangu');
     });
 
     it('should include MCP cart and order instructions', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('AKCJE KOSZYKA I ZAMÓWIENIA');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('DOSTĘPNE NARZĘDZIA');
       expect(LUXURY_SYSTEM_PROMPT).toContain('update_cart');
       expect(LUXURY_SYSTEM_PROMPT).toContain('get_order_status');
       expect(LUXURY_SYSTEM_PROMPT).toContain('get_cart');
     });
 
-    it('should prioritize MCP products in responses', () => {
-      expect(LUXURY_SYSTEM_PROMPT).toContain('PRIORYTET #1');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('Produkty z katalogu (MCP)');
-      expect(LUXURY_SYSTEM_PROMPT).toContain('MUSISZ wymienić te produkty');
+    it('should include JSON contract format', () => {
+      expect(LUXURY_SYSTEM_PROMPT).toContain('KONTRAKT JSON');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('{ "reply": "<naturalna odpowiedź>" }');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('{ "tool_call":');
+      expect(LUXURY_SYSTEM_PROMPT).toContain('{ "error":');
     });
   });
 
