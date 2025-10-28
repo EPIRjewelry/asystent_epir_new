@@ -452,7 +452,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (b) messagesEl.classList.add('is-loading'); else messagesEl.classList.remove('is-loading');
       };
       try {
-        await sendMessageToWorker(text, '/apps/assistant/chat', 'epir-assistant-session', messagesEl, setLoading, controller);
+        // Build endpoint from section dataset so we include shop and customer_id in query params
+        const sectionEl = document.getElementById('epir-assistant-section');
+        let endpoint = '/apps/assistant/chat';
+        if (sectionEl && sectionEl.dataset) {
+          const shop = sectionEl.dataset.shopDomain || '';
+          const customerId = sectionEl.dataset.loggedInCustomerId || '';
+          // append as query params (worker expects logged_in_customer_id & shop in URL)
+          const params = new URLSearchParams();
+          if (shop) params.set('shop', shop);
+          if (customerId) params.set('logged_in_customer_id', customerId);
+          const paramStr = params.toString();
+          if (paramStr) endpoint = `${endpoint}?${paramStr}`;
+        }
+        await sendMessageToWorker(text, endpoint, 'epir-assistant-session', messagesEl, setLoading, controller);
       } catch (err) {
         console.error('Fetch error:', err);
       }
