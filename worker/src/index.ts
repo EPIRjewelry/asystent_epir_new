@@ -299,6 +299,97 @@ function cors(env: Env): Record<string, string> {
   };
 }
 
+// Pixel analytics helpers (safe, optional; no routing changes elsewhere)
+async function ensurePixelTable(db: D1Database): Promise<void> {
+  try {
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS pixel_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          type TEXT,
+          data TEXT,
+          created_at INTEGER
+        )`
+      )
+      .run();
+  } catch (e) {
+    console.warn('[pixel] ensurePixelTable failed (non-fatal):', e);
+  }
+}
+
+async function handlePixelPost(request: Request, env: Env): Promise<Response> {
+  if (!env.DB) {
+    return new Response(JSON.stringify({ ok: false, error: 'DB not configured' }), {
+      status: 500,
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  }
+
+  const body = await request.json().catch(() => null) as { type?: string; data?: unknown } | null;
+  if (!body || typeof body.type !== 'string') {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid payload' }), {
+      status: 400,
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  }
+
+  await ensurePixelTable(env.DB);
+  try {
+    await env.DB
+      .prepare('INSERT INTO pixel_events (type, data, created_at) VALUES (?1, ?2, ?3)')
+      .bind(body.type, JSON.stringify(body.data ?? null), Date.now())
+      .run();
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  } catch (e) {
+    console.error('[pixel] insert failed:', e);
+    return new Response(JSON.stringify({ ok: false, error: 'insert_failed' }), {
+      status: 500,
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+async function handlePixelCount(env: Env): Promise<Response> {
+  if (!env.DB) {
+    return new Response(JSON.stringify({ count: 0 }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  }
+  await ensurePixelTable(env.DB);
+  try {
+    const row = await env.DB.prepare('SELECT COUNT(*) as cnt FROM pixel_events').first<{ cnt: number }>();
+    const count = (row && typeof row.cnt === 'number') ? row.cnt : 0;
+    return new Response(JSON.stringify({ count }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  } catch (e) {
+    console.warn('[pixel] count failed:', e);
+    return new Response(JSON.stringify({ count: 0 }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  }
+}
+
+async function handlePixelEvents(env: Env, limitParam?: string | null): Promise<Response> {
+  const limit = Math.max(1, Math.min(200, Number(limitParam) || 20));
+  if (!env.DB) {
+    return new Response(JSON.stringify({ events: [] }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  }
+  await ensurePixelTable(env.DB);
+  try {
+    // Note: Some D1 deployments are finicky about binding LIMIT, so inline the sanitized value
+    const sql = `SELECT id, type, data, created_at FROM pixel_events ORDER BY id DESC LIMIT ${limit}`;
+    const rows = await env.DB.prepare(sql).all<{ results: Array<{ id: number; type: string; data: string; created_at: number }> }>();
+    const events = (rows as any)?.results?.map((r: any) => ({
+      id: r.id,
+      type: r.type,
+      data: (() => { try { return JSON.parse(r.data); } catch { return r.data; } })(),
+      created_at: r.created_at,
+    })) || [];
+    return new Response(JSON.stringify({ events }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  } catch (e) {
+    console.warn('[pixel] events read failed:', e);
+    return new Response(JSON.stringify({ events: [] }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
+  }
+}
+
 export class SessionDO {
   private readonly state: DurableObjectState;
   private readonly env: Env;
@@ -1217,6 +1308,17 @@ export default {
     // Healthchecks
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/ping' || url.pathname === '/health')) {
       return new Response('ok', { status: 200, headers: cors(env) });
+    }
+
+    // Pixel analytics endpoints (simple, optional)
+    if (url.pathname === '/pixel' && request.method === 'POST') {
+      return handlePixelPost(request, env);
+    }
+    if (url.pathname === '/pixel/count' && request.method === 'GET') {
+      return handlePixelCount(env);
+    }
+    if (url.pathname === '/pixel/events' && request.method === 'GET') {
+      return handlePixelEvents(env, url.searchParams.get('limit'));
     }
 
     // [NOWE] Globalny stra┼╝nik HMAC dla App Proxy: wszystkie POST-y pod /apps/assistant/*
