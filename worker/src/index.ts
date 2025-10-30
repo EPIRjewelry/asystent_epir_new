@@ -306,9 +306,8 @@ async function ensurePixelTable(db: D1Database): Promise<void> {
       .prepare(
         `CREATE TABLE IF NOT EXISTS pixel_events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT,
-          data TEXT,
-          created_at INTEGER
+          event_data TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
       )
       .run();
@@ -335,9 +334,11 @@ async function handlePixelPost(request: Request, env: Env): Promise<Response> {
 
   await ensurePixelTable(env.DB);
   try {
+    // Store entire event as JSON in event_data column (matches existing schema)
+    const eventJson = JSON.stringify({ event: body.type, data: body.data, timestamp: Date.now() });
     await env.DB
-      .prepare('INSERT INTO pixel_events (type, data, created_at) VALUES (?1, ?2, ?3)')
-      .bind(body.type, JSON.stringify(body.data ?? null), Date.now())
+      .prepare('INSERT INTO pixel_events (event_data) VALUES (?1)')
+      .bind(eventJson)
       .run();
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -374,15 +375,22 @@ async function handlePixelEvents(env: Env, limitParam?: string | null): Promise<
   }
   await ensurePixelTable(env.DB);
   try {
-    // Note: Some D1 deployments are finicky about binding LIMIT, so inline the sanitized value
-    const sql = `SELECT id, type, data, created_at FROM pixel_events ORDER BY id DESC LIMIT ${limit}`;
-    const rows = await env.DB.prepare(sql).all<{ results: Array<{ id: number; type: string; data: string; created_at: number }> }>();
-    const events = (rows as any)?.results?.map((r: any) => ({
-      id: r.id,
-      type: r.type,
-      data: (() => { try { return JSON.parse(r.data); } catch { return r.data; } })(),
-      created_at: r.created_at,
-    })) || [];
+    // Note: Use event_data column (existing schema)
+    const sql = `SELECT id, event_data, created_at FROM pixel_events ORDER BY id DESC LIMIT ${limit}`;
+    const rows = await env.DB.prepare(sql).all<{ results: Array<{ id: number; event_data: string; created_at: string }> }>();
+    const events = rows?.results?.map((r) => {
+      let parsed: unknown = r.event_data;
+      try {
+        parsed = JSON.parse(r.event_data);
+      } catch {
+        // Keep as string if not JSON
+      }
+      return {
+        id: r.id,
+        ...((typeof parsed === 'object' && parsed !== null) ? parsed : { raw: r.event_data }),
+        created_at: r.created_at,
+      };
+    }) || [];
     return new Response(JSON.stringify({ events }), { status: 200, headers: { ...cors(env), 'Content-Type': 'application/json' } });
   } catch (e) {
     console.warn('[pixel] events read failed:', e);
@@ -904,7 +912,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     // Use Groq AI
   const promptData = {
     systemPersona: LUXURY_SYSTEM_PROMPT,
-    chatHistory: history,
+    chatHistory: history.slice(-10),
     ragContext: Array.isArray(ragContext) ? ragContext : [],
     userQuery: payload.message
   };
@@ -1247,9 +1255,13 @@ function streamAssistantResponse(
         max_cot_tokens: complexity === 'high' ? 256 : 64,
       };
       // 4. Build Harmony messages
+      const recentChat = history
+        .filter(h => h.role === 'user' || h.role === 'assistant')
+        .slice(-10)
+        .map(h => ({ role: h.role as 'user' | 'assistant', content: h.content }));
       const promptData = {
         systemPersona: LUXURY_SYSTEM_PROMPT,
-        chatHistory: history.filter(h => h.role === 'user' || h.role === 'assistant').map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+        chatHistory: recentChat,
         ragContext: Array.isArray(ragContext) ? ragContext : [],
         userQuery: userMessage
       };

@@ -12,6 +12,9 @@
 
 import { callMcpToolDirect } from './mcp_server';
 
+// Kanoniczny, hardcoded endpoint MCP sklepu (wymagane):
+const CANONICAL_MCP_URL = 'https://epir-art-silver-jewellery.myshopify.com/api/mcp';
+
 export type VectorizeIndex = {
   // Abstrakcja: implementacja zależy od bindingu Vectorize w Cloudflare (typu API).
   // Tutaj minimalny typ dla zapytań wektorowych.
@@ -52,6 +55,35 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 function isString(v: unknown): v is string {
   return typeof v === 'string';
 }
+
+// Safe JSON parse with graceful fallback; also unwraps double-encoded JSON strings
+function safeJsonParse<T = unknown>(input: unknown): T | unknown {
+  if (!isString(input)) return input;
+  const s = input.trim();
+  if (!s) return input;
+  try {
+    const parsed = JSON.parse(s);
+    // If parsed itself is a quoted JSON string, try one more time (double-encoded)
+    if (isString(parsed)) {
+      const inner = parsed.trim();
+      if ((inner.startsWith('{') && inner.endsWith('}')) || (inner.startsWith('[') && inner.endsWith(']')) || (inner.startsWith('"') && inner.endsWith('"'))) {
+        try {
+          return JSON.parse(inner);
+        } catch {
+          return parsed;
+        }
+      }
+    }
+    return parsed;
+  } catch {
+    return input;
+  }
+}
+
+// Minimal types for MCP JSON-RPC responses used in this module
+type McpContentItem = { type: string; text?: string; title?: string; [k: string]: unknown };
+type McpResult = { content?: McpContentItem[] };
+type McpJsonRpc = { error?: unknown; result?: McpResult } & Record<string, unknown>;
 
 function asStringField(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const k of keys) {
@@ -175,7 +207,8 @@ function extractKeywords(query: string): string {
  * This function is for internal worker-to-worker calls within the same execution context.
  */
 export async function callMcpTool(env: any, toolName: string, args: any): Promise<any> {
-  // If WORKER_ORIGIN is provided, call the MCP endpoint via HTTP (this is what tests expect).
+  // Prefer the shop's canonical MCP endpoint (https://{SHOP_DOMAIN}/api/mcp) when available.
+  const shopDomain = env?.SHOP_DOMAIN || env?.VARS?.SHOP_DOMAIN || process.env.SHOP_DOMAIN;
   const workerOrigin = env?.WORKER_ORIGIN;
   const payload = {
     jsonrpc: '2.0',
@@ -183,49 +216,74 @@ export async function callMcpTool(env: any, toolName: string, args: any): Promis
     params: { name: toolName, arguments: args },
     id: Date.now()
   };
+  // Build endpoint preference: shopDomain -> workerOrigin -> direct
+  // Use canonical, hardcoded MCP URL for the shop as the trusted source.
+  const shopMcpUrl = CANONICAL_MCP_URL;
+  const workerToolsUrl = workerOrigin ? `${workerOrigin.replace(/\/$/, '')}/mcp/tools/call` : null;
 
-  if (workerOrigin) {
-    const url = `${workerOrigin.replace(/\/$/, '')}/mcp/tools/call`;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+  const tryUrls = [] as string[];
+  if (shopMcpUrl) tryUrls.push(shopMcpUrl);
+  if (workerToolsUrl) tryUrls.push(workerToolsUrl);
 
-        if (res.status === 429) {
-          // Rate limited - retry with backoff
-          const backoff = 100 * (2 ** attempt);
-          await new Promise(resolve => setTimeout(resolve, backoff));
-          continue;
+  if (tryUrls.length > 0) {
+    for (const url of tryUrls) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (res.status === 429) {
+            const backoff = 100 * (2 ** attempt);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            continue;
+          }
+
+          let j: unknown = await res.json().catch(() => null);
+          // Fallback: if the response itself is a JSON string, parse it
+          if (isString(j)) {
+            const parsed = safeJsonParse(j);
+            if (parsed) j = parsed as unknown;
+          }
+          if (!j || !isRecord(j)) return null;
+          const jr = j as Record<string, unknown>;
+          if ('error' in jr && jr.error) return null;
+          let result: unknown = (jr as { result?: unknown }).result ?? null;
+          if (isString(result)) {
+            const parsedResult = safeJsonParse(result);
+            if (parsedResult !== undefined) result = parsedResult as unknown;
+          }
+          return result;
+        } catch (err) {
+          console.error(`callMcpTool attempt ${attempt + 1} to ${url} error:`, err);
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
+            continue;
+          }
+          // try next URL in tryUrls
+          break;
         }
-
-        const j = await res.json().catch(() => null) as any;
-        if (!j) return null;
-        if (j.error) return null;
-        return j.result ?? null;
-      } catch (err) {
-        console.error(`callMcpTool attempt ${attempt + 1} error:`, err);
-        if (attempt < 2) {
-          await new Promise(resolve => setTimeout(resolve, 100 * (2 ** attempt)));
-          continue;
-        }
-        return null;
       }
     }
-    return null;
+    // If we fell through all attempts, fall back to direct internal call
   }
 
   // Fallback: direct internal call
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const result = await callMcpToolDirect(env, toolName, args);
-      if (result?.error) {
-        throw new Error(`MCP tool call failed: ${result.error.message}`);
+      const result = await callMcpToolDirect(env, toolName, args) as unknown;
+      if (isRecord(result) && 'error' in result && result.error) {
+        const errStr = JSON.stringify((result as Record<string, unknown>).error);
+        throw new Error(`MCP tool call failed: ${errStr}`);
       }
-      if (result?.result === false) return null;
-      return result?.result ?? null;
+      let out: unknown = isRecord(result) ? (result as { result?: unknown }).result ?? null : null;
+      if (isString(out)) {
+        const parsed = safeJsonParse(out);
+        if (parsed !== undefined) out = parsed as unknown;
+      }
+      return out;
     } catch (err) {
       console.error(`callMcpToolDirect attempt ${attempt + 1} error:`, err);
       if (attempt < 2) {
@@ -272,8 +330,8 @@ export async function searchProductCatalogWithMCP(
   }
   if (!shopDomain) return '';
   try {
-    // MCP endpoint
-  const mcpEndpoint = `https://epir-art-silver-jewellery.myshopify.com/api/mcp`;
+  // MCP endpoint: use the store's canonical, hardcoded MCP endpoint
+  const mcpEndpoint = CANONICAL_MCP_URL;
     const payload = {
       jsonrpc: '2.0',
       method: 'tools/call',
@@ -292,18 +350,26 @@ export async function searchProductCatalogWithMCP(
       const txt = await res.text().catch(() => '<no body>');
       throw new Error(`MCP search_shop_catalog error ${res.status}: ${txt}`);
     }
-    const j = await res.json().catch(() => null) as any;
+    let j: unknown = await res.json().catch(() => null);
+    if (isString(j)) {
+      const parsed = safeJsonParse(j);
+      if (parsed) j = parsed as unknown;
+    }
     console.log('[MCP DEBUG] Odpowiedź search_shop_catalog:', JSON.stringify(j));
-    if (j && j.error) {
-      throw new Error(`MCP tool call failed: ${j.error.message}`);
+    if (isRecord(j) && 'error' in j && j.error) {
+      const errStr = JSON.stringify((j as Record<string, unknown>).error);
+      throw new Error(`MCP tool call failed: ${errStr}`);
     }
     // Standard MCP result: j.result.content[0].text
-    if (j && j.result && Array.isArray(j.result.content)) {
-      if (j.result.content.length === 0) {
+    if (isRecord(j) && 'result' in j && isRecord(j.result) && Array.isArray((j.result as McpResult).content)) {
+      if ((j.result as McpResult).content!.length === 0) {
         return '';
       }
-      const textContent = j.result.content.find((c: any) => c.type === 'text');
+      const textContent = (j.result as McpResult).content!.find((c: McpContentItem) => c.type === 'text');
       if (textContent?.text) {
+        const maybeParsed = safeJsonParse(textContent.text);
+        if (typeof maybeParsed === 'string') return maybeParsed;
+        if (maybeParsed && typeof maybeParsed === 'object') return JSON.stringify(maybeParsed);
         return String(textContent.text);
       }
       return '';
@@ -343,13 +409,14 @@ export async function searchProductsAndCartWithMCP(
       // await callMcpTool(env, 'update_cart', updateParams);
 
       // Pobierz aktualny stan koszyka
-      const cartResult = await callMcpTool(env, 'get_cart', { cart_id: cartId });
+      const cartRaw = await callMcpTool(env, 'get_cart', { cart_id: cartId });
+      const cartResult = safeJsonParse(cartRaw) as unknown;
 
       let cartText = '';
-      if (cartResult && Array.isArray(cartResult.content)) {
-        cartText = cartResult.content
-          .filter((c: any) => c.type === 'text' && typeof c.text === 'string')
-          .map((c: any) => c.text)
+      if (isRecord(cartResult) && Array.isArray((cartResult as { content?: McpContentItem[] }).content)) {
+        cartText = (cartResult as { content?: McpContentItem[] }).content!
+          .filter((c: McpContentItem) => c.type === 'text' && typeof c.text === 'string')
+          .map((c: McpContentItem) => c.text as string)
           .join('\n');
       }
       if (cartText) {
@@ -367,13 +434,14 @@ export async function searchProductsAndCartWithMCP(
       // }
 
       // Pobierz status ostatniego zamówienia
-      const orderResult = await callMcpTool(env, 'get_most_recent_order_status', {});
+      const orderRaw = await callMcpTool(env, 'get_most_recent_order_status', {});
+      const orderResult = safeJsonParse(orderRaw) as unknown;
 
       let orderText = '';
-      if (orderResult && Array.isArray(orderResult.content)) {
-        orderText = orderResult.content
-          .filter((c: any) => c.type === 'text' && typeof c.text === 'string')
-          .map((c: any) => c.text)
+       if (isRecord(orderResult) && Array.isArray((orderResult as { content?: McpContentItem[] }).content)) {
+        orderText = (orderResult as { content?: McpContentItem[] }).content!
+          .filter((c: McpContentItem) => c.type === 'text' && typeof c.text === 'string')
+          .map((c: McpContentItem) => c.text as string)
           .join('\n');
       }
       if (orderText) {
@@ -419,7 +487,8 @@ export async function searchShopPoliciesAndFaqsWithMCP(
   try {
     // MCP path
     if (shopDomain) {
-  const mcpEndpoint = `https://epir-art-silver-jewellery.myshopify.com/api/mcp`;
+  // Use the canonical, hardcoded shop MCP endpoint for policies/FAQ lookups
+  const mcpEndpoint = CANONICAL_MCP_URL;
       const payload = {
         jsonrpc: '2.0',
         method: 'tools/call',
@@ -438,25 +507,35 @@ export async function searchShopPoliciesAndFaqsWithMCP(
         const txt = await res.text().catch(() => '<no body>');
         throw new Error(`MCP search_shop_policies_and_faqs error ${res.status}: ${txt}`);
       }
-      const j = await res.json().catch(() => null) as any;
-      if (j && j.error) {
-        throw new Error(`MCP tool call failed: ${j.error.message}`);
+      let j: unknown = await res.json().catch(() => null);
+      if (isString(j)) {
+        const parsed = safeJsonParse(j);
+        if (parsed) j = parsed as unknown;
+      }
+      if (isRecord(j) && 'error' in j && j.error) {
+        const errStr = JSON.stringify((j as Record<string, unknown>).error);
+        throw new Error(`MCP tool call failed: ${errStr}`);
       }
       // Standard MCP result: j.result.content[]
       let results: RagResultItem[] = [];
-      if (j && j.result && Array.isArray(j.result.content)) {
-        results = j.result.content
-          .filter((c: any) => c.type === 'text')
-          .map((c: any, idx: number) => ({
+      if (isRecord(j) && 'result' in j && isRecord(j.result) && Array.isArray((j.result as McpResult).content)) {
+        results = (j.result as McpResult).content!
+          .filter((c: McpContentItem) => c.type === 'text')
+          .map((c: McpContentItem, idx: number) => {
+            // Try to parse double-encoded text content
+            const parsedText = safeJsonParse(c.text);
+            const text = isString(parsedText) ? parsedText : (c.text || '');
+            return ({
             id: `faq_${idx + 1}`,
             title: c.title || undefined,
-            text: c.text || '',
-            snippet: (c.text || '').slice(0, 500),
+              text,
+              snippet: (text || '').slice(0, 500),
             source: 'mcp',
             score: undefined,
             metadata: c,
             full: c
-          }));
+            });
+          });
       }
       return { query, results };
     }
