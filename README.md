@@ -7,6 +7,10 @@ Inteligentny asystent zakupowy oparty na Cloudflare Workers (z D1/KV/Durable Obj
 
 ## 🎉 Recent Updates (2025-10-07)
 
+**(2025-10-30)**
+- ✅ DOCS & CODE: Canonical MCP endpoint hardcoded to the shop domain `https://epir-art-silver-jewellery.myshopify.com/api/mcp` in the RAG/MCP call paths (`worker/src/rag.ts`). Unit tests updated to expect the canonical URL. Worker deployed to Cloudflare (version id available in CI logs). See `worker/src/rag.ts` for implementation notes.
+
+
 **✅ FIXED: CI/CD Pipeline - TypeScript & Dependencies**
 - Added missing TypeScript dependency to worker/package.json
 - Fixed import paths in test files (../worker/src → ../src)
