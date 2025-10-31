@@ -1,0 +1,13 @@
+mutation {
+    webPixelCreate(webPixel: { settings: "{\"accountID\":\"123\"}" }) {
+      userErrors {
+        code
+        field
+        message
+      }
+      webPixel {
+        settings
+        id
+      }
+    }
+}

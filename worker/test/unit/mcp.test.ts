@@ -250,7 +250,7 @@ describe('MCP Tools', () => {
 
       expect(result).toEqual({ products: [{ id: '1', title: 'Test' }] });
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://test-worker.workers.dev/mcp/tools/call',
+        'https://epir-art-silver-jewellery.myshopify.com/api/mcp',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

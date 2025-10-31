@@ -1,50 +1,5 @@
 ﻿// Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
 // Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
-(function(){
-  const elForm = document.getElementById('assistant-form');
-  const elInput = document.getElementById('assistant-input');
-  const elMsgs = document.getElementById('assistant-messages');
-  const elLoader = document.getElementById('assistant-loader');
-
-  function addMsg(role, text){
-    const div = document.createElement('div');
-    div.className = 'msg msg-' + role;
-    div.textContent = text;
-    elMsgs.appendChild(div);
-    elMsgs.scrollTop = elMsgs.scrollHeight;
-  }
-
-  function showLoader(){
-    if(elLoader) elLoader.style.display = 'flex';
-  }
-  function hideLoader(){
-    if(elLoader) elLoader.style.display = 'none';
-  }
-
-  elForm.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const text = elInput.value.trim();
-    if(!text) return;
-    addMsg('user', text);
-    elInput.value = '';
-    showLoader();
-
-    try {
-      const res = await fetch('/apps/assistant/chat', {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({ message: text, session_id: localStorage.getItem('epir_session') || null })
-      });
-      const data = await res.json();
-      hideLoader();
-      if(data && data.reply){ addMsg('assistant', data.reply); }
-      if(data && data.session_id){ localStorage.setItem('epir_session', data.session_id); }
-    } catch(err){
-      hideLoader();
-      addMsg('assistant', 'Przepraszam, wystąpił błąd.');
-    }
-  });
-})();
 // extensions/asystent-klienta/assets/chat.ts
 // Lekki, poprawiony klient czatu z obsĹ‚ugÄ… streaming SSE/JSON + fallback.
 // Kompiluj do JS (np. tsc) przed uĹĽyciem w Theme App Extension.
@@ -323,11 +278,27 @@ export async function sendMessageToWorker(
   setLoading,
   controller
 ) {
+  // Small UX helpers: global loader below messages
+  const globalLoader = document.getElementById('assistant-loader');
+  const showGlobalLoader = () => { try { if (globalLoader) globalLoader.style.display = 'flex'; } catch {}
+  };
+  const hideGlobalLoader = () => { try { if (globalLoader) globalLoader.style.display = 'none'; } catch {}
+  };
+
+  // Render mode: 'growing' (default) or 'dots' (keeps '...' until finish)
+  const sectionEl = document.getElementById('epir-assistant-section');
+  const renderMode = (sectionEl && sectionEl.dataset && sectionEl.dataset.streamRender) || 'growing';
+
   setLoading(true);
+  showGlobalLoader();
   createUserMessage(messagesEl, text);
   const { id: msgId, el: msgEl } = createAssistantMessage(messagesEl);
   let accumulated = '';
   let lastParsedActions = null;
+  // Perf metrics
+  const tStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  let firstChunkAt = null;
+  let chunks = 0;
 
   try {
     // Pobierz cart_id z Shopify przed wysĹ‚aniem
@@ -363,10 +334,16 @@ export async function sendMessageToWorker(
       // streaming SSE
       await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
         accumulated = content;
+        chunks += 1;
+        if (!firstChunkAt) {
+          firstChunkAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        }
         
         // Parsuj odpowiedĹş i wykryj akcje (checkout URL, cart updates)
         const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
-        updateAssistantMessage(msgId, cleanedText);
+        if (renderMode === 'growing') {
+          updateAssistantMessage(msgId, cleanedText);
+        } // in 'dots' mode we keep the initial '...' until stream completes
         
         // Zapisz akcje do renderowania po zakoĹ„czeniu streamu
         if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
@@ -377,8 +354,14 @@ export async function sendMessageToWorker(
       // ewentualne inne formy newline-delimited json - moĹĽna dodaÄ‡ parser
       await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
         accumulated = content;
+        chunks += 1;
+        if (!firstChunkAt) {
+          firstChunkAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        }
         const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
-        updateAssistantMessage(msgId, cleanedText);
+        if (renderMode === 'growing') {
+          updateAssistantMessage(msgId, cleanedText);
+        }
         if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
           lastParsedActions = actions;
         }
@@ -401,10 +384,14 @@ export async function sendMessageToWorker(
       }
     }
     
-    // Po zakoĹ„czeniu streamu: renderuj specjalne akcje (checkout button, cart status)
+    // Po zakończeniu streamu: uzupełnij treść w trybie 'dots', renderuj akcje (checkout button, cart status)
     if (lastParsedActions) {
       const msgElement = document.getElementById(msgId);
       if (msgElement) {
+        if (renderMode === 'dots' && accumulated) {
+          const { text: finalText } = parseAssistantResponse(accumulated);
+          updateAssistantMessage(msgId, finalText);
+        }
         if (lastParsedActions.hasCheckoutUrl && lastParsedActions.checkoutUrl) {
           console.log('[Assistant] Rendering checkout button:', lastParsedActions.checkoutUrl);
           renderCheckoutButton(lastParsedActions.checkoutUrl, msgElement);
@@ -437,6 +424,20 @@ export async function sendMessageToWorker(
   } finally {
     finalizeAssistantMessage(msgId);
     setLoading(false);
+    hideGlobalLoader();
+    // Perf summary
+    const tEnd = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const ttfb = firstChunkAt ? Math.round(firstChunkAt - tStart) : null;
+    const total = Math.round(tEnd - tStart);
+    const avgChunkMs = chunks > 0 ? Math.round((tEnd - (firstChunkAt || tStart)) / Math.max(1, chunks)) : null;
+    console.log('[Assistant][Perf]', {
+      messageLen: text.length,
+      chunks,
+      timeToFirstChunkMs: ttfb,
+      totalMs: total,
+      avgChunkMs,
+      renderMode,
+    });
   }
 }
 

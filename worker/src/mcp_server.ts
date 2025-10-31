@@ -267,6 +267,29 @@ export async function callMcpToolDirect(env: any, toolName: string, args: any): 
 
   try {
     const { name, arguments: mcpArgs } = rpc.params as any;
+
+    // Prefer routing tool execution to the shop's MCP endpoint if available
+    const shopDomain = env?.SHOP_DOMAIN || process.env.SHOP_DOMAIN;
+    if (shopDomain) {
+      try {
+        const shopUrl = `https://${String(shopDomain).replace(/\/$/, '')}/api/mcp`;
+        const res = await fetch(shopUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rpc)
+        });
+        if (res.ok) {
+          const j = await res.json().catch(() => null) as any;
+          if (j && !j.error) {
+            // Normalize to direct-call shape
+            return { result: j.result };
+          }
+        }
+        // fallback to local execution if remote fails
+      } catch (err) {
+        console.warn('callMcpToolDirect: shop MCP proxy failed, falling back to local execution:', err);
+      }
+    }
     
     switch (name) {
       case 'search_shop_catalog': {

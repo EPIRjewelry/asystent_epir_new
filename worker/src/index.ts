@@ -206,6 +206,8 @@ export interface Env {
   GROQ_MODEL?: string; // Optional: override for Groq model (e.g., 'mixtral-8x7b-32768')
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
   WORKER_ORIGIN?: string;
+  // Service binding to analytics worker (optional in tests)
+  ANALYTICS?: Fetcher;
 }
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -1322,14 +1324,33 @@ export default {
       return new Response('ok', { status: 200, headers: cors(env) });
     }
 
-    // Pixel analytics endpoints (simple, optional)
+    // Pixel analytics endpoints
+    // Prefer forwarding to analytics service if available, otherwise fall back to local handlers
     if (url.pathname === '/pixel' && request.method === 'POST') {
+      if (env.ANALYTICS && typeof env.ANALYTICS.fetch === 'function') {
+        // Proxy the request to analytics service
+        const proxied = new Request('https://analytics.internal/pixel', {
+          method: 'POST',
+          headers: request.headers,
+          body: await request.text(),
+        });
+        return env.ANALYTICS.fetch(proxied);
+      }
       return handlePixelPost(request, env);
     }
     if (url.pathname === '/pixel/count' && request.method === 'GET') {
+      if (env.ANALYTICS && typeof env.ANALYTICS.fetch === 'function') {
+        return env.ANALYTICS.fetch(new Request('https://analytics.internal/pixel/count'));
+      }
       return handlePixelCount(env);
     }
     if (url.pathname === '/pixel/events' && request.method === 'GET') {
+      if (env.ANALYTICS && typeof env.ANALYTICS.fetch === 'function') {
+        const limit = url.searchParams.get('limit');
+        const proxyUrl = new URL('https://analytics.internal/pixel/events');
+        if (limit) proxyUrl.searchParams.set('limit', limit);
+        return env.ANALYTICS.fetch(new Request(proxyUrl.toString()));
+      }
       return handlePixelEvents(env, url.searchParams.get('limit'));
     }
 
