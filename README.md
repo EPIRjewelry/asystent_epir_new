@@ -3,7 +3,7 @@
 [![CI](https://github.com/EPIRjewelry/asystent_epir_new/actions/workflows/ci.yml/badge.svg)](https://github.com/EPIRjewelry/asystent_epir_new/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-Inteligentny asystent zakupowy oparty na Cloudflare Workers (z D1/KV/Durable Objects) + Theme App Extension (TAE). Zapewnia streamowany chat z AI (Groq, Workers AI, opcjonalnie RAG z Vectorize) oraz zintegrowane narzędzia (pozyskiwanie produktów z Shopify, polecenia shop policy).
+Inteligentny asystent zakupowy oparty na Cloudflare Workers (z D1/KV/Durable Objects) + Theme App Extension (TAE). Zapewnia streamowany chat z AI wykorzystując **model `openai/gpt-oss-120b`** (MoE, 120B parametrów) hostowany na platformie Groq, oraz zintegrowane narzędzia (pozyskiwanie produktów z Shopify, polecenia shop policy).
 
 ## 🎉 Recent Updates (2025-10-07)
 
@@ -50,7 +50,7 @@ Live deployment
 
 3) Zmienne środowiskowe (Workers Vars / Secrets)
    - **SHOPIFY_APP_SECRET**: Klucz tajny aplikacji Shopify. **Wymagany do autoryzacji App Proxy.**
-   - **GROQ_API_KEY**: klucz do usługi Groq (opcjonalnie, jeśli integrujesz Groq LLM)
+   - **GROQ_API_KEY**: Klucz do usługi Groq. **WYMAGANY** - system używa modelu `openai/gpt-oss-120b`.
    - ALLOWED_ORIGIN: np. `https://twoj-sklep.myshopify.com`
    - Ustawianie sekretów (przykład):
 
@@ -68,6 +68,23 @@ wrangler secret put GROQ_API_KEY
 ## Architektura
 - TAE → Worker `/chat` → Durable Object (SessionDO) append → (RAG/LLM/tools) → append → reply
 - DO `end()` flushuje historię do D1 (tabele conversations/messages)
+
+### Model AI: openai/gpt-oss-120b (MoE)
+
+System wykorzystuje model **`openai/gpt-oss-120b`** hostowany na platformie Groq:
+
+- **Architektura**: Mixture-of-Experts (MoE) z 120 miliardami parametrów
+- **Aktywne parametry**: 5.1B na token (optymalizacja kosztów)
+- **Kontekst**: Do 128k tokenów
+- **Funkcjonalność**:
+  - Natywne wsparcie dla Chain-of-Thought (CoT) reasoning
+  - Format odpowiedzi Harmony
+  - Tool calling / Function calling
+  - Streaming SSE
+- **Hosting**: Groq LPU (Language Processing Unit) - ultra-niska latencja
+- **Konfiguracja**: Model ID jest zhardkodowany w `worker/src/ai-client.ts` i NIE MOŻE być zmieniony bez aktualizacji promptów systemowych
+
+**⚠️ WAŻNE**: Wszystkie prompty systemowe i logika biznesowa są zaprojektowane specjalnie dla tego modelu. Zmiana modelu wymaga przeprojektowania systemu.
 
 ## Backend (Cloudflare Worker) – szybki start
 

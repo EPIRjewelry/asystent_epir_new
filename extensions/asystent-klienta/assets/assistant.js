@@ -385,35 +385,35 @@ export async function sendMessageToWorker(
     }
     
     // Po zakończeniu streamu: uzupełnij treść w trybie 'dots', renderuj akcje (checkout button, cart status)
-    if (lastParsedActions) {
       const msgElement = document.getElementById(msgId);
-      if (msgElement) {
-        if (renderMode === 'dots' && accumulated) {
-          const { text: finalText } = parseAssistantResponse(accumulated);
-          updateAssistantMessage(msgId, finalText);
+      if (renderMode === 'dots') {
+        let finalText = '';
+        if (accumulated) {
+          const { text } = parseAssistantResponse(accumulated);
+          finalText = text;
+        } else {
+          finalText = 'Brak wyników, spróbuj innego zapytania.';
         }
+        updateAssistantMessage(msgId, finalText);
+      }
+      if (lastParsedActions && msgElement) {
         if (lastParsedActions.hasCheckoutUrl && lastParsedActions.checkoutUrl) {
           console.log('[Assistant] Rendering checkout button:', lastParsedActions.checkoutUrl);
           renderCheckoutButton(lastParsedActions.checkoutUrl, msgElement);
         }
-        
         if (lastParsedActions.hasCartUpdate) {
           console.log('[Assistant] Cart was updated');
-          // Opcjonalnie: odĹ›wieĹĽ licznik koszyka na stronie
           try {
-            // Shopify theme moĹĽe mieÄ‡ event do odĹ›wieĹĽenia cart drawer
             document.dispatchEvent(new CustomEvent('cart:refresh'));
           } catch (e) {
             console.warn('Failed to dispatch cart:refresh event', e);
           }
         }
-        
         if (lastParsedActions.hasOrderStatus && lastParsedActions.orderDetails) {
           console.log('[Assistant] Order status:', lastParsedActions.orderDetails);
-          // MoĹĽna dodaÄ‡ rendering szczegĂłĹ‚Ăłw zamĂłwienia
+          // Można dodać rendering szczegółów zamówienia
         }
       }
-    }
   } catch (err) {
     console.error('BĹ‚Ä…d czatu:', err);
     const safeMsg = err instanceof Error ? err.message : 'Nieznany bĹ‚Ä…d.';
