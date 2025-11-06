@@ -25,7 +25,6 @@ export type HarmonyEvent =
  */
 interface Env {
   GROQ_API_KEY: string;
-  // Opcjonalne: ceny do kalkulacji kosztu (USD) per 1M tokenów
   GROQ_PRICE_INPUT_PER_M?: number;   // np. 0.20
   GROQ_PRICE_OUTPUT_PER_M?: number;  // np. 0.30
 }
@@ -47,6 +46,26 @@ interface GroqPayload {
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 /**
+ * ⚠️ CRITICAL: Model ID is HARDCODED and MUST NOT be changed without authorization.
+ * 
+ * This model (openai/gpt-oss-120b) is specifically chosen and configured for:
+ * - MoE (Mixture-of-Experts) architecture with 120B parameters
+ * - Harmony response format support
+ * - Chain-of-Thought reasoning capabilities
+ * - Optimized cost/performance ratio via Groq's LPU infrastructure
+ * 
+ * System prompts, instruction formats, and business logic are designed for THIS model.
+ * Changing this value will break the system.
+ * 
+ * @see Documentation: /HARMONY_COT_MCP_IMPLEMENTATION.md
+ * @constant
+ */
+export const GROQ_MODEL_ID = 'openai/gpt-oss-120b' as const;
+
+// Compile-time verification that GROQ_MODEL_ID is not accidentally changed
+const _MODEL_VERIFICATION: 'openai/gpt-oss-120b' = GROQ_MODEL_ID;
+
+/**
  * Wykonuje streamingowe zapytanie do Groq i zwraca ReadableStream z tekstem.
  * @param messages - Tablica wiadomości (system, user, assistant).
  * @param model - Nazwa modelu (np. 'llama3-70b-8192').
@@ -55,14 +74,13 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
  */
 export async function streamGroqResponse(
   messages: GroqMessage[],
-  model: string,
   env: Env
 ): Promise<ReadableStream<string>> {
   const apiKey = env.GROQ_API_KEY;
   if (!apiKey) throw new Error('Missing GROQ_API_KEY secret');
 
   const payload: GroqPayload = {
-    model,
+    model: GROQ_MODEL_ID,
     messages,
     stream: true,
     temperature: 0.5,
@@ -269,14 +287,13 @@ function createHarmonyTransform(): TransformStream<string, HarmonyEvent> {
  */
 export async function streamGroqHarmonyEvents(
   messages: GroqMessage[],
-  model: string,
   env: Env
 ): Promise<ReadableStream<HarmonyEvent>> {
   const apiKey = env.GROQ_API_KEY;
   if (!apiKey) throw new Error('Missing GROQ_API_KEY secret');
 
   const payload: GroqPayload = {
-    model,
+    model: GROQ_MODEL_ID,
     messages,
     stream: true,
     temperature: 0.5,
@@ -316,14 +333,13 @@ export const __test = { createHarmonyTransform };
  */
 export async function getGroqResponse(
   messages: GroqMessage[],
-  model: string,
   env: Env
 ): Promise<string> {
   const apiKey = env.GROQ_API_KEY;
   if (!apiKey) throw new Error('Missing GROQ_API_KEY secret');
 
   const payload: GroqPayload = {
-    model,
+    model: GROQ_MODEL_ID,
     messages,
     stream: false,
     temperature: 0.5,

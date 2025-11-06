@@ -137,11 +137,10 @@ import {
   type VectorizeIndex
 } from './rag';
 import { LUXURY_SYSTEM_PROMPT } from './prompts/luxury-system-prompt';
-import { streamGroqHarmonyEvents, getGroqResponse, streamGroqResponse } from './ai-client';
+import { GROQ_MODEL_ID, streamGroqHarmonyEvents, getGroqResponse, streamGroqResponse } from './ai-client';
 import { getAdminExecutionQueue } from './admin-queue';
 import { validateFunctionSignature } from './mcp_tools';
-import { buildHarmonyMessages, classifyQueryComplexity, DeveloperConstraints } from './groq/engineer_prompt';
-// import { buildGroqMessagesFromData } from './groq/engineer_prompt';
+// Usunięto nieistniejący import engineer_prompt
 import { generateMcpToolSchema } from './mcp/tool_schema';
 import { getCart, getMostRecentOrderStatus } from './shopify-mcp-client';
 import { handleMcpRequest, callMcpToolDirect } from './mcp_server';
@@ -185,10 +184,6 @@ interface AiRunResult {
   response?: string;
 }
 
-interface WorkersAI {
-  run: (model: string, args: Record<string, unknown>) => Promise<AiRunResult>;
-}
-
 export interface Env {
   DB: D1Database;
   SESSIONS_KV: KVNamespace;
@@ -198,12 +193,10 @@ export interface Env {
   VECTOR_INDEX?: VectorizeIndex;
   SHOPIFY_APP_SECRET: string;
   ALLOWED_ORIGIN?: string;
-  AI?: WorkersAI;
   SHOPIFY_STOREFRONT_TOKEN?: string;
   SHOPIFY_ADMIN_TOKEN?: string;
   SHOP_DOMAIN?: string;
-  GROQ_API_KEY?: string;
-  GROQ_MODEL?: string; // Optional: override for Groq model (e.g., 'mixtral-8x7b-32768')
+  GROQ_API_KEY: string;
   DEV_BYPASS?: string; // '1' to bypass HMAC in dev
   WORKER_ORIGIN?: string;
   // Service binding to analytics worker (optional in tests)
@@ -212,7 +205,6 @@ export interface Env {
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
-const MODEL_NAME = '@cf/meta/llama-3.1-8b-instruct';
 const MAX_HISTORY = 200;
 
 function now(): number {
@@ -607,91 +599,6 @@ export class SessionDO {
   }
 }
 
-async function generateAIResponse(history: HistoryEntry[], userMessage: string, env: Env, ragContext?: string): Promise<string> {
-  const ai = env.AI;
-  if (!ai || typeof ai.run !== 'function') {
-    return `Echo: ${userMessage}`;
-  }
-
-  const recentHistory = history.slice(-10);
-  const systemPrompt = ragContext 
-    ? `Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie. Użyj poniższych informacji ze sklepu, aby odpowiedzieć na pytanie użytkownika:\n\n${ragContext}`
-    : 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.';
-  
-  const messages = [
-    {
-      role: 'system',
-      content: systemPrompt,
-    },
-    ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
-    { role: 'user' as const, content: userMessage },
-  ];
-
-  const response = await ai.run(MODEL_NAME, {
-    messages,
-    max_tokens: 512,
-    temperature: 0.7,
-    top_p: 0.9,
-  }).catch((error: unknown) => {
-    console.error('AI error', error);
-    return null;
-  });
-
-  if (response && typeof response.response === 'string' && response.response.trim().length > 0) {
-    return response.response.trim();
-  }
-
-  return 'Przepraszam, nie uda┼éo mi si─Ö wygenerowa─ç odpowiedzi. Spr├│buj ponownie.';
-}
-
-/**
- * If the configured env.AI supports streaming, try to obtain a ReadableStream<string>
- * that yields incremental text chunks. Return null if not available.
- */
-async function generateAIResponseStream(history: HistoryEntry[], userMessage: string, env: Env, ragContext?: string): Promise<ReadableStream<string> | null> {
-  // Build messages same as non-streaming
-  const recentHistory = history.slice(-10);
-  const systemPrompt = ragContext 
-    ? `Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie. Użyj poniższych informacji ze sklepu, aby odpowiedzieć na pytanie użytkownika:\n\n${ragContext}`
-    : 'Jesteś pomocnym asystentem sklepu jubilerskiego EPIR. Odpowiadasz na pytania konkretnie i kulturalnie.';
-  
-  const messages = [
-    {
-      role: 'system',
-      content: systemPrompt,
-    },
-    ...recentHistory.map((entry) => ({ role: entry.role, content: entry.content })),
-    { role: 'user' as const, content: userMessage },
-  ];
-
-  // Try common streaming entrypoints on env.AI
-  try {
-    const ai: any = env.AI as any;
-    if (!ai) return null;
-
-    // 1) Workers AI hypothetical stream method: ai.stream(model, args)
-    if (typeof ai.stream === 'function') {
-      return await ai.stream(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
-    }
-
-    // 2) Some bindings expose runStream
-    if (typeof ai.runStream === 'function') {
-      return await ai.runStream(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
-    }
-
-    // 3) Some SDKs return an object with a readable property from run()
-    if (typeof ai.run === 'function') {
-      const maybe = await ai.run(MODEL_NAME, { messages, max_tokens: 512, temperature: 0.7, top_p: 0.9 });
-      if (maybe && typeof maybe === 'object' && maybe.readable) return maybe.readable as ReadableStream<string>;
-    }
-  } catch (e) {
-    console.warn('AI streaming not available or failed to start', e);
-    return null;
-  }
-
-  return null;
-}
-
 async function handleChat(request: Request, env: Env): Promise<Response> {
   const payload = parseChatRequestBody(await request.json().catch(() => null));
   if (!payload) {
@@ -853,8 +760,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       env,
       cartId,
       intent,
-      env.VECTOR_INDEX,
-      env.AI
+      env.VECTOR_INDEX
     );
     
     if (mcpResult) {
@@ -876,7 +782,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
         payload.message,
         env.SHOP_DOMAIN,
         env.VECTOR_INDEX,
-        env.AI,
+        undefined,
         3
       );
       if (ragResult.results.length > 0) {
@@ -885,12 +791,12 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       } else {
         console.log('[handleChat] ⚠️ RAG: No policies found');
       }
-    } else if (env.VECTOR_INDEX && env.AI) {
+    } else if (env.VECTOR_INDEX) {
       // Vectorize-only fallback
       const ragResult = await searchShopPoliciesAndFaqs(
-        payload.message, 
-        env.VECTOR_INDEX, 
-        env.AI,
+        payload.message,
+        env.VECTOR_INDEX,
+        undefined,
         3
       );
       if (ragResult.results.length > 0) {
@@ -936,14 +842,31 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
   console.log('[handleChat] 🔐 Customer Token in context:', customerToken ? 'YES (' + customerToken.substring(0,16) + '...)' : 'NO');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  if (payload.stream && env.GROQ_API_KEY) {
+  const groqKey = typeof env.GROQ_API_KEY === 'string' ? env.GROQ_API_KEY.trim() : '';
+  if (!groqKey) {
+    console.error('[handleChat] ❌ Missing GROQ_API_KEY – cannot contact Groq');
+    return new Response(JSON.stringify({
+      error: 'AI service temporarily unavailable. Please try again later.',
+      session_id: sessionId
+    }), {
+      status: 503,
+      headers: { ...cors(env), 'Content-Type': 'application/json' },
+    });
+  }
+
+  console.log('[handleChat] 🤖 Using Groq model:', GROQ_MODEL_ID);
+  
+  // ⚠️ CRITICAL: GROQ_MODEL_ID is hardcoded to 'openai/gpt-oss-120b' in ai-client.ts
+  // This model CANNOT be changed without breaking the entire system.
+  // See: .model-lock file and test/model-lock.test.ts for verification
+
+  if (payload.stream) {
     return streamAssistantResponse(sessionId, payload.message, stub, env);
-  } else if (env.GROQ_API_KEY) {
+  } else {
     console.log('[handleChat] 🚀 Calling Groq API...');
     const modelResponse = await getGroqResponse(
       messages,
-      'openai/gpt-oss-120b',
-      env as { GROQ_API_KEY: string }
+      env
     );
     console.log('[handleChat] ✅ Groq Response received, length:', modelResponse?.length || 0, 'chars');
     console.log('[handleChat] 📝 Groq Response preview:', modelResponse?.substring(0, 200) || 'EMPTY');
@@ -1084,8 +1007,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
               console.log(`📡 Streamuję finalną odpowiedź LLM po wykonaniu narzędzia...`);
               const stream = await streamGroqResponse(
                 messages,
-                'openai/gpt-oss-120b',
-                env as { GROQ_API_KEY: string }
+                env
               );
               
               return new Response(stream, {
@@ -1101,8 +1023,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
               console.log(`📝 Pobieram finalną odpowiedź LLM po wykonaniu narzędzia...`);
               const finalResponse = await getGroqResponse(
                 messages,
-                (env as any).GROQ_MODEL ?? 'openai/gpt-oss-120b',
-                env as { GROQ_API_KEY: string }
+                env
               );
               
               // Parsuj finalną odpowiedź (powinna być JSON lub czysty tekst)
@@ -1161,11 +1082,9 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       }
     }
     // === KONIEC BLOKU WALIDACJI ===
-    
+
     // Jeśli model zwrócił odpowiedź konwersacyjną (reply), użyj jej
     reply = responseJson?.reply || modelResponse;
-  } else {
-    reply = await generateAIResponse(history, payload.message, env, ragContext);
   }
 
   await stub.fetch('https://session/append', {
@@ -1230,14 +1149,13 @@ function streamAssistantResponse(
           env,
           cartId,
           intent,
-          env.VECTOR_INDEX,
-          env.AI
+          env.VECTOR_INDEX
         );
         if (mcpResult) ragContext = mcpResult;
       }
       if (!ragContext || ragContext.trim().length === 0) {
-        if (env.VECTOR_INDEX && env.AI) {
-          const ragResult = await searchShopPoliciesAndFaqs(userMessage, env.VECTOR_INDEX, env.AI, 3);
+        if (env.VECTOR_INDEX) {
+          const ragResult = await searchShopPoliciesAndFaqs(userMessage, env.VECTOR_INDEX, undefined, 3);
           if (ragResult.results.length > 0) ragContext = formatRagContextForPrompt(ragResult);
         }
       }
@@ -1250,39 +1168,92 @@ function streamAssistantResponse(
         get_most_recent_order_status
       );
 
-      // 3. MoE complexity classifier for prompt
-      const complexity = classifyQueryComplexity(userMessage);
-      const devConstraints: DeveloperConstraints = {
-        reasoning_mode: complexity,
-        max_cot_tokens: complexity === 'high' ? 256 : 64,
-      };
-      // 4. Build Harmony messages
-      const recentChat = history
-        .filter(h => h.role === 'user' || h.role === 'assistant')
-        .slice(-10)
-        .map(h => ({ role: h.role as 'user' | 'assistant', content: h.content }));
+      // 3. Build Groq messages with RAG context
       const promptData = {
         systemPersona: LUXURY_SYSTEM_PROMPT,
-        chatHistory: recentChat,
-        ragContext: Array.isArray(ragContext) ? ragContext : [],
+        chatHistory: history.slice(-10),
+        ragContext: ragContext || '',
         userQuery: userMessage
       };
-      const harmonyMessages = buildHarmonyMessages(promptData, devConstraints);
 
-      // 5. Harmony streaming loop
-      if (env.GROQ_API_KEY) {
-        const groqMessages = harmonyMessages
-          .filter(m => m.role !== 'developer')
-          .map(m => ({ role: m.role as 'system' | 'user' | 'assistant' | 'tool', content: m.content, tool_call_id: m.tool_call_id, name: m.name }));
-        const eventStream = await streamGroqHarmonyEvents(
-          groqMessages,
-          'openai/gpt-oss-120b',
-          env as { GROQ_API_KEY: string }
-        );
-        // TODO: Write eventStream to writer as needed
+      // Add RAG context to system prompt if available
+      let systemPromptWithContext = promptData.systemPersona;
+      if (ragContext && ragContext.trim().length > 0) {
+        systemPromptWithContext += `\n\n═══ KONTEKST Z BAZY WIEDZY ═══\n${ragContext}\n═══════════════════════════════`;
       }
+
+      const messages = [
+        { role: 'system' as const, content: systemPromptWithContext },
+        ...promptData.chatHistory.map((entry: any) => ({ 
+          role: entry.role as 'user' | 'assistant' | 'tool', 
+          content: entry.content 
+        })),
+        { role: 'user' as const, content: promptData.userQuery }
+      ];
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('[streamAssistant] 🤖 GROQ STREAMING');
+      console.log('[streamAssistant] 🤖 Model (HARDCODED):', GROQ_MODEL_ID);
+      console.log('[streamAssistant] 📜 System Prompt length:', systemPromptWithContext.length, 'chars');
+      console.log('[streamAssistant] 📚 History entries:', promptData.chatHistory.length);
+      console.log('[streamAssistant] 🔍 RAG Context:', ragContext ? `${ragContext.length} chars` : 'NONE');
+      console.log('[streamAssistant] 💬 User Query:', promptData.userQuery);
+      console.log('[streamAssistant] 📨 Total messages:', messages.length);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      // 4. Verify Groq API key
+      const groqKey = typeof env.GROQ_API_KEY === 'string' ? env.GROQ_API_KEY.trim() : '';
+      if (!groqKey) {
+        console.error('[streamAssistant] ❌ Missing GROQ_API_KEY');
+        const errorMsg = 'event: error\ndata: {"error":"AI service unavailable"}\n\n';
+        await writer.write(encoder.encode(errorMsg));
+        return;
+      }
+
+      // 5. Stream from Groq (using HARDCODED model: openai/gpt-oss-120b)
+      console.log('[streamAssistant] 🚀 Starting Groq stream with model:', GROQ_MODEL_ID);
+      const groqStream = await streamGroqResponse(messages, env);
+      
+      // 6. Pipe Groq stream to SSE format and collect full response
+      let fullResponse = '';
+      const reader = groqStream.getReader();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = value; // value is already a string from streamGroqResponse
+        fullResponse += chunk;
+        
+        // Send as SSE
+        const sseChunk = `data: ${JSON.stringify({ delta: chunk })}\n\n`;
+        await writer.write(encoder.encode(sseChunk));
+      }
+      
+      // 7. Send completion event
+      await writer.write(encoder.encode('data: [DONE]\n\n'));
+      
+      // 8. Save assistant response to session
+      console.log('[streamAssistant] 💾 Saving response to session, length:', fullResponse.length);
+      await stub.fetch('https://session/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          role: 'assistant', 
+          content: fullResponse, 
+          session_id: sessionId 
+        }),
+      });
+      
+      console.log('[streamAssistant] ✅ Stream completed successfully');
     } catch (err) {
       console.error('Error in streamAssistantResponse:', err);
+      try {
+        const errorMsg = `event: error\ndata: ${JSON.stringify({ error: String(err) })}\n\n`;
+        await writer.write(encoder.encode(errorMsg));
+      } catch (writeErr) {
+        console.error('Failed to write error to stream:', writeErr);
+      }
     } finally {
       writer.close();
     }
@@ -1405,8 +1376,6 @@ export {
   parseEndPayload,
   ensureHistoryArray,
   cors,
-  generateAIResponse,
-  generateAIResponseStream,
   handleChat,
   streamAssistantResponse,
   verifyAppProxyHmac,

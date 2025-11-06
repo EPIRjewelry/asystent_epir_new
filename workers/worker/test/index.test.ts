@@ -7,8 +7,6 @@ import {
   parseEndPayload,
   ensureHistoryArray,
   cors,
-  generateAIResponse,
-  generateAIResponseStream,
   handleChat,
   streamAssistantResponse,
   verifyAppProxyHmac,
@@ -53,7 +51,6 @@ const mockState = {
   storage: mockStorage,
   blockConcurrencyWhile: vi.fn((fn) => fn()),
 };
-const mockAI = { run: vi.fn(), stream: vi.fn() };
 const mockEnv: Env = {
   DB: { prepare: vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })), first: vi.fn() })) } as any,
   SESSIONS_KV: {} as any,
@@ -63,7 +60,6 @@ const mockEnv: Env = {
   VECTOR_INDEX: {} as any,
   SHOPIFY_APP_SECRET: 'secret',
   ALLOWED_ORIGIN: 'http://example.com',
-  AI: mockAI as any,
   SHOPIFY_STOREFRONT_TOKEN: 'token',
   SHOPIFY_ADMIN_TOKEN: 'token',
   SHOP_DOMAIN: 'example.shopify.com',
@@ -234,21 +230,6 @@ describe('SessionDO Class', () => {
     await sessionDO['end']('123');
     expect(mockEnv.DB.prepare).toHaveBeenCalled();
     expect(sessionDO['history']).toEqual([]);
-  });
-});
-
-describe('AI Response Functions', () => {
-  it('generateAIResponseStream: stream available', async () => {
-    const mockStream = new ReadableStream();
-    (mockEnv.AI as any).stream.mockResolvedValue(mockStream);
-    const stream = await generateAIResponseStream([], 'test', mockEnv);
-    expect(stream).toBe(mockStream);
-  });
-
-  it('generateAIResponseStream: no stream', async () => {
-    (mockEnv.AI as any).stream = undefined;
-    const stream = await generateAIResponseStream([], 'test', mockEnv);
-    expect(stream).toBeNull();
   });
 });
 

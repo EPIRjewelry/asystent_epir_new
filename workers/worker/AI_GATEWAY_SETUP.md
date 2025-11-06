@@ -37,7 +37,7 @@ To jest prostsze i działa od razu. AI Gateway możesz dodać później gdy będ
 
 ## Konfiguracja obecna
 ✅ Workers AI binding dodany
-✅ Model: `@cf/meta/llama-3.1-8b-instruct`
+✅ Model: `gpt-oss-120b`
 ✅ System prompt: Asystent jubilerski EPIR
 ✅ Max tokens: 512
 ✅ Temperature: 0.7
@@ -55,5 +55,5 @@ To jest prostsze i działa od razu. AI Gateway możesz dodać później gdy będ
 
 Jeśli przekroczysz limit, możesz:
 1. Upgrade do płatnego planu Workers AI
-2. Użyć zewnętrznego API (OpenAI, Anthropic) przez AI Gateway
+2. Użyć wyłącznie modelu `gpt-oss-120b` przez Groq API
 3. Dodać caching w AI Gateway
