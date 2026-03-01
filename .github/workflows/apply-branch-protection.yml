@@ -1,0 +1,48 @@
+name: Apply Branch Protection
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/apply-branch-protection.yml'
+  workflow_dispatch:
+
+jobs:
+  apply-branch-protection:
+    name: Apply branch protection rules to main
+    runs-on: ubuntu-latest
+    permissions:
+      # The GH_TOKEN secret must have repo scope (admin:repo_hook or repo)
+      # for branch protection API calls to succeed.
+      contents: read
+
+    steps:
+      - name: Apply branch protection rules
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          gh api \
+            --method PUT \
+            repos/${{ github.repository }}/branches/main/protection \
+            --header "Accept: application/vnd.github+json" \
+            --input - <<'EOF'
+          {
+            "required_status_checks": {
+              "strict": true,
+              "contexts": ["build", "lint", "typecheck"]
+            },
+            "enforce_admins": true,
+            "required_pull_request_reviews": {
+              "dismiss_stale_reviews": true,
+              "require_code_owner_reviews": false,
+              "required_approving_review_count": 1
+            },
+            "restrictions": null,
+            "required_linear_history": false,
+            "allow_force_pushes": false,
+            "allow_deletions": false,
+            "required_conversation_resolution": false,
+            "required_signatures": false
+          }
+          EOF
